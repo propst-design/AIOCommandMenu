@@ -31,6 +31,11 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
   removed in `OnBeforeWorldCleanup` (`AIO_Game.c`).
 - `AIO_PlayerController.c`: modded SCR_PlayerController. OnUpdate drives the menu on the local
   controller. RPCs: roster (server -> owner every 1 s while open), orders, feedback.
+- `AIO_Tasks.c`: orders to single soldiers (selected men/teams). Per-agent behaviours on the man's
+  SCR_AIUtilityComponent: AIO_MoveBehavior (vanilla MoveIndividually, prio 58, combat 70+ still wins) +
+  AIO_HoldBehavior (Wait.bt, prio 45 > formation 30). Release = fail both -> back to formation.
+  Watchdog (2 s) walks holders back if >6 m off their spot. Whole-squad Halt/Follow/Move release all.
+- `AIO_Test.c`: server tests (`-aioTaskTest 1`: spawns a US fire team on GM_Arland, moves/holds/releases men).
 - `AIO_Server.c`: squad = the player's group's slave AI group (`SCR_AIGroup.GetSlave()`), the same
   setup the vanilla commanding wheel and ACA's possession use. Whole-squad orders go through the
   game's own commands (`SCR_CommandingManagerComponent.RequestCommandExecution`: halt, follow,
@@ -47,6 +52,8 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
 ## Testing
 - Jacob runs `Start-AIO-Test-Launcher.cmd` (tools/AIO-Watcher.ps1). Claude: `bash tools/runtest.sh
   <new-id> <preset> <polls>`; results in `.aio-requests/<id>.result.txt`.
+- Extra server tests come from `tools/test-presets.txt` (re-read per request, no launcher restart):
+  `tasks` (~100 s).
 - Presets: `compile` (dedicated server, GM_Arland, this mod only; done at "[AIO] ready"),
   `compile-aca` (with ACA on its test range). The launcher waits for another dedicated server (your SP game is fine;
   ACA's test server shares port 2001).
@@ -56,6 +63,9 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
 - Built (12-13 Oct): menu shell, input capture, select-members and teams pages, whole-squad orders
   through vanilla commands (Halt, Follow, Move here, Hold here, Suppress, ROE), admin page (heal me,
   heal squad, teleport me, bring squad, kill target).
-- Next: orders to selected men/teams (per-soldier moves; vanilla has SCR_AIMoveIndividuallyBehavior),
-  Move-menu shifts (Advance/Stay back/Flank = offset from the player's facing, ~50 m), Take cover,
+- 13 Oct: orders to selected men/teams (Move here, Halt/Hold here, Follow) - `tasks` test 5/5 PASS.
+  Fixed live: no mouse cursor, closing key no longer reaches the hotbar. Input works after Workbench
+  built resourceDatabase.rdb (needed for the input overrides to register; re-open in Workbench when
+  adding new .conf overrides).
+- Next: Move-menu shifts (Advance/Stay back/Flank = offset from the player's facing, ~50 m), Take cover,
   stance, Heal up, squad bar HUD, team colours on nameplates, then Attack maneuvers and Defense.
