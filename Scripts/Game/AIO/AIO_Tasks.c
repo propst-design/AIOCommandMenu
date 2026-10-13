@@ -128,6 +128,18 @@ class AIO_Tasks
 		utility.SetStateAllActionsOfType(AIO_HoldBehavior, EAIActionState.FAILED);
 	}
 
+	// Back to the formation (Follow me): release, and if he is far off, walk him to his leader first
+	// (the game's formation following can be slow to pick a far-off man up again).
+	static void Rejoin(IEntity body, IEntity leader)
+	{
+		Release(body);
+		if (!leader || vector.DistanceXZ(body.GetOrigin(), leader.GetOrigin()) < 12)
+			return;
+		SCR_AIUtilityComponent utility = UtilityOf(AgentOf(body));
+		if (utility)
+			utility.AddAction(new AIO_MoveBehavior(utility, null, leader.GetOrigin(), ent: leader, radius: 6.0));
+	}
+
 	static void ReleaseGroup(SCR_AIGroup group)
 	{
 		array<IEntity> members = {};
