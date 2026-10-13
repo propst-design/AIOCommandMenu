@@ -32,6 +32,7 @@ class AIO_Test
 	protected static IEntity s_Building;
 	protected static vector s_vPoint;
 	protected static SCR_AIGroup s_Enemy;
+	protected static SCR_AIGroup s_Master; // playable group standing in for the player's group
 	protected static ResourceName s_sEnemyWeapon;
 	protected static vector s_vForward;
 
@@ -63,7 +64,33 @@ class AIO_Test
 		if (!Replication.IsServer())
 			return;
 		Print("[AIO] TEST tasks: starting in 8 s");
+		GetGame().GetCallqueue().CallLater(MakeMaster, 2000, false);
 		GetGame().GetCallqueue().CallLater(Spawn, 8000, false);
+	}
+
+	// In real play the squad is the slave AI group of the player's playable group, and mods
+	// such as ACA leave slave groups alone. Give the test squad the same setup, made a few
+	// seconds early because CreateNewPlayableGroup finishes its own setup on a delayed call.
+	protected static void MakeMaster()
+	{
+		SCR_GroupsManagerComponent manager = SCR_GroupsManagerComponent.GetInstance();
+		SCR_FactionManager factions = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!manager || !factions)
+			return;
+		s_Master = manager.CreateNewPlayableGroup(factions.GetFactionByKey("US"));
+		if (!s_Master)
+			return;
+		s_Master.SetDeleteWhenEmpty(false);
+		s_Master.SetCanDeleteIfNoPlayer(false);
+	}
+
+	protected static void LinkToMaster()
+	{
+		SCR_GroupsManagerComponent manager = SCR_GroupsManagerComponent.GetInstance();
+		if (!manager || !s_Master || !s_Group)
+			return;
+		manager.RequestSetGroupSlave(SCR_EntityHelper.EntityToRplId(s_Master), SCR_EntityHelper.EntityToRplId(s_Group));
+		Print(string.Format("[AIO] TEST tasks: squad linked as slave %1", s_Group.IsSlave()));
 	}
 
 	protected static void Check(string name, bool ok, string detail)
@@ -139,6 +166,7 @@ class AIO_Test
 		params.TransformMode = ETransformMode.WORLD;
 		params.Transform[3] = s_vStart;
 		s_Group = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(Resource.Load(GROUP), GetGame().GetWorld(), params));
+		LinkToMaster();
 		Print(string.Format("[AIO] TEST tasks: group spawned at %1", s_vStart));
 		if (s_bAttackTest)
 			GetGame().GetCallqueue().CallLater(Flank, 12000, false);

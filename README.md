@@ -27,7 +27,14 @@ logged-in admins. Host option: `-aioCheats all|admins|off`.
 
 ## Status
 
-Early development. See CLAUDE.md for what works and what is next.
+First release: infantry orders and the admin page. Vehicle orders, formations and map
+orders are planned.
+
+## Credits
+
+Original Arma 3 mod, design and manual: Leopard20 (All-in-One Command Menu). This
+Reforger version is a new implementation by propst-design, written with Claude
+(Anthropic), using the original as the behaviour reference.
 
 ## License
 

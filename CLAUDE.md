@@ -91,6 +91,14 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
   weapon/quick-slot keys (SwitchWeaponCategoryN, prio 10) don't fire; it stays on 0.5 s after closing so the closing key's release is swallowed too. `keyBindingMenu.conf` override
   adds the Controls category.
 
+## Workshop release
+- `bash tools/make_release.sh` builds the stripped copy `addons/_AIO-release/AIOCommandMenu` (same GUID,
+  title "All-in-One Command Menu (Reforger)"; only Scripts, Configs, rdb, README, licence files) and puts
+  `tools/workshop/` (summary, description, placeholder preview image) beside it. Re-run before every
+  publish. One level down so the game/Workbench never see two copies in addons/.
+- Jacob publishes from Workbench under his Bohemia login: open the release gproj, Publish, Unlisted first.
+  First publish planned 13 Oct (Unlisted, then the MP check runs from the Workshop copy).
+
 ## Testing
 - Jacob runs `Start-AIO-Test-Launcher.cmd` (tools/AIO-Watcher.ps1). Claude: `bash tools/runtest.sh
   <new-id> <preset> <polls>`; results in `.aio-requests/<id>.result.txt`.
@@ -98,6 +106,11 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
   `tasks` (~100 s), `moves` (~160 s), `infantry` (~110 s; prone can fail next to walls/at cover spots),
   `supply` (~100 s), `attack` (~210 s), `defense` (~190 s; finds a house near the map centre),
   `tower` (~300 s; defense on Arland's ControlTowerMilitary_E_01 + walk-up fallback).
+- `<test>-aca` presets (tasks, moves, infantry, supply, attack, defense) run the same tests with ACA + BBB
+  on ACR_TestRange (ACA's AI commanders and battle running alongside). The test squad is made the slave
+  of a playable "master" group like the player's real squad (`AIO_Test.MakeMaster/LinkToMaster`):
+  ACA registers and commands every non-slave AI group, which sent the test men off to its bases.
+  A finished test's last lines can be missing from console.log (killed before flush): check script.log.
 - Presets: `compile` (dedicated server, GM_Arland, this mod only; done at "[AIO] ready"),
   `compile-aca` (with ACA on its test range). The launcher waits for another dedicated server (your SP game is fine;
   ACA's test server shares port 2001).
@@ -121,7 +134,12 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
 - 13 Oct: Garrison/Clear failed on the airfield ATC ("No way into that building"): finer interior grid,
   open-deck fallback, BuildingOf ignores model-less roots, walk-up fallback. `tower` 10/10, `defense` 8/8.
   (The two VM exceptions in Jacob's log at that time were vanilla Game Master attribute UI, not ours.)
-- Not covered by tests (live checks): arsenals with supplies, rearm from vehicles/crates, real
-  firefights (suppress, flank under fire, fire on my lead with a player), garrison on other buildings,
-  head markers and squad bar look, MP. (Advance/Stay back/Flank = offset from the player's facing, ~50 m), Take cover,
-  stance, Heal up, squad bar HUD, team colours on nameplates, then Attack maneuvers and Defense.
+- 13 Oct: Jacob's live play-test PASSED: arsenals/vehicle/crate rearm, real firefights (suppress, flank
+  under fire, fire on my lead), garrison on other buildings, head markers and squad bar, number keys.
+  First version (infantry orders + admin page) is feature-complete in SP.
+- 13 Oct: compatibility with ACA + BBB: compiles clean, all six `-aca` tests pass (tasks 6/6, moves 5/5,
+  infantry 7/7, supply 5/5, attack 7/7, defense 8/8); Arland tasks/moves still pass. No code clashes:
+  ACA skips slave groups (the player's squad) and player-led squads; BBB overrides different methods
+  on the same classes and steps aside for HOLD_FIRE and player-priority actions.
+- Next: MP check with a second player, then vehicle orders (get in/out, seats, driver/gunner, unflip),
+  formations, map-click orders. Workshop prep DONE 13 Oct (release copy, texts, placeholder image).
