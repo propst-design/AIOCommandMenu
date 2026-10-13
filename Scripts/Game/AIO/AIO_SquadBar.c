@@ -18,6 +18,7 @@ class AIO_SquadBar
 	protected ref array<ImageWidget> m_aBacks = {};
 	protected ref array<TextWidget> m_aNames = {};
 	protected ref array<TextWidget> m_aTasks = {};
+	protected ref array<TextWidget> m_aMarks = {}; // number over each man's head, in his team colour
 	protected int m_iNextDraw;
 
 	static AIO_SquadBar Get()
@@ -79,13 +80,51 @@ class AIO_SquadBar
 			m_aBacks[i].SetVisible(true);
 			m_aNames[i].SetVisible(true);
 			m_aTasks[i].SetVisible(true);
+			PlaceMark(i, member, key, isSelected);
 		}
 		for (int j = count; j < m_aBacks.Count(); j++)
 		{
 			m_aBacks[j].SetVisible(false);
 			m_aNames[j].SetVisible(false);
 			m_aTasks[j].SetVisible(false);
+			m_aMarks[j].SetVisible(false);
 		}
+	}
+
+	static const float MARK_RANGE = 120;
+
+	// The man's key number over his head (team colour; brackets when selected), if he is in view.
+	protected void PlaceMark(int index, AIO_Member member, int key, bool isSelected)
+	{
+		TextWidget mark = m_aMarks[index];
+		mark.SetVisible(false);
+		RplComponent rpl = RplComponent.Cast(Replication.FindItem(member.m_Id));
+		if (!rpl || !rpl.GetEntity())
+			return; // not streamed in here
+		IEntity body = rpl.GetEntity();
+		CameraManager cameras = GetGame().GetCameraManager();
+		if (!cameras || !cameras.CurrentCamera())
+			return;
+		vector camera[4];
+		cameras.CurrentCamera().GetTransform(camera);
+		vector head = body.GetOrigin() + Vector(0, 2.1, 0);
+		vector toHead = head - camera[3];
+		float distance = toHead.Length();
+		if (distance > MARK_RANGE || distance < 1.5)
+			return;
+		if (vector.Dot(toHead, camera[2]) <= 0)
+			return; // behind the camera
+		vector screen = GetGame().GetWorkspace().ProjWorldToScreen(head, GetGame().GetWorld());
+		FrameSlot.SetAnchorMin(mark, 0, 0);
+		FrameSlot.SetAnchorMax(mark, 0, 0);
+		FrameSlot.SetPos(mark, screen[0] - 20, screen[1] - 12);
+		FrameSlot.SetSize(mark, 40, 24);
+		string text = key.ToString();
+		if (isSelected)
+			text = "[" + text + "]";
+		mark.SetText(text);
+		mark.SetColorInt(AIO_Menu.TeamColor(member.m_iTeam));
+		mark.SetVisible(true);
 	}
 
 	static int HealthColor(int health)
@@ -105,6 +144,8 @@ class AIO_SquadBar
 			name.SetVisible(false);
 		foreach (TextWidget task : m_aTasks)
 			task.SetVisible(false);
+		foreach (TextWidget mark : m_aMarks)
+			mark.SetVisible(false);
 	}
 
 	// Bottom-centre anchored placement.
@@ -126,8 +167,13 @@ class AIO_SquadBar
 			ImageWidget back = ImageWidget.Cast(ws.CreateWidget(WidgetType.ImageWidgetTypeID, WidgetFlags.VISIBLE | WidgetFlags.IGNORE_CURSOR | WidgetFlags.BLEND, Color.FromRGBA(16, 20, 24, 150), 0, ws));
 			TextWidget name = TextWidget.Cast(ws.CreateWidgets("{B537936D5B7E2BA1}UI/layouts/WidgetLibrary/TextWidgets/Text_BodySmall.layout", ws));
 			TextWidget task = TextWidget.Cast(ws.CreateWidgets("{B537936D5B7E2BA1}UI/layouts/WidgetLibrary/TextWidgets/Text_BodySmall.layout", ws));
-			if (!back || !name || !task)
+			TextWidget mark = TextWidget.Cast(ws.CreateWidgets("{B537936D5B7E2BA1}UI/layouts/WidgetLibrary/TextWidgets/Text_BodySmall.layout", ws));
+			if (!back || !name || !task || !mark)
 				return false;
+			mark.SetFlags(WidgetFlags.IGNORE_CURSOR);
+			mark.SetZOrder(870);
+			mark.SetVisible(false);
+			m_aMarks.Insert(mark);
 			back.SetZOrder(880);
 			name.SetFlags(WidgetFlags.IGNORE_CURSOR);
 			task.SetFlags(WidgetFlags.IGNORE_CURSOR);
@@ -158,6 +204,11 @@ class AIO_SquadBar
 		{
 			if (task)
 				task.RemoveFromHierarchy();
+		}
+		foreach (TextWidget mark : s_Instance.m_aMarks)
+		{
+			if (mark)
+				mark.RemoveFromHierarchy();
 		}
 		s_Instance = null;
 	}

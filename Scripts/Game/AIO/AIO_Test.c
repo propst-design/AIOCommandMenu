@@ -190,11 +190,9 @@ class AIO_Test
 			SCR_AIUtilityComponent utility = AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(member));
 			if (!utility)
 				continue;
-			holds.Clear();
-			utility.FindActionsOfType(AIO_HoldBehavior, holds);
-			if (holds.IsEmpty())
+			AIO_HoldBehavior hold = AIO_Tasks.ActiveHold(utility);
+			if (!hold)
 				continue;
-			AIO_HoldBehavior hold = AIO_HoldBehavior.Cast(holds[0]);
 			float d = vector.Distance(member.GetOrigin(), hold.Spot());
 			if (d > worst)
 				worst = d;
