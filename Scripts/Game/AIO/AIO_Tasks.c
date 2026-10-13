@@ -173,14 +173,48 @@ class AIO_Tasks
 		if (!settings)
 			return;
 		settings.RemoveSettingsOfTypeAndOrigin(SCR_AICharacterStanceSettingBase, SCR_EAISettingOrigin.COMMANDING);
+		int at = s_aStanceAgents.Find(agent);
+		if (at >= 0)
+		{
+			s_aStanceAgents.RemoveOrdered(at);
+			s_aStances.RemoveOrdered(at);
+		}
 		if (stance < 0)
 			return;
+		s_aStanceAgents.Insert(agent);
+		s_aStances.Insert(stance);
+		Watch();
 		settings.AddCharacterSetting(SCR_AICharacterStanceSetting.Create(SCR_EAISettingOrigin.COMMANDING, SCR_EAIBehaviorCause.COMBAT, stance), false, true);
 		// The setting is read when a behaviour sets a stance; a man standing idle (holding) would not
 		// change until then, so change it now as well.
 		ChimeraCharacter character = ChimeraCharacter.Cast(agent.GetControlledEntity());
 		if (character && character.GetCharacterController())
 			SCR_AIStanceHandling.SetStance(character.GetCharacterController(), stance);
+	}
+
+	// Men with an ordered stance: the watchdog re-applies it when something else changed it
+	// (idle men re-read the stance setting only when a behaviour sets a stance).
+	protected static ref array<AIAgent> s_aStanceAgents = {};
+	protected static ref array<int> s_aStances = {};
+
+	protected static void KeepStances()
+	{
+		for (int i = s_aStanceAgents.Count() - 1; i >= 0; i--)
+		{
+			AIAgent agent = s_aStanceAgents[i];
+			ChimeraCharacter character = null;
+			if (agent)
+				character = ChimeraCharacter.Cast(agent.GetControlledEntity());
+			if (!character || !AIO_Server.IsAlive(character) || !character.GetCharacterController())
+			{
+				s_aStanceAgents.RemoveOrdered(i);
+				s_aStances.RemoveOrdered(i);
+				continue;
+			}
+			CharacterControllerComponent controller = character.GetCharacterController();
+			if (controller.GetStance() != s_aStances[i])
+				SCR_AIStanceHandling.SetStance(controller, s_aStances[i]);
+		}
 	}
 
 	protected static ref array<AIAgent> s_aCopyAgents = {};
@@ -356,6 +390,7 @@ class AIO_Tasks
 	// Men holding a spot who drifted away (a fight, a push) walk back to it.
 	protected static void WatchTick()
 	{
+		KeepStances();
 		for (int c = s_aCopyAgents.Count() - 1; c >= 0; c--)
 		{
 			AIAgent copier = s_aCopyAgents[c];
