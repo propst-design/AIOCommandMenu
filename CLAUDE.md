@@ -40,6 +40,15 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
   ahead/behind/left/right of the player's facing at order time (world-fixed bearing, moves with him),
   men in a line 5 m apart across that direction; Fall back = fixed spot 40 m behind, hold. Selection or
   whole squad. If the player dies the men rejoin formation.
+- Infantry (`AIO_Server.Infantry`): Take cover = per man nearest free cover point within 25 m facing a
+  threat 150 m ahead of the player (ChimeraCoverManagerComponent.GetBestCover, reserved via
+  SetOccupiedCover, freed on release), crouch + hold; none found = crouch in place. Stance = character
+  setting (origin COMMANDING, cause COMBAT) + immediate SetStanceChange; watchdog re-applies it (idle
+  men never re-read settings); Auto removes it (prone men get up to crouch). Copy my stance = watchdog
+  copies the player's stance each second. Heal up = vanilla SCR_AIHealBehavior on self for hurt men
+  with a healing item (EUnitRole.MEDIC).
+- `AIO_SquadBar.c`: bottom-centre strip while leading AI (roster every 2 s, 1 s with the menu open):
+  key number, name (team colour), health, task label (`AIO_Tasks.TaskLabel`). More > Squad bar on/off.
 - `AIO_Test.c`: server tests (`-aioTaskTest 1`: spawns a US fire team on GM_Arland, moves/holds/releases men).
 - `AIO_Server.c`: squad = the player's group's slave AI group (`SCR_AIGroup.GetSlave()`), the same
   setup the vanilla commanding wheel and ACA's possession use. Whole-squad orders go through the
@@ -58,7 +67,7 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
 - Jacob runs `Start-AIO-Test-Launcher.cmd` (tools/AIO-Watcher.ps1). Claude: `bash tools/runtest.sh
   <new-id> <preset> <polls>`; results in `.aio-requests/<id>.result.txt`.
 - Extra server tests come from `tools/test-presets.txt` (re-read per request, no launcher restart):
-  `tasks` (~100 s), `moves` (~160 s).
+  `tasks` (~100 s), `moves` (~160 s), `infantry` (~110 s; prone can fail next to walls/at cover spots).
 - Presets: `compile` (dedicated server, GM_Arland, this mod only; done at "[AIO] ready"),
   `compile-aca` (with ACA on its test range). The launcher waits for another dedicated server (your SP game is fine;
   ACA's test server shares port 2001).
@@ -74,5 +83,7 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
   adding new .conf overrides).
 - 13 Oct: Move menu (Advance/Stay back/Flank L/R/Fall back) - `moves` 5/5 PASS (men within 1.7 m of
   their slots, also while the leader walks 40 m).
-- Next: (done: Move-menu shifts) (Advance/Stay back/Flank = offset from the player's facing, ~50 m), Take cover,
+- 13 Oct: Take cover, Stance (incl. Copy my stance), Heal up, squad bar - `infantry` 7/7, `tasks` 6/6,
+  `moves` 5/5.
+- Next: team colours on nameplates, Attack maneuvers, Defense, ROE for selected men, unit speed. (Advance/Stay back/Flank = offset from the player's facing, ~50 m), Take cover,
   stance, Heal up, squad bar HUD, team colours on nameplates, then Attack maneuvers and Defense.
