@@ -97,7 +97,8 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
   `tools/workshop/` (summary, description, placeholder preview image) beside it. Re-run before every
   publish. One level down so the game/Workbench never see two copies in addons/.
 - Jacob publishes from Workbench under his Bohemia login: open the release gproj, Publish, Unlisted first.
-  First publish planned 13 Oct (Unlisted, then the MP check runs from the Workshop copy).
+  PUBLISHED 13 Oct as "AiO Command Menu (Reforger)" 0.1.0, Unlisted: https://reforger.armaplatform.com/workshop/629405AEFC950C12
+  (custom licence = LICENSE.txt). Next: MP check from the Workshop copy, then Public.
 
 ## Testing
 - Jacob runs `Start-AIO-Test-Launcher.cmd` (tools/AIO-Watcher.ps1). Claude: `bash tools/runtest.sh
