@@ -153,6 +153,30 @@ class AIO_Test
 		return total / members.Count();
 	}
 
+	// Largest distance of any man from his own hold spot (what the watchdog keeps him at).
+	protected static float SlotError()
+	{
+		array<IEntity> members = {};
+		AIO_Server.Members(s_Group, members);
+		float worst = 0;
+		array<ref AIActionBase> holds = {};
+		foreach (IEntity member : members)
+		{
+			SCR_AIUtilityComponent utility = AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(member));
+			if (!utility)
+				continue;
+			holds.Clear();
+			utility.FindActionsOfType(AIO_HoldBehavior, holds);
+			if (holds.IsEmpty())
+				continue;
+			AIO_HoldBehavior hold = AIO_HoldBehavior.Cast(holds[0]);
+			float d = vector.Distance(member.GetOrigin(), hold.Spot());
+			if (d > worst)
+				worst = d;
+		}
+		return worst;
+	}
+
 	protected static void Advance()
 	{
 		IEntity leader = Leader();
@@ -173,7 +197,7 @@ class AIO_Test
 	{
 		float nearest;
 		float error = AdvanceError(nearest);
-		Check("advance", error < 12 && nearest > 35, string.Format("men average %1 m from the spot 50 m ahead; nearest %2 m from the leader", error, nearest));
+		Check("advance", error < 12 && nearest > 35, string.Format("men average %1 m from the spot 50 m ahead; nearest %2 m from the leader; worst man %3 m off his own slot", error, nearest, SlotError()));
 		// Now the leader walks 40 m to his right: the advanced men should keep station on him.
 		IEntity leader = Leader();
 		vector right = Vector(s_vForward[2], 0, -s_vForward[0]);
@@ -187,7 +211,7 @@ class AIO_Test
 	{
 		float nearest;
 		float error = AdvanceError(nearest);
-		Check("station-keeping", error < 14, string.Format("after the leader moved: men average %1 m from the spot 50 m ahead of him", error));
+		Check("station-keeping", error < 14, string.Format("after the leader moved: men average %1 m from the spot 50 m ahead of him; worst man %2 m off his own slot", error, SlotError()));
 		// Fall back for everyone: a fixed spot 40 m behind the leader.
 		IEntity leader = Leader();
 		string reply = AIO_Server.MoveMenu(s_Group, leader, AIO_EOrder.FALL_BACK, null);
