@@ -1,0 +1,166 @@
+// All-in-One Command Menu for Arma Reforger
+// Based on Leopard20's All-In-One Command Menu for Arma 3 (GPLv3); rebuilt in Enforce Script.
+// Copyright (C) 2026 Jacob (propst-design). Licensed under the GNU GPL v3 or later (see LICENSE).
+
+// Every order the menu can give. The numbers travel in RPCs: only ever add at the end.
+enum AIO_EOrder
+{
+	NONE,
+	HALT,
+	FOLLOW,
+	MOVE_HERE,
+	TAKE_COVER,
+	HOLD_HERE,
+	ADVANCE,
+	STAY_BACK,
+	FLANK_LEFT,
+	FLANK_RIGHT,
+	FALL_BACK,
+	ATK_ADVANCE,
+	ATK_FLANK_LEFT,
+	ATK_FLANK_RIGHT,
+	ASSAULT,
+	SUPPRESS,
+	FIRE_ON_MY_LEAD,
+	BOUND,
+	PEEL,
+	ENGAGE_AT_WILL,
+	DISENGAGE,
+	HOLD_FIRE,
+	RETURN_FIRE,
+	FIRE_AT_WILL,
+	STANCE_UP,
+	STANCE_CROUCH,
+	STANCE_PRONE,
+	STANCE_AUTO,
+	COPY_STANCE,
+	HEAL_UP,
+	DEF_GARRISON,
+	DEF_CLEAR,
+	DEF_360,
+	DEF_FORTIFY,
+	ADMIN_HEAL_ME,
+	ADMIN_HEAL_SQUAD,
+	ADMIN_TELEPORT_ME,
+	ADMIN_TELEPORT_SQUAD,
+	ADMIN_KILL_TARGET
+}
+
+// What an order needs from the player's side.
+enum AIO_ETarget
+{
+	NONE,  // just the order
+	POINT // where the player looks
+}
+
+// One line of the menu: an order, or a page of further lines.
+class AIO_MenuItem
+{
+	string m_sLabel;
+	AIO_EOrder m_eOrder;
+	AIO_ETarget m_eTarget;
+	bool m_bAdmin;
+	ref array<ref AIO_MenuItem> m_aChildren;
+
+	void AIO_MenuItem(string label, AIO_EOrder order = AIO_EOrder.NONE, AIO_ETarget target = AIO_ETarget.NONE)
+	{
+		m_sLabel = label;
+		m_eOrder = order;
+		m_eTarget = target;
+	}
+
+	bool IsPage()
+	{
+		return m_aChildren != null;
+	}
+
+	// Adds a sub-page and returns it.
+	AIO_MenuItem Page(string label)
+	{
+		AIO_MenuItem page = new AIO_MenuItem(label);
+		page.m_aChildren = {};
+		Add(page);
+		return page;
+	}
+
+	AIO_MenuItem Order(string label, AIO_EOrder order, AIO_ETarget target = AIO_ETarget.NONE)
+	{
+		AIO_MenuItem item = new AIO_MenuItem(label, order, target);
+		Add(item);
+		return item;
+	}
+
+	protected void Add(AIO_MenuItem item)
+	{
+		if (!m_aChildren)
+			m_aChildren = {};
+		m_aChildren.Insert(item);
+	}
+}
+
+// The menu layout. Keys 1-9 pick the lines in order; 0 is always "Select members" on the
+// top page and "Back" on sub-pages. Rearranging the menu = editing this list.
+class AIO_MenuTree
+{
+	static AIO_MenuItem Build()
+	{
+		AIO_MenuItem root = new AIO_MenuItem("Orders");
+		root.m_aChildren = {};
+
+		AIO_MenuItem move = root.Page("Move");
+		move.Order("Move here", AIO_EOrder.MOVE_HERE, AIO_ETarget.POINT);
+		move.Order("Follow me / Return to formation", AIO_EOrder.FOLLOW);
+		move.Order("Advance", AIO_EOrder.ADVANCE);
+		move.Order("Stay back", AIO_EOrder.STAY_BACK);
+		move.Order("Flank left", AIO_EOrder.FLANK_LEFT);
+		move.Order("Flank right", AIO_EOrder.FLANK_RIGHT);
+		move.Order("Fall back", AIO_EOrder.FALL_BACK);
+		move.Order("Hold here", AIO_EOrder.HOLD_HERE);
+
+		AIO_MenuItem attack = root.Page("Attack");
+		attack.Order("Advance", AIO_EOrder.ATK_ADVANCE, AIO_ETarget.POINT);
+		attack.Order("Flank left", AIO_EOrder.ATK_FLANK_LEFT, AIO_ETarget.POINT);
+		attack.Order("Flank right", AIO_EOrder.ATK_FLANK_RIGHT, AIO_ETarget.POINT);
+		attack.Order("Assault", AIO_EOrder.ASSAULT, AIO_ETarget.POINT);
+		attack.Order("Suppress", AIO_EOrder.SUPPRESS, AIO_ETarget.POINT);
+		attack.Order("Fire on my lead", AIO_EOrder.FIRE_ON_MY_LEAD);
+		attack.Order("Bound forward", AIO_EOrder.BOUND, AIO_ETarget.POINT);
+		attack.Order("Peel back", AIO_EOrder.PEEL);
+
+		root.Order("Take cover", AIO_EOrder.TAKE_COVER);
+
+		AIO_MenuItem defense = root.Page("Defense");
+		defense.Order("Garrison building", AIO_EOrder.DEF_GARRISON, AIO_ETarget.POINT);
+		defense.Order("Clear building", AIO_EOrder.DEF_CLEAR, AIO_ETarget.POINT);
+		defense.Order("360 defense", AIO_EOrder.DEF_360);
+		defense.Order("Fortify here", AIO_EOrder.DEF_FORTIFY, AIO_ETarget.POINT);
+
+		AIO_MenuItem roe = root.Page("R.O.E.");
+		roe.Order("Fire at will", AIO_EOrder.FIRE_AT_WILL);
+		roe.Order("Return fire only", AIO_EOrder.RETURN_FIRE);
+		roe.Order("Hold fire", AIO_EOrder.HOLD_FIRE);
+		roe.Order("Engage at will", AIO_EOrder.ENGAGE_AT_WILL);
+		roe.Order("Disengage", AIO_EOrder.DISENGAGE);
+
+		AIO_MenuItem stance = root.Page("Stance");
+		stance.Order("Stand", AIO_EOrder.STANCE_UP);
+		stance.Order("Crouch", AIO_EOrder.STANCE_CROUCH);
+		stance.Order("Prone", AIO_EOrder.STANCE_PRONE);
+		stance.Order("Auto", AIO_EOrder.STANCE_AUTO);
+		stance.Order("Copy my stance", AIO_EOrder.COPY_STANCE);
+
+		root.Order("Heal up!", AIO_EOrder.HEAL_UP);
+
+		AIO_MenuItem more = root.Page("More");
+		AIO_MenuItem admin = more.Page("Admin");
+		admin.m_bAdmin = true;
+		admin.Order("Heal me", AIO_EOrder.ADMIN_HEAL_ME);
+		admin.Order("Heal my squad", AIO_EOrder.ADMIN_HEAL_SQUAD);
+		admin.Order("Teleport me (where I look)", AIO_EOrder.ADMIN_TELEPORT_ME, AIO_ETarget.POINT);
+		admin.Order("Teleport squad to me", AIO_EOrder.ADMIN_TELEPORT_SQUAD);
+		admin.Order("Kill what I look at", AIO_EOrder.ADMIN_KILL_TARGET, AIO_ETarget.POINT);
+
+		root.Order("HALT", AIO_EOrder.HALT);
+		return root;
+	}
+}

@@ -1,0 +1,14 @@
+GameProject {
+ ID "AIOCommandMenu"
+ GUID "629405AEFC950C12"
+ TITLE "All-in-One Command Menu - Reforger (Development)"
+ Dependencies {
+  "58D0FB3206B6F859"
+ }
+ Configurations {
+  GameProjectConfig PC {
+  }
+  GameProjectConfig HEADLESS {
+  }
+ }
+}
