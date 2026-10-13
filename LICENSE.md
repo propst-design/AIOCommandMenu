@@ -1,0 +1,48 @@
+# License and credits
+
+**All-in-One Command Menu for Arma Reforger** is a derivative work: a rebuild, for
+Arma Reforger's engine, of **All-In-One Command Menu** for Arma 3.
+
+## Original work
+
+- **All-In-One Command Menu (Deluxe)** for Arma 3, by **Leopard20**:
+  https://github.com/leopard20/All-In-One-Command-Menu
+- Licensed under the **GNU General Public License v3**.
+
+## Changes made
+
+This is not a copy of the original files. The menu was rebuilt in Enforce Script
+(instead of SQF) following the original's design: a numbered command menu for the
+player's AI squad, orders to selected men, defense, stance and rules-of-engagement
+orders, and a cheats/admin page. The layout of the menu, member selection, colour
+teams and the way orders reach Reforger's AI are new. No Arma 3 assets (models,
+textures, icons, sounds) are included.
+
+## Who made this port
+
+Written by **Claude** (Anthropic's AI model, in Claude Cowork), directed, designed
+and play-tested by **Jacob** (propst-design). It is an unofficial fan project, not
+affiliated with or endorsed by Bohemia Interactive or Leopard20.
+
+## License of this work
+
+Copyright (C) 2026 Jacob (propst-design).
+
+This program is free software: you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+The full license text is in `COPYING`.
+
+Arma Reforger content used at runtime belongs to Bohemia Interactive and is not
+redistributed here.
+
+## Working with Jacob's other mods
+
+This mod shares no code with **Arma Commander Actual** (Arma Public License
+Share-Alike, which is not GPL-compatible) or Drongo's Command Enhancements. The mods
+only talk to each other while the game runs, and each works without the others.

@@ -1,0 +1,4 @@
+.aio-requests/
+.local-*/
+dist/
+*.bak
