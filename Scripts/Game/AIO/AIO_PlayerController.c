@@ -29,14 +29,15 @@ modded class SCR_PlayerController
 		array<RplId> ids = {};
 		array<string> names = {};
 		array<int> health = {};
-		AIO_Server.Roster(GetPlayerId(), ids, names, health);
-		Rpc(AIO_RpcRoster, ids, names, health, AIO_Server.AdminAllowed(GetPlayerId()));
+		array<string> tasks = {};
+		AIO_Server.Roster(GetPlayerId(), ids, names, health, tasks);
+		Rpc(AIO_RpcRoster, ids, names, health, tasks, AIO_Server.AdminAllowed(GetPlayerId()));
 	}
 
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	protected void AIO_RpcRoster(array<RplId> ids, array<string> names, array<int> health, bool admin)
+	protected void AIO_RpcRoster(array<RplId> ids, array<string> names, array<int> health, array<string> tasks, bool admin)
 	{
-		AIO_Menu.Get().SetRoster(ids, names, health, admin);
+		AIO_Menu.Get().SetRoster(ids, names, health, tasks, admin);
 	}
 
 	// ---------------------------------------------------------------- orders
