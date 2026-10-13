@@ -6,3 +6,9 @@ supply|-aioSupplyTest 1|170
 attack|-aioAttackTest 1|260
 defense|-aioDefenseTest 1|260
 tower|-aioTowerTest 1|400
+tasks-aca|-aioTaskTest 1|240|aca
+moves-aca|-aioMoveTest 1|280|aca
+infantry-aca|-aioInfantryTest 1|240|aca
+supply-aca|-aioSupplyTest 1|230|aca
+attack-aca|-aioAttackTest 1|320|aca
+defense-aca|-aioDefenseTest 1|320|aca

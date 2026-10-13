@@ -1,0 +1,1 @@
+A numbered command menu for your AI squad: move, flank, assault, suppress, take cover, garrison, rearm and more, on the number keys. Reforger port of Leopard20's All-in-One Command Menu.
