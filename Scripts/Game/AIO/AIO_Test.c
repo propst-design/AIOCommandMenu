@@ -143,7 +143,7 @@ class AIO_Test
 		nearest = 9999;
 		foreach (IEntity member : members)
 		{
-			total += vector.Distance(member.GetOrigin(), center);
+			total += vector.DistanceXZ(member.GetOrigin(), center); // the spot ahead may be up or down a slope
 			float fromLeader = vector.Distance(member.GetOrigin(), leader.GetOrigin());
 			if (fromLeader < nearest)
 				nearest = fromLeader;
