@@ -7,6 +7,7 @@ modded class ArmaReforgerScripted
 	{
 		bool started = super.OnGameStart();
 		Print("[AIO] ready (All-in-One Command Menu loaded)");
+		AIO_Test.MaybeStart();
 		return started;
 	}
 

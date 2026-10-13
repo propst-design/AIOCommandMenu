@@ -89,6 +89,18 @@ function Invoke-Request($file) {
     $id = [IO.Path]::GetFileNameWithoutExtension($file.Name)
     $preset = (Get-Content -LiteralPath $file.FullName -Raw).Trim().ToLower()
     Remove-Item -LiteralPath $file.FullName
+    # Extra server test presets from tools\test-presets.txt, re-read on every request so new tests
+    # need no launcher restart: "name|-aioSomethingTest 1|timeoutSec[|aca]" (only -aio...Test flags).
+    $extraFile = Join-Path $PSScriptRoot 'test-presets.txt'
+    if (Test-Path -LiteralPath $extraFile) {
+        foreach ($line in Get-Content -LiteralPath $extraFile) {
+            $parts = $line.Split('|')
+            if ($parts.Count -lt 3 -or $parts[1] -notmatch '^-aio[A-Za-z]+Test 1$') { continue }
+            $entry = @{ Addons = '629405AEFC950C12'; World = $Arland; Flags = $parts[1]; TimeoutSec = [int]$parts[2]; DoneWhen = '\[AIO\] TEST COMPLETE' }
+            if ($parts.Count -ge 4 -and $parts[3].Trim() -eq 'aca') { $entry.Addons = 'AC230926A0010001,629405AEFC950C12'; $entry.World = 'Worlds/ACR_TestRange.ent' }
+            $Presets[$parts[0].Trim().ToLower()] = $entry
+        }
+    }
     $time = Get-Date -Format 'HH:mm:ss'
     if (!$Presets.ContainsKey($preset)) {
         Write-Host "[$time] Refused unknown preset '$preset'" -ForegroundColor Yellow
@@ -107,7 +119,7 @@ function Invoke-Request($file) {
     if (Other-ServerRunning) { Write-Result $id @('status=refused', 'reason=another Reforger server kept running'); return }
 
     New-Item -ItemType Directory -Force $ServerProfile | Out-Null
-    $serverArgs = '-server "' + $config.World + '" -addonsDir "' + $AddonsDir + '" -addons ' + $config.Addons + ' -profile "' + $ServerProfile + '" -maxFPS 60 -noBackend'
+    $serverArgs = '-server "' + $config.World + '" -addonsDir "' + $AddonsDir + '" -addons ' + $config.Addons + ' -profile "' + $ServerProfile + '" -maxFPS 60 -noBackend ' + $config.Flags
     Write-Host "[$time] Running '$preset' on a hidden test server..." -ForegroundColor Cyan
     $started = Get-Date
     $proc = Start-Process -FilePath $server -ArgumentList $serverArgs -WorkingDirectory (Split-Path $server -Parent) -WindowStyle Hidden -PassThru
