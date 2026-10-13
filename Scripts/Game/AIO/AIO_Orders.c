@@ -47,7 +47,11 @@ enum AIO_EOrder
 	TOGGLE_SQUAD_BAR, // client only, never sent
 	REARM,
 	REARM_FROM,
-	TAKE_WEAPON
+	TAKE_WEAPON,
+	SPEED_WALK,
+	SPEED_NORMAL,
+	SPEED_FAST,
+	SPEED_AUTO
 }
 
 // What an order needs from the player's side.
@@ -120,6 +124,11 @@ class AIO_MenuTree
 		move.Order("Flank right", AIO_EOrder.FLANK_RIGHT);
 		move.Order("Fall back", AIO_EOrder.FALL_BACK);
 		move.Order("Hold here", AIO_EOrder.HOLD_HERE);
+		AIO_MenuItem speed = move.Page("Speed");
+		speed.Order("Walk", AIO_EOrder.SPEED_WALK);
+		speed.Order("Run", AIO_EOrder.SPEED_NORMAL);
+		speed.Order("Sprint", AIO_EOrder.SPEED_FAST);
+		speed.Order("Auto", AIO_EOrder.SPEED_AUTO);
 
 		AIO_MenuItem attack = root.Page("Attack");
 		attack.Order("Advance", AIO_EOrder.ATK_ADVANCE, AIO_ETarget.POINT);

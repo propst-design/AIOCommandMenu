@@ -611,18 +611,13 @@ class AIO_Supplies
 		fetch.m_iPlayerId = playerId;
 		fetch.m_iDeadline = System.GetTickCount() + FETCH_MS;
 		// Remember his hold (Move-menu station, held spot) to go back to it afterwards.
-		array<ref AIActionBase> holds = {};
-		utility.FindActionsOfType(AIO_HoldBehavior, holds);
-		if (!holds.IsEmpty())
+		AIO_HoldBehavior hold = AIO_Tasks.ActiveHold(utility);
+		if (hold)
 		{
-			AIO_HoldBehavior hold = AIO_HoldBehavior.Cast(holds[0]);
-			if (hold && hold.GetActionState() != EAIActionState.FAILED && hold.GetActionState() != EAIActionState.COMPLETED)
-			{
-				fetch.m_bHadHold = true;
-				fetch.m_vSpot = hold.m_vSpot;
-				fetch.m_Anchor = hold.m_Anchor;
-				fetch.m_vOffset = hold.m_vOffset;
-			}
+			fetch.m_bHadHold = true;
+			fetch.m_vSpot = hold.m_vSpot;
+			fetch.m_Anchor = hold.m_Anchor;
+			fetch.m_vOffset = hold.m_vOffset;
 		}
 		AIO_Tasks.Release(body);
 		vector spot = source.GetOrigin();

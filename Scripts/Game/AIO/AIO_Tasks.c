@@ -27,6 +27,8 @@ class AIO_HoldBehavior : SCR_AIBehaviorBase
 	int m_iCoverTileX = -1; // cover point reserved for him (Take cover)
 	int m_iCoverTileY;
 	int m_iCoverId;
+	ref array<vector> m_aLegs; // further points of a route (flanking): walked one after another
+	vector m_vLook;            // keeps looking there (360 defense, fortify); zero = his own choice
 
 	// Current spot (for anchored holds: follows the anchor, on the ground).
 	vector Spot()
@@ -56,6 +58,7 @@ class AIO_Tasks
 	static const float PRIORITY_HOLD = 45;
 	static const float HOLD_SLACK = 6;
 	static const int WATCH_MS = 1000;
+	static const float LOOK_PRIORITY = 15; // below danger reactions (20) and targets (50+)
 
 	protected static bool s_bWatching;
 
@@ -104,6 +107,7 @@ class AIO_Tasks
 		if (!utility)
 			return;
 		AIO_Supplies.Cancel(agent); // any new order ends an errand
+		AIO_Maneuvers.Leave(agent); // ...and takes him out of a bound / peel
 		array<ref AIActionBase> holds = {};
 		utility.FindActionsOfType(AIO_HoldBehavior, holds);
 		foreach (AIActionBase action : holds)
@@ -163,6 +167,22 @@ class AIO_Tasks
 		return true;
 	}
 
+	// His current (not yet ended) hold, or null. Ended holds can linger in the queue for a moment.
+	static AIO_HoldBehavior ActiveHold(SCR_AIUtilityComponent utility)
+	{
+		if (!utility)
+			return null;
+		array<ref AIActionBase> holds = {};
+		utility.FindActionsOfType(AIO_HoldBehavior, holds);
+		foreach (AIActionBase action : holds)
+		{
+			AIO_HoldBehavior hold = AIO_HoldBehavior.Cast(action);
+			if (hold && hold.GetActionState() != EAIActionState.FAILED && hold.GetActionState() != EAIActionState.COMPLETED)
+				return hold;
+		}
+		return null;
+	}
+
 	// Short label of what the man is doing for the squad bar ("" = nothing special).
 	static string TaskLabel(IEntity body)
 	{
@@ -171,12 +191,8 @@ class AIO_Tasks
 		if (!utility)
 			return "";
 		string label = "";
-		array<ref AIActionBase> holds = {};
-		utility.FindActionsOfType(AIO_HoldBehavior, holds);
-		AIO_HoldBehavior hold = null;
-		if (!holds.IsEmpty())
-			hold = AIO_HoldBehavior.Cast(holds[0]);
-		if (hold && hold.GetActionState() != EAIActionState.FAILED && hold.GetActionState() != EAIActionState.COMPLETED)
+		AIO_HoldBehavior hold = ActiveHold(utility);
+		if (hold)
 		{
 			if (hold.m_bCrouched)
 				label = "Cover";
@@ -191,6 +207,14 @@ class AIO_Tasks
 			label = "Healing";
 		if (AIO_Supplies.IsFetching(agent))
 			label = "Rearming";
+		if (AIO_Maneuvers.IsBounding(agent))
+			label = "Bounding";
+		if (AIO_Maneuvers.IsWaitingForLead(agent))
+		{
+			if (!label.IsEmpty())
+				label += ", ";
+			label += "Wait to fire";
+		}
 		if (s_aCopyAgents.Contains(agent))
 		{
 			if (!label.IsEmpty())
@@ -198,6 +222,21 @@ class AIO_Tasks
 			label += "Copying";
 		}
 		return label;
+	}
+
+	// ---------------------------------------------------------------- speed
+
+	// Movement speed for his moves (EMovementType), or -1 = his own choice. Combat dashes aren't limited.
+	static void SetSpeed(AIAgent agent, int speed)
+	{
+		if (!agent)
+			return;
+		SCR_AICharacterSettingsComponent settings = SCR_AICharacterSettingsComponent.Cast(agent.FindComponent(SCR_AICharacterSettingsComponent));
+		if (!settings)
+			return;
+		settings.RemoveSettingsOfTypeAndOrigin(SCR_AICharacterMovementSpeedSettingBase, SCR_EAISettingOrigin.COMMANDING);
+		if (speed >= 0)
+			settings.AddCharacterSetting(SCR_AICharacterMovementSpeedSetting.Create(SCR_EAISettingOrigin.COMMANDING, SCR_EAIBehaviorCause.GROUP_GOAL, speed), false, true);
 	}
 
 	// ---------------------------------------------------------------- stance
@@ -436,6 +475,7 @@ class AIO_Tasks
 	{
 		KeepStances();
 		AIO_Supplies.Tick();
+		AIO_Maneuvers.Tick();
 		for (int c = s_aCopyAgents.Count() - 1; c >= 0; c--)
 		{
 			AIAgent copier = s_aCopyAgents[c];
@@ -455,25 +495,32 @@ class AIO_Tasks
 		if (!world)
 			return;
 		world.GetAIAgents(agents);
-		array<ref AIActionBase> holds = {};
 		foreach (AIAgent agent : agents)
 		{
 			SCR_AIUtilityComponent utility = UtilityOf(agent);
 			if (!utility)
 				continue;
-			holds.Clear();
-			utility.FindActionsOfType(AIO_HoldBehavior, holds);
-			if (holds.IsEmpty())
+			AIO_HoldBehavior hold = ActiveHold(utility);
+			if (!hold)
 				continue;
 			IEntity body = agent.GetControlledEntity();
 			if (!body || !AIO_Server.IsAlive(body))
 				continue;
-			AIO_HoldBehavior hold = AIO_HoldBehavior.Cast(holds[0]);
-			if (!hold || hold.GetActionState() == EAIActionState.FAILED || hold.GetActionState() == EAIActionState.COMPLETED)
-				continue;
 			if (hold.m_Anchor && !AIO_Server.IsAlive(hold.m_Anchor))
 			{
 				Release(body); // the player he was keeping station on is gone: back to formation
+				continue;
+			}
+			// Keep facing out (360 defense, fortify); enemies and danger still win (higher priority).
+			if (hold.m_vLook != vector.Zero)
+				utility.m_LookAction.LookAt(hold.m_vLook, LOOK_PRIORITY, 2.0);
+			// Route: next leg once he's near the current point.
+			if (hold.m_aLegs && !hold.m_aLegs.IsEmpty() && vector.DistanceXZ(body.GetOrigin(), hold.m_vSpot) <= 5)
+			{
+				hold.m_vSpot = hold.m_aLegs[0];
+				hold.m_aLegs.RemoveOrdered(0);
+				utility.SetStateAllActionsOfType(AIO_MoveBehavior, EAIActionState.FAILED);
+				utility.AddAction(new AIO_MoveBehavior(utility, null, hold.m_vSpot, radius: 2.0));
 				continue;
 			}
 			vector spot = hold.Spot();

@@ -108,6 +108,20 @@ class AIO_Server
 		string supply = Supply(slave, player, order, null, target, playerId);
 		if (!supply.IsEmpty())
 			return supply;
+		string tactics = Tactics(slave, player, order, null, point, target, playerId);
+		if (!tactics.IsEmpty())
+			return tactics;
+		// Whole-squad rules of engagement: per-man overrides end.
+		if (order == AIO_EOrder.HOLD_FIRE || order == AIO_EOrder.FIRE_AT_WILL || order == AIO_EOrder.RETURN_FIRE)
+		{
+			array<IEntity> everyone = {};
+			Members(slave, everyone);
+			foreach (IEntity soldier : everyone)
+			{
+				AIO_Maneuvers.StopLead(AIO_Tasks.AgentOf(soldier));
+				AIO_Maneuvers.SetROE(soldier, -1);
+			}
+		}
 		switch (order)
 		{
 			case AIO_EOrder.HALT:
@@ -137,15 +151,15 @@ class AIO_Server
 			case AIO_EOrder.HOLD_FIRE:
 				if (Vanilla(playerId, slave, "holdFireCommand", point))
 					return "";
-				return "Hold fire needs the game's commanding (not in this scenario)";
+				return GroupROE(slave, EAIGroupCombatMode.HOLD_FIRE, "Holding fire");
 			case AIO_EOrder.FIRE_AT_WILL:
 				if (Vanilla(playerId, slave, "fireAtWillCommand", point))
 					return "";
-				return "Fire at will needs the game's commanding (not in this scenario)";
+				return GroupROE(slave, EAIGroupCombatMode.FIRE_AT_WILL, "Fire at will");
 			case AIO_EOrder.RETURN_FIRE:
 				if (Vanilla(playerId, slave, "returnFireCommand", point))
 					return "";
-				return "Return fire needs the game's commanding (not in this scenario)";
+				return GroupROE(slave, EAIGroupCombatMode.RETURN_FIRE, "Return fire only");
 		}
 		return "Not built yet: " + typename.EnumToString(AIO_EOrder, order);
 	}
@@ -229,6 +243,68 @@ class AIO_Server
 		if (!rpl)
 			return null;
 		return rpl.GetEntity();
+	}
+
+	// Group-wide rules of engagement without the game's commanding (fallback).
+	static string GroupROE(SCR_AIGroup slave, EAIGroupCombatMode mode, string what)
+	{
+		SCR_AIGroupUtilityComponent utility = slave.GetGroupUtilityComponent();
+		if (!utility)
+			return "Can't change the squad's rules of engagement here";
+		utility.SetCombatMode(mode);
+		return what;
+	}
+
+	// Attack, Defense, speed (AIO_Maneuvers.c). men = null means the whole squad.
+	static string Tactics(SCR_AIGroup slave, IEntity player, int order, array<IEntity> men, vector point, RplId target, int playerId)
+	{
+		bool speed = order == AIO_EOrder.SPEED_WALK || order == AIO_EOrder.SPEED_NORMAL || order == AIO_EOrder.SPEED_FAST || order == AIO_EOrder.SPEED_AUTO;
+		if (!speed && !AIO_Maneuvers.IsAttackOrder(order) && !AIO_Maneuvers.IsDefenseOrder(order))
+			return "";
+		// Whole squad: the game's own suppress and search-and-destroy are group behaviours that work well.
+		if (!men && order == AIO_EOrder.SUPPRESS)
+			return "";
+		if (!men && order == AIO_EOrder.ASSAULT && point != vector.Zero)
+		{
+			AIO_Tasks.ReleaseGroup(slave);
+			if (Vanilla(playerId, slave, "waypointSearchAndDestroy", point))
+				return "";
+		}
+		array<IEntity> bodies = {};
+		if (men)
+			bodies.Copy(men);
+		else
+			Members(slave, bodies);
+		if (player)
+			bodies.RemoveItem(player);
+		if (bodies.IsEmpty())
+			return "No soldiers under your command";
+		if (speed)
+		{
+			int type = -1;
+			string what = "choosing their own pace";
+			if (order == AIO_EOrder.SPEED_WALK)
+			{
+				type = EMovementType.WALK;
+				what = "walking";
+			}
+			else if (order == AIO_EOrder.SPEED_NORMAL)
+			{
+				type = EMovementType.RUN;
+				what = "running";
+			}
+			else if (order == AIO_EOrder.SPEED_FAST)
+			{
+				type = EMovementType.SPRINT;
+				what = "sprinting";
+			}
+			foreach (IEntity mover : bodies)
+				AIO_Tasks.SetSpeed(AIO_Tasks.AgentOf(mover), type);
+			return string.Format("%1 men %2", bodies.Count(), what);
+		}
+		if (AIO_Maneuvers.IsDefenseOrder(order))
+			return AIO_Maneuvers.Defense(bodies, player, order, point, EntityOf(target));
+		return AIO_Maneuvers.Attack(bodies, player, order, point, playerId);
 	}
 
 	// Rearm, Rearm from that, Take that weapon (AIO_Supplies.c). men = null means the whole squad.
@@ -366,6 +442,9 @@ class AIO_Server
 		string supply = Supply(slave, player, order, bodies, target, playerId);
 		if (!supply.IsEmpty())
 			return supply;
+		string tactics = Tactics(slave, player, order, bodies, point, target, playerId);
+		if (!tactics.IsEmpty())
+			return tactics;
 		if (order == AIO_EOrder.MOVE_HERE)
 		{
 			for (int i = 0; i < bodies.Count(); i++)
@@ -391,7 +470,26 @@ class AIO_Server
 			return string.Format("%1 men rejoining", bodies.Count());
 		}
 		if (order == AIO_EOrder.HOLD_FIRE || order == AIO_EOrder.FIRE_AT_WILL || order == AIO_EOrder.RETURN_FIRE)
-			return "Rules of engagement go to the whole squad for now (clear the selection)";
+		{
+			int mode = EAIGroupCombatMode.FIRE_AT_WILL;
+			string what = "firing at will";
+			if (order == AIO_EOrder.HOLD_FIRE)
+			{
+				mode = EAIGroupCombatMode.HOLD_FIRE;
+				what = "holding fire";
+			}
+			else if (order == AIO_EOrder.RETURN_FIRE)
+			{
+				mode = EAIGroupCombatMode.RETURN_FIRE;
+				what = "returning fire only";
+			}
+			foreach (IEntity rifleman : bodies)
+			{
+				AIO_Maneuvers.StopLead(AIO_Tasks.AgentOf(rifleman));
+				AIO_Maneuvers.SetROE(rifleman, mode);
+			}
+			return string.Format("%1 men %2", bodies.Count(), what);
+		}
 		return "Not built yet for selected men: " + typename.EnumToString(AIO_EOrder, order);
 	}
 

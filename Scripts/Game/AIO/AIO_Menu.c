@@ -256,7 +256,7 @@ class AIO_Menu
 		}
 		if (m_eMode == AIO_EMenuMode.TEAMS)
 		{
-			OnTeamKey(key);
+			OnTeamKey(pc, key);
 			return;
 		}
 
@@ -387,7 +387,7 @@ class AIO_Menu
 			m_aSelected.Insert(id);
 	}
 
-	protected void OnTeamKey(int key)
+	protected void OnTeamKey(SCR_PlayerController pc, int key)
 	{
 		if (key == 0)
 		{
@@ -420,6 +420,10 @@ class AIO_Menu
 			}
 			foreach (RplId id : m_aSelected)
 				m_mTeams.Set(id, team);
+			// The server needs teams too (Bound forward / Peel back split by team).
+			array<RplId> assigned = {};
+			assigned.Copy(m_aSelected);
+			pc.AIO_SendTeam(assigned, team);
 			foreach (AIO_Member assigned : m_aMembers)
 			{
 				if (m_aSelected.Contains(assigned.m_Id))

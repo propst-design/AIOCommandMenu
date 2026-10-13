@@ -66,6 +66,23 @@ modded class SCR_PlayerController
 			Rpc(AIO_RpcFeedback, feedback);
 	}
 
+	void AIO_SendTeam(array<RplId> ids, int team)
+	{
+		Rpc(AIO_RpcTeam, ids, team);
+	}
+
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void AIO_RpcTeam(array<RplId> ids, int team)
+	{
+		SCR_AIGroup slave = AIO_Server.Slave(GetPlayerId());
+		if (!slave)
+			return;
+		array<IEntity> bodies = {};
+		AIO_Tasks.Resolve(slave, ids, bodies);
+		foreach (IEntity body : bodies)
+			AIO_Maneuvers.SetTeam(body, team);
+	}
+
 	// Server: tell this player something (e.g. a man reporting back after an errand).
 	void AIO_Notify(string text)
 	{
