@@ -17,6 +17,9 @@ Game Master, Arma Commander Actual...).
   selected men to one.
 - Orders that need a place use where you are looking.
 
+Top page: 1 Move, 2 Attack, 3 Take cover, 4 Defense, 5 R.O.E., 6 Stance, 7 Supplies,
+8 More (squad bar on/off, Admin), 9 HALT, 0 Select members.
+
 ## Admin page (More > Admin)
 
 Single player and the host of your own game always; on dedicated servers only
