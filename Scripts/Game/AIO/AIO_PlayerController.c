@@ -30,14 +30,15 @@ modded class SCR_PlayerController
 		array<string> names = {};
 		array<int> health = {};
 		array<string> tasks = {};
-		AIO_Server.Roster(GetPlayerId(), ids, names, health, tasks);
-		Rpc(AIO_RpcRoster, ids, names, health, tasks, AIO_Server.AdminAllowed(GetPlayerId()));
+		array<int> ammo = {};
+		AIO_Server.Roster(GetPlayerId(), ids, names, health, tasks, ammo);
+		Rpc(AIO_RpcRoster, ids, names, health, tasks, ammo, AIO_Server.AdminAllowed(GetPlayerId()));
 	}
 
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	protected void AIO_RpcRoster(array<RplId> ids, array<string> names, array<int> health, array<string> tasks, bool admin)
+	protected void AIO_RpcRoster(array<RplId> ids, array<string> names, array<int> health, array<string> tasks, array<int> ammo, bool admin)
 	{
-		AIO_Menu.Get().SetRoster(ids, names, health, tasks, admin);
+		AIO_Menu.Get().SetRoster(ids, names, health, tasks, ammo, admin);
 	}
 
 	// ---------------------------------------------------------------- orders
@@ -63,6 +64,12 @@ modded class SCR_PlayerController
 		string feedback = AIO_Server.Execute(this, order, members, point, target);
 		if (!feedback.IsEmpty())
 			Rpc(AIO_RpcFeedback, feedback);
+	}
+
+	// Server: tell this player something (e.g. a man reporting back after an errand).
+	void AIO_Notify(string text)
+	{
+		Rpc(AIO_RpcFeedback, text);
 	}
 
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]

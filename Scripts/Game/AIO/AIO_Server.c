@@ -48,7 +48,7 @@ class AIO_Server
 		return controller && !controller.IsDead();
 	}
 
-	static void Roster(int playerId, notnull array<RplId> ids, notnull array<string> names, notnull array<int> health, notnull array<string> tasks)
+	static void Roster(int playerId, notnull array<RplId> ids, notnull array<string> names, notnull array<int> health, notnull array<string> tasks, notnull array<int> ammo)
 	{
 		array<IEntity> members = {};
 		Members(Slave(playerId), members);
@@ -62,6 +62,7 @@ class AIO_Server
 				percent = Math.Round(damage.GetHealthScaled() * 100);
 			health.Insert(percent);
 			tasks.Insert(AIO_Tasks.TaskLabel(body));
+			ammo.Insert(AIO_Supplies.MagazineCount(body));
 		}
 	}
 
@@ -83,14 +84,16 @@ class AIO_Server
 	static string Execute(SCR_PlayerController pc, int order, array<RplId> members, vector point, RplId target)
 	{
 		int playerId = pc.GetPlayerId();
-		if (order >= AIO_EOrder.ADMIN_HEAL_ME)
+		if (order >= AIO_EOrder.ADMIN_HEAL_ME && order <= AIO_EOrder.ADMIN_KILL_TARGET)
 			return Admin(pc, order, point, target);
+		if (order == AIO_EOrder.TOGGLE_SQUAD_BAR)
+			return "";
 
 		SCR_AIGroup slave = Slave(playerId);
 		if (!slave)
 			return "No soldiers under your command";
 		if (members && !members.IsEmpty())
-			return ExecuteMen(slave, order, members, point, pc.GetControlledEntity());
+			return ExecuteMen(slave, order, members, point, pc.GetControlledEntity(), target, playerId);
 		// Whole-squad movement orders take over from any single-man tasks.
 		if (order == AIO_EOrder.HALT || order == AIO_EOrder.FOLLOW || order == AIO_EOrder.MOVE_HERE || order == AIO_EOrder.HOLD_HERE)
 			AIO_Tasks.ReleaseGroup(slave);
@@ -102,6 +105,9 @@ class AIO_Server
 		string infantry = Infantry(slave, player, order, null);
 		if (!infantry.IsEmpty())
 			return infantry;
+		string supply = Supply(slave, player, order, null, target, playerId);
+		if (!supply.IsEmpty())
+			return supply;
 		switch (order)
 		{
 			case AIO_EOrder.HALT:
@@ -217,6 +223,43 @@ class AIO_Server
 		return string.Format("%1 men %2", count, what);
 	}
 
+	static IEntity EntityOf(RplId id)
+	{
+		RplComponent rpl = RplComponent.Cast(Replication.FindItem(id));
+		if (!rpl)
+			return null;
+		return rpl.GetEntity();
+	}
+
+	// Rearm, Rearm from that, Take that weapon (AIO_Supplies.c). men = null means the whole squad.
+	static string Supply(SCR_AIGroup slave, IEntity player, int order, array<IEntity> men, RplId target, int playerId)
+	{
+		if (order != AIO_EOrder.REARM && order != AIO_EOrder.REARM_FROM && order != AIO_EOrder.TAKE_WEAPON)
+			return "";
+		array<IEntity> bodies = {};
+		if (men)
+			bodies.Copy(men);
+		else
+			Members(slave, bodies);
+		if (player)
+			bodies.RemoveItem(player);
+		if (bodies.IsEmpty())
+			return "No soldiers under your command";
+		if (order == AIO_EOrder.REARM)
+			return AIO_Supplies.Rearm(bodies, null, playerId);
+		IEntity looked = EntityOf(target);
+		if (!looked)
+			return "Look at a body, crate, vehicle or weapon";
+		// Something lying loose is its own source; anything else (a weapon on a body, a wheel,
+		// a crate's lid) belongs to the top entity.
+		IEntity source = looked;
+		if (!AIO_Supplies.IsLooseItem(looked) && looked.GetRootParent())
+			source = looked.GetRootParent();
+		if (order == AIO_EOrder.REARM_FROM)
+			return AIO_Supplies.Rearm(bodies, source, playerId);
+		return AIO_Supplies.TakeWeapon(bodies, source, looked, playerId);
+	}
+
 	// Take cover, Stance, Copy my stance, Heal up. men = null means the whole squad.
 	// Empty string = not one of these orders.
 	static string Infantry(SCR_AIGroup slave, IEntity player, int order, array<IEntity> men)
@@ -307,7 +350,7 @@ class AIO_Server
 	}
 
 	// Orders to the selected men only (AIO_Tasks.c).
-	static string ExecuteMen(SCR_AIGroup slave, int order, array<RplId> ids, vector point, IEntity player)
+	static string ExecuteMen(SCR_AIGroup slave, int order, array<RplId> ids, vector point, IEntity player, RplId target, int playerId)
 	{
 		array<IEntity> bodies = {};
 		AIO_Tasks.Resolve(slave, ids, bodies);
@@ -320,6 +363,9 @@ class AIO_Server
 		string infantry = Infantry(slave, player, order, bodies);
 		if (!infantry.IsEmpty())
 			return infantry;
+		string supply = Supply(slave, player, order, bodies, target, playerId);
+		if (!supply.IsEmpty())
+			return supply;
 		if (order == AIO_EOrder.MOVE_HERE)
 		{
 			for (int i = 0; i < bodies.Count(); i++)
