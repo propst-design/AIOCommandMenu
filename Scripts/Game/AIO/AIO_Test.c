@@ -3,6 +3,7 @@
 
 // Automated checks on a dedicated server (no player). Started by host options:
 //   -aioTaskTest 1 : orders to single soldiers (move a man, hold, rejoin).
+//   -aioMoveTest 1 : Move menu (Advance keeps station on the leader while he moves; Fall back).
 // Prints "[AIO] TEST <name> PASS|FAIL ..." lines and "[AIO] TEST COMPLETE".
 class AIO_Test
 {
@@ -16,11 +17,16 @@ class AIO_Test
 	protected static IEntity s_C;
 	protected static int s_iPass;
 	protected static int s_iFail;
+	protected static bool s_bMoveTest;
+	protected static vector s_vForward;
 
 	static void MaybeStart()
 	{
 		string value;
-		if (!System.GetCLIParam("aioTaskTest", value) || value != "1")
+		string moveValue;
+		System.GetCLIParam("aioMoveTest", moveValue);
+		s_bMoveTest = moveValue == "1";
+		if (!s_bMoveTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
 			return;
 		if (!Replication.IsServer())
 			return;
@@ -88,7 +94,10 @@ class AIO_Test
 		params.Transform[3] = s_vStart;
 		s_Group = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(Resource.Load(GROUP), GetGame().GetWorld(), params));
 		Print(string.Format("[AIO] TEST tasks: group spawned at %1", s_vStart));
-		GetGame().GetCallqueue().CallLater(Order, 12000, false);
+		if (s_bMoveTest)
+			GetGame().GetCallqueue().CallLater(Advance, 12000, false);
+		else
+			GetGame().GetCallqueue().CallLater(Order, 12000, false);
 	}
 
 	protected static void Order()
@@ -118,6 +127,94 @@ class AIO_Test
 		bool b = AIO_Tasks.MoveTo(s_B, AIO_Tasks.SpreadSpot(s_vTarget, 1));
 		Check("order", a && b, string.Format("two men sent %1 m away", vector.Distance(s_vStart, s_vTarget)));
 		GetGame().GetCallqueue().CallLater(Arrived, 35000, false);
+	}
+
+	// ---------------------------------------------------------------- Move menu test
+
+	// Average distance of the non-leader men from where Advance should put them (leader + 50 m ahead).
+	protected static float AdvanceError(out float nearest)
+	{
+		IEntity leader = Leader();
+		array<IEntity> members = {};
+		AIO_Server.Members(s_Group, members);
+		members.RemoveItem(leader);
+		vector center = leader.GetOrigin() + s_vForward * AIO_Server.SHIFT_DISTANCE;
+		float total = 0;
+		nearest = 9999;
+		foreach (IEntity member : members)
+		{
+			total += vector.Distance(member.GetOrigin(), center);
+			float fromLeader = vector.Distance(member.GetOrigin(), leader.GetOrigin());
+			if (fromLeader < nearest)
+				nearest = fromLeader;
+		}
+		if (members.IsEmpty())
+			return 9999;
+		return total / members.Count();
+	}
+
+	protected static void Advance()
+	{
+		IEntity leader = Leader();
+		if (!leader)
+		{
+			Check("setup", false, "no leader");
+			Finish();
+			return;
+		}
+		vector right;
+		AIO_Tasks.Facing(leader, s_vForward, right);
+		string reply = AIO_Server.MoveMenu(s_Group, leader, AIO_EOrder.ADVANCE, null);
+		Check("advance-order", reply.Contains("advancing"), reply);
+		GetGame().GetCallqueue().CallLater(Advanced, 40000, false);
+	}
+
+	protected static void Advanced()
+	{
+		float nearest;
+		float error = AdvanceError(nearest);
+		Check("advance", error < 12 && nearest > 35, string.Format("men average %1 m from the spot 50 m ahead; nearest %2 m from the leader", error, nearest));
+		// Now the leader walks 40 m to his right: the advanced men should keep station on him.
+		IEntity leader = Leader();
+		vector right = Vector(s_vForward[2], 0, -s_vForward[0]);
+		vector target = leader.GetOrigin() + right * 40;
+		target[1] = GetGame().GetWorld().GetSurfaceY(target[0], target[2]);
+		AIO_Server.AddWaypoint(s_Group, AIO_Server.WP_MOVE, target);
+		GetGame().GetCallqueue().CallLater(Followed, 45000, false);
+	}
+
+	protected static void Followed()
+	{
+		float nearest;
+		float error = AdvanceError(nearest);
+		Check("station-keeping", error < 14, string.Format("after the leader moved: men average %1 m from the spot 50 m ahead of him", error));
+		// Fall back for everyone: a fixed spot 40 m behind the leader.
+		IEntity leader = Leader();
+		string reply = AIO_Server.MoveMenu(s_Group, leader, AIO_EOrder.FALL_BACK, null);
+		vector forward, right;
+		AIO_Tasks.Facing(leader, forward, right);
+		s_vTarget = leader.GetOrigin() + forward * -AIO_Server.FALL_BACK_DISTANCE;
+		Check("fallback-order", reply.Contains("falling back"), reply);
+		GetGame().GetCallqueue().CallLater(FellBack, 40000, false);
+	}
+
+	protected static void FellBack()
+	{
+		IEntity leader = Leader();
+		array<IEntity> members = {};
+		AIO_Server.Members(s_Group, members);
+		members.RemoveItem(leader);
+		float total = 0;
+		foreach (IEntity member : members)
+		{
+			total += vector.Distance(member.GetOrigin(), s_vTarget);
+			AIO_Tasks.Release(member);
+		}
+		float error = 9999;
+		if (!members.IsEmpty())
+			error = total / members.Count();
+		Check("fallback", error < 12, string.Format("men average %1 m from the fall-back spot", error));
+		Finish();
 	}
 
 	protected static IEntity Leader()

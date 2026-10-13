@@ -21,6 +21,18 @@ class AIO_MoveBehavior : SCR_AIMoveIndividuallyBehavior
 class AIO_HoldBehavior : SCR_AIBehaviorBase
 {
 	vector m_vSpot;
+	IEntity m_Anchor;  // when set, the spot moves with him: m_Anchor's position + m_vOffset
+	vector m_vOffset;
+
+	// Current spot (for anchored holds: follows the anchor, on the ground).
+	vector Spot()
+	{
+		if (!m_Anchor)
+			return m_vSpot;
+		vector spot = m_Anchor.GetOrigin() + m_vOffset;
+		spot[1] = GetGame().GetWorld().GetSurfaceY(spot[0], spot[2]);
+		return spot;
+	}
 
 	void AIO_HoldBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector spot)
 	{
@@ -111,6 +123,42 @@ class AIO_Tasks
 		return true;
 	}
 
+	// Keep a position relative to the anchor (the player): Advance, Stay back, Flank.
+	static bool KeepOffset(IEntity body, IEntity anchor, vector offset)
+	{
+		SCR_AIUtilityComponent utility = UtilityOf(AgentOf(body));
+		if (!utility || !anchor)
+			return false;
+		Release(body);
+		AIO_HoldBehavior hold = new AIO_HoldBehavior(utility, null, anchor.GetOrigin() + offset);
+		hold.m_Anchor = anchor;
+		hold.m_vOffset = offset;
+		vector spot = hold.Spot();
+		hold.m_vSpot = spot;
+		utility.AddAction(new AIO_MoveBehavior(utility, null, spot, radius: 2.0));
+		utility.AddAction(hold);
+		Watch();
+		return true;
+	}
+
+	// Flat forward and right directions of an entity (yaw only).
+	static void Facing(IEntity entity, out vector forward, out vector right)
+	{
+		vector transform[4];
+		entity.GetWorldTransform(transform);
+		forward = transform[2];
+		forward[1] = 0;
+		forward.Normalize();
+		right = Vector(forward[2], 0, -forward[0]);
+	}
+
+	// Men side by side across a direction, 5 m apart, centred on the offset.
+	static vector LineOffset(vector offset, vector across, int index, int count)
+	{
+		float slot = index - (count - 1) * 0.5;
+		return offset + across * (slot * 5);
+	}
+
 	// Stay where he is.
 	static bool HoldHere(IEntity body)
 	{
@@ -169,11 +217,24 @@ class AIO_Tasks
 			AIO_HoldBehavior hold = AIO_HoldBehavior.Cast(holds[0]);
 			if (!hold || hold.GetActionState() == EAIActionState.FAILED || hold.GetActionState() == EAIActionState.COMPLETED)
 				continue;
-			if (vector.Distance(body.GetOrigin(), hold.m_vSpot) <= HOLD_SLACK)
+			if (hold.m_Anchor && !AIO_Server.IsAlive(hold.m_Anchor))
+			{
+				Release(body); // the player he was keeping station on is gone: back to formation
+				continue;
+			}
+			vector spot = hold.Spot();
+			bool spotMoved = vector.Distance(spot, hold.m_vSpot) > HOLD_SLACK;
+			if (!spotMoved && vector.Distance(body.GetOrigin(), spot) <= HOLD_SLACK)
 				continue;
 			if (utility.HasActionOfType(AIO_MoveBehavior))
-				continue;
-			utility.AddAction(new AIO_MoveBehavior(utility, null, hold.m_vSpot, radius: 2.0));
+			{
+				if (!spotMoved)
+					continue;
+				// The anchor moved on: drop the walk to the old spot.
+				utility.SetStateAllActionsOfType(AIO_MoveBehavior, EAIActionState.FAILED);
+			}
+			hold.m_vSpot = spot;
+			utility.AddAction(new AIO_MoveBehavior(utility, null, spot, radius: 2.0));
 		}
 	}
 }
