@@ -162,6 +162,41 @@ class AIO_Tasks
 		return true;
 	}
 
+	// Short label of what the man is doing for the squad bar ("" = nothing special).
+	static string TaskLabel(IEntity body)
+	{
+		AIAgent agent = AgentOf(body);
+		SCR_AIUtilityComponent utility = UtilityOf(agent);
+		if (!utility)
+			return "";
+		string label = "";
+		array<ref AIActionBase> holds = {};
+		utility.FindActionsOfType(AIO_HoldBehavior, holds);
+		AIO_HoldBehavior hold = null;
+		if (!holds.IsEmpty())
+			hold = AIO_HoldBehavior.Cast(holds[0]);
+		if (hold && hold.GetActionState() != EAIActionState.FAILED && hold.GetActionState() != EAIActionState.COMPLETED)
+		{
+			if (hold.m_bCrouched)
+				label = "Cover";
+			else if (hold.m_Anchor)
+				label = "Station";
+			else
+				label = "Holding";
+			if (utility.HasActionOfType(AIO_MoveBehavior))
+				label = "Moving";
+		}
+		if (utility.HasActionOfType(SCR_AIHealBehavior))
+			label = "Healing";
+		if (s_aCopyAgents.Contains(agent))
+		{
+			if (!label.IsEmpty())
+				label += ", ";
+			label += "Copying";
+		}
+		return label;
+	}
+
 	// ---------------------------------------------------------------- stance
 
 	// Fixed stance for the man (ECharacterStance), or -1 = his own choice again.

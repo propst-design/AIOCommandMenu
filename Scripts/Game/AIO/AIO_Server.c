@@ -48,7 +48,7 @@ class AIO_Server
 		return controller && !controller.IsDead();
 	}
 
-	static void Roster(int playerId, notnull array<RplId> ids, notnull array<string> names, notnull array<int> health)
+	static void Roster(int playerId, notnull array<RplId> ids, notnull array<string> names, notnull array<int> health, notnull array<string> tasks)
 	{
 		array<IEntity> members = {};
 		Members(Slave(playerId), members);
@@ -61,6 +61,7 @@ class AIO_Server
 			if (damage)
 				percent = Math.Round(damage.GetHealthScaled() * 100);
 			health.Insert(percent);
+			tasks.Insert(AIO_Tasks.TaskLabel(body));
 		}
 	}
 

@@ -43,7 +43,8 @@ enum AIO_EOrder
 	ADMIN_HEAL_SQUAD,
 	ADMIN_TELEPORT_ME,
 	ADMIN_TELEPORT_SQUAD,
-	ADMIN_KILL_TARGET
+	ADMIN_KILL_TARGET,
+	TOGGLE_SQUAD_BAR // client only, never sent
 }
 
 // What an order needs from the player's side.
@@ -152,6 +153,7 @@ class AIO_MenuTree
 		root.Order("Heal up!", AIO_EOrder.HEAL_UP);
 
 		AIO_MenuItem more = root.Page("More");
+		more.Order("Squad bar on/off", AIO_EOrder.TOGGLE_SQUAD_BAR);
 		AIO_MenuItem admin = more.Page("Admin");
 		admin.m_bAdmin = true;
 		admin.Order("Heal me", AIO_EOrder.ADMIN_HEAL_ME);

@@ -16,6 +16,7 @@ class AIO_Member
 	string m_sName;
 	int m_iHealth; // percent
 	int m_iTeam;   // AIO_Menu.TEAM_*
+	string m_sTask; // what he's doing (from the server), "" = with the squad
 }
 
 // The menu on the local player's screen. Client only; orders go to the server through
@@ -124,8 +125,16 @@ class AIO_Menu
 			if (m_bOpen)
 				Close();
 			UpdateFeedback(now);
+			AIO_SquadBar.Get().Hide();
 			return;
 		}
+		// The squad bar needs the roster too: every 2 s while closed (1 s while open, below).
+		if (!m_bOpen && now >= m_iNextRosterAsk)
+		{
+			m_iNextRosterAsk = now + 2000;
+			pc.AIO_AskRoster();
+		}
+		AIO_SquadBar.Get().Update(now, m_aMembers, m_aSelected);
 
 		if (!m_bOpen)
 		{
@@ -322,6 +331,16 @@ class AIO_Menu
 			if (hitEntity)
 				target = Replication.FindItemId(hitEntity);
 		}
+		if (item.m_eOrder == AIO_EOrder.TOGGLE_SQUAD_BAR)
+		{
+			bool shown = AIO_SquadBar.Get().Toggle();
+			if (shown)
+				ShowFeedback("Squad bar on");
+			else
+				ShowFeedback("Squad bar off");
+			Close();
+			return;
+		}
 		array<RplId> members = {};
 		members.Copy(m_aSelected);
 		pc.AIO_SendOrder(item.m_eOrder, members, point, target);
@@ -414,7 +433,7 @@ class AIO_Menu
 
 	// ------------------------------------------------------------------ server data
 
-	void SetRoster(array<RplId> ids, array<string> names, array<int> health, bool admin)
+	void SetRoster(array<RplId> ids, array<string> names, array<int> health, array<string> tasks, bool admin)
 	{
 		m_bAdmin = admin;
 		m_aMembers.Clear();
@@ -424,6 +443,8 @@ class AIO_Menu
 			member.m_Id = ids[i];
 			member.m_sName = WidgetManager.Translate(names[i]);
 			member.m_iHealth = health[i];
+			if (tasks && i < tasks.Count())
+				member.m_sTask = tasks[i];
 			int team;
 			if (m_mTeams.Find(ids[i], team))
 				member.m_iTeam = team;
@@ -690,6 +711,7 @@ class AIO_Menu
 	// The workspace outlives the mission: remove our widgets when the world goes away.
 	static void Cleanup()
 	{
+		AIO_SquadBar.Cleanup();
 		if (!s_Instance)
 			return;
 		foreach (Widget widget : s_Instance.m_aWidgets)

@@ -359,6 +359,9 @@ class AIO_Test
 		Check("rejoin", da >= 0 && da < 15, string.Format("A %1 m from his leader", da));
 		float db = vector.Distance(s_B.GetOrigin(), AIO_Tasks.SpreadSpot(s_vTarget, 1));
 		Check("hold", db <= 6, string.Format("B still %1 m from his spot", db));
+		string labelB = AIO_Tasks.TaskLabel(s_B);
+		string labelA = AIO_Tasks.TaskLabel(s_A);
+		Check("squad-bar-labels", labelB == "Holding" && labelA == "", string.Format("B '%1', A '%2'", labelB, labelA));
 		AIO_Tasks.Release(s_B);
 		Finish();
 	}
