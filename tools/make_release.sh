@@ -8,6 +8,6 @@ OUT="$SRC/../_AIO-release/AIOCommandMenu"
 rm -rf "$OUT"; mkdir -p "$OUT"
 cp -r "$SRC/Scripts" "$SRC/Configs" "$OUT/"
 cp "$SRC/resourceDatabase.rdb" "$SRC/COPYING" "$SRC/LICENSE.md" "$SRC/README.md" "$OUT/"
-sed 's/^ TITLE ".*"/ TITLE "All-in-One Command Menu (Reforger)"/' "$SRC/addon.gproj" > "$OUT/addon.gproj"
+sed 's/^ TITLE ".*"/ TITLE "AiO Command Menu (Reforger)"/' "$SRC/addon.gproj" > "$OUT/addon.gproj"
 cp "$SRC/tools/workshop/"* "$OUT/../" 2>/dev/null || true
 echo "Release copy: $OUT"; (cd "$OUT" && find . -type f | sort)

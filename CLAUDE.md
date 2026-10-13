@@ -93,7 +93,7 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
 
 ## Workshop release
 - `bash tools/make_release.sh` builds the stripped copy `addons/_AIO-release/AIOCommandMenu` (same GUID,
-  title "All-in-One Command Menu (Reforger)"; only Scripts, Configs, rdb, README, licence files) and puts
+  title "AiO Command Menu (Reforger)"; only Scripts, Configs, rdb, README, licence files) and puts
   `tools/workshop/` (summary, description, placeholder preview image) beside it. Re-run before every
   publish. One level down so the game/Workbench never see two copies in addons/.
 - Jacob publishes from Workbench under his Bohemia login: open the release gproj, Publish, Unlisted first.
