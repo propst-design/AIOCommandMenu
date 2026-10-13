@@ -711,7 +711,7 @@ class AIO_Supplies
 
 	protected static void Finish(AIO_Fetch fetch, IEntity body, string result)
 	{
-		AIO_Tasks.Release(body);
+		AIO_Tasks.Rejoin(body, GetGame().GetPlayerManager().GetPlayerControlledEntity(fetch.m_iPlayerId));
 		if (fetch.m_bHadHold)
 		{
 			if (fetch.m_Anchor && AIO_Server.IsAlive(fetch.m_Anchor))

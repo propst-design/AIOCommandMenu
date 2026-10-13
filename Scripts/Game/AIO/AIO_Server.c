@@ -97,6 +97,13 @@ class AIO_Server
 		// Whole-squad movement orders take over from any single-man tasks.
 		if (order == AIO_EOrder.HALT || order == AIO_EOrder.FOLLOW || order == AIO_EOrder.MOVE_HERE || order == AIO_EOrder.HOLD_HERE)
 			AIO_Tasks.ReleaseGroup(slave);
+		if (order == AIO_EOrder.FOLLOW)
+		{
+			array<IEntity> strays = {};
+			Members(slave, strays);
+			foreach (IEntity stray : strays)
+				AIO_Tasks.Rejoin(stray, pc.GetControlledEntity());
+		}
 
 		IEntity player = pc.GetControlledEntity();
 		string moved = MoveMenu(slave, player, order, null);
@@ -466,7 +473,7 @@ class AIO_Server
 		if (order == AIO_EOrder.FOLLOW)
 		{
 			foreach (IEntity follower : bodies)
-				AIO_Tasks.Release(follower);
+				AIO_Tasks.Rejoin(follower, player);
 			return string.Format("%1 men rejoining", bodies.Count());
 		}
 		if (order == AIO_EOrder.HOLD_FIRE || order == AIO_EOrder.FIRE_AT_WILL || order == AIO_EOrder.RETURN_FIRE)

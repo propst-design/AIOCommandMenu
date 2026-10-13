@@ -757,7 +757,7 @@ class AIO_Test
 			dc = vector.Distance(s_C.GetOrigin(), leader.GetOrigin());
 		Check("others-stay", dc >= 0 && dc < 15, string.Format("C %1 m from his leader", dc));
 		// A rejoins (Follow me for one man); B keeps holding.
-		AIO_Tasks.Release(s_A);
+		AIO_Tasks.Rejoin(s_A, Leader());
 		GetGame().GetCallqueue().CallLater(Rejoined, 30000, false);
 	}
 
