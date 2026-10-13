@@ -48,8 +48,8 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
 - Jacob runs `Start-AIO-Test-Launcher.cmd` (tools/AIO-Watcher.ps1). Claude: `bash tools/runtest.sh
   <new-id> <preset> <polls>`; results in `.aio-requests/<id>.result.txt`.
 - Presets: `compile` (dedicated server, GM_Arland, this mod only; done at "[AIO] ready"),
-  `compile-aca` (with ACA on its test range). The launcher waits for any other Reforger server/game
-  (ACA's launcher shares port 2001).
+  `compile-aca` (with ACA on its test range). The launcher waits for another dedicated server (your SP game is fine;
+  ACA's test server shares port 2001).
 - Manual checks are Jacob's (menu feel, number keys not switching weapons, orders, MP).
 
 ## Status / next

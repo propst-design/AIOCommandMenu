@@ -4,8 +4,9 @@
 # of the presets below; this script starts a hidden Arma Reforger dedicated server
 # (no game window, you can keep using the PC), waits for the run to finish, stops the
 # server and writes a result file with the [AIO] log lines and script errors.
-# It only runs these presets. If another Reforger server or game is running (for
-# example Arma Commander Actual's test launcher), it waits for it to close first.
+# It only runs these presets. Your own single-player game doesn't matter; if another
+# Reforger dedicated server is running (e.g. Arma Commander Actual's test server, they
+# share port 2001), it waits for that to close first.
 #
 # Close this window (or press Ctrl+C) to stop it.
 
@@ -64,8 +65,8 @@ function Write-Result($id, $lines) {
     $lines | Set-Content -LiteralPath (Join-Path $RequestDir "$id.result.txt") -Encoding UTF8
 }
 
-function Other-ReforgerRunning {
-    return [bool](Get-Process -Name 'ArmaReforgerServer', 'ArmaReforgerSteam', 'ArmaReforger_BE' -ErrorAction SilentlyContinue)
+function Other-ServerRunning {
+    return [bool](Get-Process -Name 'ArmaReforgerServer' -ErrorAction SilentlyContinue)
 }
 
 function Invoke-Request($file) {
@@ -81,10 +82,12 @@ function Invoke-Request($file) {
     $config = $Presets[$preset]
     $server = Find-Server
     if (!$server) { Write-Result $id @('status=refused', 'reason=Arma Reforger Server not found (start with -ServerPath)'); return }
-    # Wait (up to 10 min) for another Reforger server or game to close: they share port 2001.
+    # Wait (up to 10 min) for another dedicated server to close: they share port 2001.
+    # (A game you host from the client also uses 2001: the run then fails with
+    # 'Unable to start replication', reported below.)
     $waited = 0
-    while ((Other-ReforgerRunning) -and $waited -lt 600) { Start-Sleep -Seconds 5; $waited += 5 }
-    if (Other-ReforgerRunning) { Write-Result $id @('status=refused', 'reason=another Reforger server or game kept running'); return }
+    while ((Other-ServerRunning) -and $waited -lt 600) { Start-Sleep -Seconds 5; $waited += 5 }
+    if (Other-ServerRunning) { Write-Result $id @('status=refused', 'reason=another Reforger server kept running'); return }
 
     New-Item -ItemType Directory -Force $ServerProfile | Out-Null
     $serverArgs = '-server "' + $config.World + '" -addonsDir "' + $AddonsDir + '" -addons ' + $config.Addons + ' -profile "' + $ServerProfile + '" -maxFPS 60 -noBackend'
@@ -104,6 +107,7 @@ function Invoke-Request($file) {
         if ($proc.HasExited) { $outcome = 'server exited'; break }
         if ($log -and (Test-Path -LiteralPath $log)) {
             $text = Get-Content -LiteralPath $log -Raw -ErrorAction SilentlyContinue
+            if ($text -match 'Unable to start replication') { $outcome = 'port busy (a hosted game or server is using 2001)'; break }
             if ($text -match "Can't compile") { Start-Sleep -Seconds 2; $outcome = 'compile error'; break }
             if ($text -match 'SCRIPT\s+\(E\)') { Start-Sleep -Seconds 3; $outcome = 'script error'; break }
             if ($text -match $config.DoneWhen) { Start-Sleep -Seconds 5; $outcome = 'completed'; break }
