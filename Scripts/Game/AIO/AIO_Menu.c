@@ -109,7 +109,7 @@ class AIO_Menu
 		if (now >= m_iNextRosterAsk)
 		{
 			m_iNextRosterAsk = now + 1000;
-			SCR_PlayerController.AIO_AskRoster(pc);
+			pc.AIO_AskRoster();
 		}
 
 		if (input.GetActionTriggered("AIO_Menu"))
@@ -125,7 +125,7 @@ class AIO_Menu
 		{
 			for (int key = 0; key <= 9; key++)
 			{
-				if (input.GetActionTriggered("AIO_Key" + key))
+				if (input.GetActionTriggered("AIO_Key" + key.ToString()))
 				{
 					OnKey(pc, key);
 					break;
@@ -164,7 +164,7 @@ class AIO_Menu
 		m_iSelectPage = 0;
 		m_iSelectionClearAt = 0;
 		m_iNextRosterAsk = 0;
-		SCR_PlayerController.AIO_AskRoster(pc);
+		pc.AIO_AskRoster();
 		Render();
 	}
 
@@ -283,7 +283,7 @@ class AIO_Menu
 		}
 		array<RplId> members = {};
 		members.Copy(m_aSelected);
-		SCR_PlayerController.AIO_SendOrder(pc, item.m_eOrder, members, point, target);
+		pc.AIO_SendOrder(item.m_eOrder, members, point, target);
 		Close();
 		if (!m_aSelected.IsEmpty())
 			m_iSelectionClearAt = System.GetTickCount() + SELECTION_KEEP_MS;
@@ -353,10 +353,10 @@ class AIO_Menu
 			}
 			foreach (RplId id : m_aSelected)
 				m_mTeams.Set(id, team);
-			foreach (AIO_Member member : m_aMembers)
+			foreach (AIO_Member assigned : m_aMembers)
 			{
-				if (m_aSelected.Contains(member.m_Id))
-					member.m_iTeam = team;
+				if (m_aSelected.Contains(assigned.m_Id))
+					assigned.m_iTeam = team;
 			}
 			ShowFeedback(string.Format("%1 men -> %2", m_aSelected.Count(), TeamName(team)));
 		}
