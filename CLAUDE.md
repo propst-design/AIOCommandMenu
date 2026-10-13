@@ -47,8 +47,31 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
   men never re-read settings); Auto removes it (prone men get up to crouch). Copy my stance = watchdog
   copies the player's stance each second. Heal up = vanilla SCR_AIHealBehavior on self for hurt men
   with a healing item (EUnitRole.MEDIC).
+- `AIO_Supplies.c`: Rearm (nearest useful source within 50 m: dead bodies, loose items, vehicle/crate
+  storages, arsenals), Rearm from that, Take that weapon. Needs per man: magazines per muzzle up to 6
+  (launcher/handgun 2), 2 frag grenades if none, 2 bandages if none. Items move with
+  TryMoveItemToStorage/TryInsertItem; arsenals spawn the prefab and charge supplies like vanilla
+  SCR_AITakeItemFromArsenal. Magazine wells compared by type NAME (typename != unreliable).
+  Characters count as loose items (they have an InventoryItemComponent): excluded. Fallen soldiers
+  DROP their weapon: Take weapon looks within 3 m of a body. Errands (AIO_Fetch) walk him there,
+  take, then restore his previous hold or Rejoin; he reports back to the player (AIO_Notify).
+- `AIO_Maneuvers.c`: modded SCR_AICombatComponent.GetCombatMode (per-man ROE override; vanilla reads
+  the group's mode) and SCR_AIUtilityComponent.ShouldKeepFormation (Engage at will / Disengage).
+  Attack: Advance/Assault = line abreast at the point (whole-squad Assault = vanilla
+  waypointSearchAndDestroy), Flank L/R = route (hold legs) wide out then beside the target,
+  Suppress = per-man SCR_AISuppressBehavior on a 4 m sphere (whole squad: vanilla waypointSuppress),
+  Fire on my lead = per-man hold fire until the player's loaded rounds drop, Bound/Peel = two elements
+  (by colour team if the men are in 2+ teams, else alternating) moving 30/25 m in turns.
+  Defense: 360 = ring around the player, crouched, looking out; Fortify = cover within 20 m of the point
+  facing away from the player; Garrison/Clear = interior points (navmesh grid inside the bounds, under
+  a roof), garrison spreads over them looking out, clear walks the rooms nearest-first.
+  Teams are sent to the server (AIO_RpcTeam). Speed = character movement-speed setting (GROUP_GOAL).
+- Hold behaviour extras: m_aLegs (routes), m_vLook (keeps looking, priority 15). `ActiveHold()` skips
+  ended holds that linger in the queue. `Rejoin()` walks far-off men back to the leader (formation
+  following alone was sometimes slow to pick them up).
 - `AIO_SquadBar.c`: bottom-centre strip while leading AI (roster every 2 s, 1 s with the menu open):
-  key number, name (team colour), health, task label (`AIO_Tasks.TaskLabel`). More > Squad bar on/off.
+  key number, name (team colour), health, magazines, task label (`AIO_Tasks.TaskLabel`), plus the key
+  number over each man's head in his team colour (within 120 m). More > Squad bar on/off.
 - `AIO_Test.c`: server tests (`-aioTaskTest 1`: spawns a US fire team on GM_Arland, moves/holds/releases men).
 - `AIO_Server.c`: squad = the player's group's slave AI group (`SCR_AIGroup.GetSlave()`), the same
   setup the vanilla commanding wheel and ACA's possession use. Whole-squad orders go through the
@@ -67,7 +90,8 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
 - Jacob runs `Start-AIO-Test-Launcher.cmd` (tools/AIO-Watcher.ps1). Claude: `bash tools/runtest.sh
   <new-id> <preset> <polls>`; results in `.aio-requests/<id>.result.txt`.
 - Extra server tests come from `tools/test-presets.txt` (re-read per request, no launcher restart):
-  `tasks` (~100 s), `moves` (~160 s), `infantry` (~110 s; prone can fail next to walls/at cover spots).
+  `tasks` (~100 s), `moves` (~160 s), `infantry` (~110 s; prone can fail next to walls/at cover spots),
+  `supply` (~100 s), `attack` (~210 s), `defense` (~190 s; finds a house near the map centre).
 - Presets: `compile` (dedicated server, GM_Arland, this mod only; done at "[AIO] ready"),
   `compile-aca` (with ACA on its test range). The launcher waits for another dedicated server (your SP game is fine;
   ACA's test server shares port 2001).
@@ -85,5 +109,10 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
   their slots, also while the leader walks 40 m).
 - 13 Oct: Take cover, Stance (incl. Copy my stance), Heal up, squad bar - `infantry` 7/7, `tasks` 6/6,
   `moves` 5/5.
-- Next: team colours on nameplates, Attack maneuvers, Defense, ROE for selected men, unit speed. (Advance/Stay back/Flank = offset from the player's facing, ~50 m), Take cover,
+- 13 Oct: Supplies (rearm, take weapon, ammo on the bar), Attack maneuvers, Defense, per-man ROE,
+  engage/disengage, fire on my lead, speed, team markers. Server tests all pass: tasks 6/6, moves 5/5,
+  infantry 7/7, supply 5/5, attack 7/7, defense 8/8.
+- Not covered by tests (live checks): arsenals with supplies, rearm from vehicles/crates, real
+  firefights (suppress, flank under fire, fire on my lead with a player), garrison on other buildings,
+  head markers and squad bar look, MP. (Advance/Stay back/Flank = offset from the player's facing, ~50 m), Take cover,
   stance, Heal up, squad bar HUD, team colours on nameplates, then Attack maneuvers and Defense.
