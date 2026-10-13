@@ -8,6 +8,7 @@
 //   -aioSupplyTest 1 : Rearm from a fallen teammate, Take weapon from an enemy body.
 //   -aioAttackTest 1 : Flank right, per-man ROE / engage / fire on my lead, Bound forward.
 //   -aioDefenseTest 1 : 360 defense, Garrison and Clear a building, Fortify.
+//   -aioTowerTest 1 : the defense test on the airfield control tower.
 // Prints "[AIO] TEST <name> PASS|FAIL ..." lines and "[AIO] TEST COMPLETE".
 class AIO_Test
 {
@@ -27,6 +28,7 @@ class AIO_Test
 	protected static bool s_bSupplyTest;
 	protected static bool s_bAttackTest;
 	protected static bool s_bDefenseTest;
+	protected static bool s_bTower;
 	protected static IEntity s_Building;
 	protected static vector s_vPoint;
 	protected static SCR_AIGroup s_Enemy;
@@ -51,6 +53,11 @@ class AIO_Test
 		string defenseValue;
 		System.GetCLIParam("aioDefenseTest", defenseValue);
 		s_bDefenseTest = defenseValue == "1";
+		string towerValue;
+		System.GetCLIParam("aioTowerTest", towerValue);
+		s_bTower = towerValue == "1";
+		if (s_bTower)
+			s_bDefenseTest = true;
 		if (!s_bMoveTest && !s_bInfantryTest && !s_bSupplyTest && !s_bAttackTest && !s_bDefenseTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
 			return;
 		if (!Replication.IsServer())
@@ -458,6 +465,12 @@ class AIO_Test
 		if (!entity.GetPrefabData())
 			return true;
 		string name = entity.GetPrefabData().GetPrefabName();
+		if (s_bTower)
+		{
+			if (name.Contains("ControlTower") && !name.Contains("furniture"))
+				s_aBuildings.Insert(entity);
+			return true;
+		}
 		if (!name.Contains("Structures/Houses") && !name.Contains("Structures/Buildings"))
 			return true;
 		if (AIO_Maneuvers.BuildingOf(entity) == entity)
@@ -468,7 +481,24 @@ class AIO_Test
 	protected static IEntity FindBuilding(vector near)
 	{
 		s_aBuildings = {};
-		GetGame().GetWorld().QueryEntitiesBySphere(near, 700, CollectBuilding, null, EQueryEntitiesFlags.ALL);
+		float radius = 700;
+		if (s_bTower)
+			radius = 8000;
+		GetGame().GetWorld().QueryEntitiesBySphere(near, radius, CollectBuilding, null, EQueryEntitiesFlags.ALL);
+		if (s_bTower)
+		{
+			foreach (IEntity tower : s_aBuildings)
+			{
+				IEntity chosen = AIO_Maneuvers.BuildingOf(tower);
+				string parentName = "none";
+				if (tower.GetParent() && tower.GetParent().GetPrefabData())
+					parentName = tower.GetParent().GetPrefabData().GetPrefabName();
+				Print(string.Format("[AIO] TEST tower candidate %1 parent %2 BuildingOf same %3", tower.GetPrefabData().GetPrefabName(), parentName, chosen == tower));
+			}
+			if (s_aBuildings.IsEmpty())
+				return null;
+			return AIO_Maneuvers.BuildingOf(s_aBuildings[0]);
+		}
 		IEntity best = null;
 		float bestDistance = float.MAX;
 		foreach (IEntity building : s_aBuildings)
@@ -508,7 +538,7 @@ class AIO_Test
 		Check("360", crouched == total && worst < 3, string.Format("%1 of %2 crouched, worst %3 m off his spot", crouched, total, worst));
 		array<vector> inside = {};
 		AIO_Maneuvers.InteriorPoints(s_Building, men[0], inside);
-		Print(string.Format("[AIO] TEST defense: %1 interior points", inside.Count()));
+		Print(string.Format("[AIO] TEST defense: %1 interior points (%2)", inside.Count(), AIO_Maneuvers.InteriorReport(s_Building)));
 		string reply = AIO_Maneuvers.Defense(men, Leader(), AIO_EOrder.DEF_GARRISON, vector.Zero, s_Building);
 		Check("garrison-order", reply.Contains("garrisoning"), reply);
 		GetGame().GetCallqueue().CallLater(Garrisoned, 45000, false);
@@ -561,7 +591,10 @@ class AIO_Test
 			AIO_Tasks.Release(man);
 		string reply = AIO_Maneuvers.Defense(men, Leader(), AIO_EOrder.DEF_FORTIFY, s_vPoint, null);
 		Check("fortify-order", reply.Contains("fortifying"), reply);
-		GetGame().GetCallqueue().CallLater(Fortified, 35000, false);
+		int fortifyWait = 35000;
+		if (s_bTower)
+			fortifyWait = 55000; // down the tower stairs first
+		GetGame().GetCallqueue().CallLater(Fortified, fortifyWait, false);
 	}
 
 	protected static void Fortified()
@@ -579,6 +612,30 @@ class AIO_Test
 			AIO_Tasks.Release(man);
 		}
 		Check("fortify", crouched == total && farthest < 22, string.Format("%1 of %2 crouched, farthest %3 m from the point", crouched, total, farthest));
+		if (!s_bTower)
+		{
+			Finish();
+			return;
+		}
+		// Walk-up fallback: the men go to the building first, then garrison it.
+		string reply = AIO_Maneuvers.Approach(men, Leader(), AIO_EOrder.DEF_GARRISON, s_Building);
+		Check("approach-order", reply.Contains("moving up"), reply);
+		GetGame().GetCallqueue().CallLater(Approached, 60000, false);
+	}
+
+	protected static void Approached()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		int inside = MenInside(men);
+		int holding;
+		foreach (IEntity man : men)
+		{
+			if (AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(man))))
+				holding++;
+			AIO_Tasks.Release(man);
+		}
+		Check("approach", inside == men.Count() && holding == men.Count() && AIO_Maneuvers.s_aApproaches.IsEmpty(), string.Format("%1 of %2 inside, %3 holding, %4 approaches left", inside, men.Count(), holding, AIO_Maneuvers.s_aApproaches.Count()));
 		Finish();
 	}
 
