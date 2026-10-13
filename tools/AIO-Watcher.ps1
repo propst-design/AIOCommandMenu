@@ -18,6 +18,9 @@ $Presets = @{
     # Server boots with only this mod: compiles our scripts and loads our configs.
     'compile'     = @{ Addons = '629405AEFC950C12'; World = $Arland; TimeoutSec = 150; DoneWhen = '\[AIO\] ready' }
     # Same, together with Arma Commander Actual (load-order and input-config check).
+    # Game client (opens a game window for ~1 min, separate profile): input self-check.
+    'input'       = @{ Client = $true; Addons = '629405AEFC950C12'; World = $Arland; TimeoutSec = 150; DoneWhen = '\[AIO\] INPUT check' }
+    'input-aca'   = @{ Client = $true; Addons = 'AC230926A0010001,629405AEFC950C12'; World = 'Worlds/ACR_TestRange.ent'; TimeoutSec = 180; DoneWhen = '\[AIO\] INPUT check' }
     'compile-aca' = @{ Addons = 'AC230926A0010001,629405AEFC950C12'; World = 'Worlds/ACR_TestRange.ent'; TimeoutSec = 180; DoneWhen = '\[AIO\] ready' }
 }
 
@@ -61,6 +64,19 @@ function Find-Server {
     return $null
 }
 
+function Find-Game {
+    $server = Find-Server
+    if ($server) {
+        $candidate = Join-Path (Split-Path (Split-Path $server -Parent) -Parent) 'Arma Reforger\ArmaReforgerSteam.exe'
+        if (Test-Path -LiteralPath $candidate) { return $candidate }
+    }
+    foreach ($drive in 'C', 'D', 'E', 'F', 'G') {
+        $candidate = "${drive}:\SteamLibrary\steamapps\common\Arma Reforger\ArmaReforgerSteam.exe"
+        if (Test-Path -LiteralPath $candidate) { return $candidate }
+    }
+    return $null
+}
+
 function Write-Result($id, $lines) {
     $lines | Set-Content -LiteralPath (Join-Path $RequestDir "$id.result.txt") -Encoding UTF8
 }
@@ -80,6 +96,7 @@ function Invoke-Request($file) {
         return
     }
     $config = $Presets[$preset]
+    if ($config.Client) { Invoke-Client $id $preset $config; return }
     $server = Find-Server
     if (!$server) { Write-Result $id @('status=refused', 'reason=Arma Reforger Server not found (start with -ServerPath)'); return }
     # Wait (up to 10 min) for another dedicated server to close: they share port 2001.
@@ -120,6 +137,47 @@ function Invoke-Request($file) {
         $result += Get-Content -LiteralPath $log | Where-Object { $_ -match "\[AIO\]|SCRIPT\s+\(E\)|SCRIPT\s+\(W\)|Can't compile|AIO_|ERROR|chimeraInputCommon|keyBindingMenu" } | Select-Object -First 200
     } else {
         $result += 'No server console.log was found for this run.'
+    }
+    Write-Result $id $result
+    Write-Host "[$(Get-Date -Format 'HH:mm:ss')] '$preset' finished: $outcome" -ForegroundColor Green
+}
+
+# Runs the game client (own profile) and reads its console.log; refuses if a game is already open.
+function Invoke-Client($id, $preset, $config) {
+    if (Get-Process -Name 'ArmaReforgerSteam', 'ArmaReforger_BE' -ErrorAction SilentlyContinue) {
+        Write-Result $id @('status=refused', 'reason=a Reforger game is already running (close it for client tests)'); return
+    }
+    $game = Find-Game
+    if (!$game) { Write-Result $id @('status=refused', 'reason=ArmaReforgerSteam.exe not found'); return }
+    $gameProfile = Join-Path $ProjectRoot '.local-game'
+    New-Item -ItemType Directory -Force $gameProfile | Out-Null
+    $gameArgs = '-addonsDir "' + $AddonsDir + '" -addons ' + $config.Addons + ' -profile "' + $gameProfile + '" -noSplash -noBackend -world "' + $config.World + '"'
+    Write-Host "[$(Get-Date -Format 'HH:mm:ss')] Running '$preset' (game window)..." -ForegroundColor Cyan
+    $started = Get-Date
+    $proc = Start-Process -FilePath $game -ArgumentList $gameArgs -WorkingDirectory (Split-Path $game -Parent) -PassThru
+    $logs = Join-Path $gameProfile 'logs'
+    $outcome = 'timeout'
+    $log = $null
+    while ($true) {
+        Start-Sleep -Seconds 3
+        if (!$log -and (Test-Path -LiteralPath $logs)) {
+            $dir = Get-ChildItem -LiteralPath $logs -Directory | Where-Object { $_.CreationTime -ge $started.AddSeconds(-5) } |
+                   Sort-Object CreationTime -Descending | Select-Object -First 1
+            if ($dir) { $log = Join-Path $dir.FullName 'console.log' }
+        }
+        if ($proc.HasExited) { $outcome = 'game exited'; break }
+        if ($log -and (Test-Path -LiteralPath $log)) {
+            $text = Get-Content -LiteralPath $log -Raw -ErrorAction SilentlyContinue
+            if ($text -match "Can't compile") { Start-Sleep -Seconds 2; $outcome = 'compile error'; break }
+            if ($text -match $config.DoneWhen) { Start-Sleep -Seconds 3; $outcome = 'completed'; break }
+        }
+        if (((Get-Date) - $started).TotalSeconds -gt $config.TimeoutSec) { break }
+    }
+    if (!$proc.HasExited) { Stop-Process -Id $proc.Id -ErrorAction SilentlyContinue }
+    Get-Process -Name 'ArmaReforgerSteam', 'ArmaReforger_BE' -ErrorAction SilentlyContinue | Where-Object { $_.StartTime -ge $started } | Stop-Process -ErrorAction SilentlyContinue
+    $result = @("status=$outcome", "preset=$preset", "started=$($started.ToString('s'))", "seconds=$([int]((Get-Date) - $started).TotalSeconds)", "log=$log", '---')
+    if ($log -and (Test-Path -LiteralPath $log)) {
+        $result += Get-Content -LiteralPath $log | Where-Object { $_ -match "\[AIO\]|SCRIPT\s+\(E\)|Can't compile|AIOCommandMenu|chimeraInputCommon|keyBindingMenu|ResourceDB" } | Select-Object -First 200
     }
     Write-Result $id $result
     Write-Host "[$(Get-Date -Format 'HH:mm:ss')] '$preset' finished: $outcome" -ForegroundColor Green
