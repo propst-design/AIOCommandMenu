@@ -398,8 +398,43 @@ class AIO_Test
 		Print(string.Format("[AIO] TEST supply: A dropped %1 magazines", deleted));
 	}
 
+	protected static void SupplyDebug()
+	{
+		InventoryStorageManagerComponent storage = InventoryStorageManagerComponent.Cast(s_C.FindComponent(InventoryStorageManagerComponent));
+		array<IEntity> items = {};
+		if (storage)
+			storage.GetItems(items);
+		string list = "";
+		foreach (IEntity item : items)
+		{
+			string name = "?";
+			if (item.GetPrefabData())
+				name = item.GetPrefabData().GetPrefabName();
+			list += string.Format(" [%1 kind %2 loose %3]", FilePath.StripPath(name), AIO_Supplies.Kind(item), AIO_Supplies.IsLooseItem(item));
+		}
+		Print(string.Format("[AIO] TEST detail: C dead %1, storage %2, %3 items:%4", AIO_Supplies.IsDeadCharacter(s_C), storage, items.Count(), list));
+		array<ref AIO_Need> needs = {};
+		AIO_Supplies.Needs(s_A, needs);
+		foreach (AIO_Need need : needs)
+			Print(string.Format("[AIO] TEST detail: A needs kind %1 well %2 x%3 prefab %4", need.m_iKind, need.m_tWell, need.m_iMissing, need.m_sPrefab));
+		Print(string.Format("[AIO] TEST detail: usefulness of C for A = %1", AIO_Supplies.Usefulness(s_C, s_A, needs)));
+		s_aDead = {};
+		s_aLoose = {};
+		GetGame().GetWorld().QueryEntitiesBySphere(s_vStart, 60, CollectDead, null, EQueryEntitiesFlags.ALL);
+		foreach (IEntity loose : s_aLoose)
+		{
+			string looseName = "?";
+			if (loose.GetPrefabData())
+				looseName = loose.GetPrefabData().GetPrefabName();
+			Print(string.Format("[AIO] TEST detail: loose %1 at %2 m", FilePath.StripPath(looseName), vector.Distance(loose.GetOrigin(), s_vStart)));
+		}
+	}
+
+	protected static ref array<IEntity> s_aLoose;
+
 	protected static void SupplyOrders()
 	{
+		SupplyDebug();
 		int before = Mags(s_A);
 		array<IEntity> men = {s_A};
 		string reply = AIO_Supplies.Rearm(men, null, 0);
@@ -436,6 +471,8 @@ class AIO_Test
 	{
 		if (AIO_Supplies.IsDeadCharacter(entity))
 			s_aDead.Insert(entity);
+		if (s_aLoose && entity.FindComponent(BaseWeaponComponent) && AIO_Supplies.IsLooseItem(entity))
+			s_aLoose.Insert(entity);
 		return true;
 	}
 
