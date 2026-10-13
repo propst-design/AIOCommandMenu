@@ -18,10 +18,9 @@ modded class SCR_PlayerController
 
 	// ---------------------------------------------------------------- roster
 
-	static void AIO_AskRoster(SCR_PlayerController pc)
+	void AIO_AskRoster()
 	{
-		if (pc)
-			pc.Rpc(pc.AIO_RpcAskRoster);
+		Rpc(AIO_RpcAskRoster);
 	}
 
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
@@ -42,10 +41,9 @@ modded class SCR_PlayerController
 
 	// ---------------------------------------------------------------- orders
 
-	static void AIO_SendOrder(SCR_PlayerController pc, AIO_EOrder order, array<RplId> members, vector point, RplId target)
+	void AIO_SendOrder(AIO_EOrder order, array<RplId> members, vector point, RplId target)
 	{
-		if (pc)
-			pc.Rpc(pc.AIO_RpcOrder, order, members, point, target);
+		Rpc(AIO_RpcOrder, order, members, point, target);
 	}
 
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
