@@ -35,6 +35,11 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
   SCR_AIUtilityComponent: AIO_MoveBehavior (vanilla MoveIndividually, prio 58, combat 70+ still wins) +
   AIO_HoldBehavior (Wait.bt, prio 45 > formation 30). Release = fail both -> back to formation.
   Watchdog (2 s) walks holders back if >6 m off their spot. Whole-squad Halt/Follow/Move release all.
+  Anchored holds (m_Anchor + m_vOffset): the spot moves with the player (Move menu).
+- Move menu (`AIO_Server.MoveMenu`): Advance / Stay back / Flank left / Flank right = keep station 50 m
+  ahead/behind/left/right of the player's facing at order time (world-fixed bearing, moves with him),
+  men in a line 5 m apart across that direction; Fall back = fixed spot 40 m behind, hold. Selection or
+  whole squad. If the player dies the men rejoin formation.
 - `AIO_Test.c`: server tests (`-aioTaskTest 1`: spawns a US fire team on GM_Arland, moves/holds/releases men).
 - `AIO_Server.c`: squad = the player's group's slave AI group (`SCR_AIGroup.GetSlave()`), the same
   setup the vanilla commanding wheel and ACA's possession use. Whole-squad orders go through the
@@ -53,7 +58,7 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
 - Jacob runs `Start-AIO-Test-Launcher.cmd` (tools/AIO-Watcher.ps1). Claude: `bash tools/runtest.sh
   <new-id> <preset> <polls>`; results in `.aio-requests/<id>.result.txt`.
 - Extra server tests come from `tools/test-presets.txt` (re-read per request, no launcher restart):
-  `tasks` (~100 s).
+  `tasks` (~100 s), `moves` (~160 s).
 - Presets: `compile` (dedicated server, GM_Arland, this mod only; done at "[AIO] ready"),
   `compile-aca` (with ACA on its test range). The launcher waits for another dedicated server (your SP game is fine;
   ACA's test server shares port 2001).
@@ -67,5 +72,7 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
   Fixed live: no mouse cursor, closing key no longer reaches the hotbar. Input works after Workbench
   built resourceDatabase.rdb (needed for the input overrides to register; re-open in Workbench when
   adding new .conf overrides).
-- Next: Move-menu shifts (Advance/Stay back/Flank = offset from the player's facing, ~50 m), Take cover,
+- 13 Oct: Move menu (Advance/Stay back/Flank L/R/Fall back) - `moves` 5/5 PASS (men within 1.7 m of
+  their slots, also while the leader walks 40 m).
+- Next: (done: Move-menu shifts) (Advance/Stay back/Flank = offset from the player's facing, ~50 m), Take cover,
   stance, Heal up, squad bar HUD, team colours on nameplates, then Attack maneuvers and Defense.
