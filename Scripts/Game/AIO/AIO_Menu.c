@@ -30,6 +30,7 @@ class AIO_Menu
 	static const int MEN_PER_PAGE = 7;
 	static const int SELECTION_KEEP_MS = 8000;
 	static const int FEEDBACK_MS = 4000;
+	static const int SWALLOW_MS = 500; // keep the menu's keys captured this long after closing
 
 	protected static ref AIO_Menu s_Instance;
 
@@ -47,6 +48,7 @@ class AIO_Menu
 	protected string m_sFeedback;
 	protected int m_iFeedbackUntil;
 	protected int m_iNextRosterAsk;
+	protected int m_iSwallowUntil; // tick count until which closed-menu key releases are swallowed
 
 	// Input self-check, logged once ~5 s after the player controller starts updating.
 	protected bool m_bDiagnosed;
@@ -127,6 +129,14 @@ class AIO_Menu
 
 		if (!m_bOpen)
 		{
+			// Just closed: the key that closed the menu is still being released. Keep our
+			// context on so that release can't reach the weapon/quick-slot keys.
+			if (now < m_iSwallowUntil)
+			{
+				input.ActivateContext("AIO_MenuContext");
+				UpdateFeedback(now);
+				return;
+			}
 			input.ActivateContext("AIO_OpenContext");
 			if (input.GetActionTriggered("AIO_Menu"))
 				Open(pc);
@@ -201,6 +211,7 @@ class AIO_Menu
 	void Close()
 	{
 		m_bOpen = false;
+		m_iSwallowUntil = System.GetTickCount() + SWALLOW_MS;
 		SetVisible(false);
 		if (!m_aSelected.IsEmpty() && m_iSelectionClearAt == 0)
 			m_iSelectionClearAt = System.GetTickCount() + SELECTION_KEEP_MS;

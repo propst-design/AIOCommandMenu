@@ -40,8 +40,8 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
 - Input: `Configs/System/chimeraInputCommon.conf` is an OVERRIDE (delta, same GUID as vanilla) like
   ACE and most Workshop mods, so it stacks with other mods (ACA's gproj input config inherits it).
   `AIO_OpenContext` (prio 15) holds the menu key (default T; Y is Game Master); `AIO_MenuContext`
-  (prio 150, flags 0xe like vanilla radial menus) takes 0-9/Backspace while the menu is open so the
-  weapon/quick-slot keys (SwitchWeaponCategoryN, prio 10) don't fire. `keyBindingMenu.conf` override
+  (prio 150, flags 0xa like vanilla weapon selection: 0x4 would show the mouse cursor) takes 0-9/Backspace while the menu is open so the
+  weapon/quick-slot keys (SwitchWeaponCategoryN, prio 10) don't fire; it stays on 0.5 s after closing so the closing key's release is swallowed too. `keyBindingMenu.conf` override
   adds the Controls category.
 
 ## Testing
