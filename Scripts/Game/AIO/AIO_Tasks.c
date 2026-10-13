@@ -173,8 +173,14 @@ class AIO_Tasks
 		if (!settings)
 			return;
 		settings.RemoveSettingsOfTypeAndOrigin(SCR_AICharacterStanceSettingBase, SCR_EAISettingOrigin.COMMANDING);
-		if (stance >= 0)
-			settings.AddCharacterSetting(SCR_AICharacterStanceSetting.Create(SCR_EAISettingOrigin.COMMANDING, SCR_EAIBehaviorCause.COMBAT, stance), false, true);
+		if (stance < 0)
+			return;
+		settings.AddCharacterSetting(SCR_AICharacterStanceSetting.Create(SCR_EAISettingOrigin.COMMANDING, SCR_EAIBehaviorCause.COMBAT, stance), false, true);
+		// The setting is read when a behaviour sets a stance; a man standing idle (holding) would not
+		// change until then, so change it now as well.
+		ChimeraCharacter character = ChimeraCharacter.Cast(agent.GetControlledEntity());
+		if (character && character.GetCharacterController())
+			SCR_AIStanceHandling.SetStance(character.GetCharacterController(), stance);
 	}
 
 	protected static ref array<AIAgent> s_aCopyAgents = {};
