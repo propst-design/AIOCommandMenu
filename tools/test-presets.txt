@@ -3,3 +3,5 @@ tasks|-aioTaskTest 1|180
 moves|-aioMoveTest 1|220
 infantry|-aioInfantryTest 1|180
 supply|-aioSupplyTest 1|170
+attack|-aioAttackTest 1|260
+defense|-aioDefenseTest 1|260

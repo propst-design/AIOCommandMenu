@@ -6,6 +6,8 @@
 //   -aioMoveTest 1 : Move menu (Advance keeps station on the leader while he moves; Fall back).
 //   -aioInfantryTest 1 : Take cover, stance, Heal up (nobody hurt).
 //   -aioSupplyTest 1 : Rearm from a fallen teammate, Take weapon from an enemy body.
+//   -aioAttackTest 1 : Flank right, per-man ROE / engage / fire on my lead, Bound forward.
+//   -aioDefenseTest 1 : 360 defense, Garrison and Clear a building, Fortify.
 // Prints "[AIO] TEST <name> PASS|FAIL ..." lines and "[AIO] TEST COMPLETE".
 class AIO_Test
 {
@@ -23,6 +25,10 @@ class AIO_Test
 	protected static bool s_bMoveTest;
 	protected static bool s_bInfantryTest;
 	protected static bool s_bSupplyTest;
+	protected static bool s_bAttackTest;
+	protected static bool s_bDefenseTest;
+	protected static IEntity s_Building;
+	protected static vector s_vPoint;
 	protected static SCR_AIGroup s_Enemy;
 	protected static ResourceName s_sEnemyWeapon;
 	protected static vector s_vForward;
@@ -39,7 +45,13 @@ class AIO_Test
 		string supplyValue;
 		System.GetCLIParam("aioSupplyTest", supplyValue);
 		s_bSupplyTest = supplyValue == "1";
-		if (!s_bMoveTest && !s_bInfantryTest && !s_bSupplyTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
+		string attackValue;
+		System.GetCLIParam("aioAttackTest", attackValue);
+		s_bAttackTest = attackValue == "1";
+		string defenseValue;
+		System.GetCLIParam("aioDefenseTest", defenseValue);
+		s_bDefenseTest = defenseValue == "1";
+		if (!s_bMoveTest && !s_bInfantryTest && !s_bSupplyTest && !s_bAttackTest && !s_bDefenseTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
 			return;
 		if (!Replication.IsServer())
 			return;
@@ -96,6 +108,20 @@ class AIO_Test
 		GetGame().GetWorldEntity().GetTerrain(0, 0).GetTerrainBoundBox(mins, maxs);
 		vector middle = (mins + maxs) * 0.5;
 		s_vStart = FindSpot(middle, 0);
+		if (s_bDefenseTest)
+		{
+			s_Building = FindBuilding(middle);
+			if (!s_Building)
+			{
+				Check("setup", false, "no building found near the map centre");
+				Finish();
+				return;
+			}
+			vector bmins, bmaxs;
+			s_Building.GetWorldBounds(bmins, bmaxs);
+			s_vStart = FindSpot((bmins + bmaxs) * 0.5, 18);
+			Print(string.Format("[AIO] TEST defense: building %1 at %2", s_Building.GetPrefabData().GetPrefabName(), s_Building.GetOrigin()));
+		}
 		if (s_vStart == vector.Zero)
 		{
 			Check("setup", false, "no dry spot found");
@@ -107,7 +133,11 @@ class AIO_Test
 		params.Transform[3] = s_vStart;
 		s_Group = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(Resource.Load(GROUP), GetGame().GetWorld(), params));
 		Print(string.Format("[AIO] TEST tasks: group spawned at %1", s_vStart));
-		if (s_bSupplyTest)
+		if (s_bAttackTest)
+			GetGame().GetCallqueue().CallLater(Flank, 12000, false);
+		else if (s_bDefenseTest)
+			GetGame().GetCallqueue().CallLater(AllRound, 12000, false);
+		else if (s_bSupplyTest)
 		{
 			// Enemy fire team 20 m away, killed as soon as it is there: bodies to loot.
 			EntitySpawnParams enemyParams = new EntitySpawnParams();
@@ -341,6 +371,214 @@ class AIO_Test
 		int total;
 		int prone = CountStance(ECharacterStance.PRONE, total);
 		Check("auto", prone < total, string.Format("%1 of %2 men still prone after Auto (calm: they should get up)", prone, total));
+		Finish();
+	}
+
+	// ---------------------------------------------------------------- attack test
+
+	protected static void NonLeaders(notnull array<IEntity> men)
+	{
+		AIO_Server.Members(s_Group, men);
+		men.RemoveItem(Leader());
+	}
+
+	protected static void Flank()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		vector center = AIO_Maneuvers.Centroid(men);
+		s_vPoint = AIO_Maneuvers.Ground(center + Vector(80, 0, 0));
+		string reply = AIO_Maneuvers.Attack(men, Leader(), AIO_EOrder.ATK_FLANK_RIGHT, s_vPoint, 0);
+		Check("flank-order", reply.Contains("flanking right"), reply);
+		// where they should end: beside the target on the right (dir +X, right = -Z)
+		float distance = vector.DistanceXZ(center, s_vPoint);
+		vector dir = AIO_Maneuvers.Flat(s_vPoint - center);
+		vector side = Vector(dir[2], 0, -dir[0]);
+		s_vTarget = s_vPoint + side * Math.Max(30, distance * 0.35);
+		GetGame().GetCallqueue().CallLater(Flanked, 80000, false);
+	}
+
+	protected static void Flanked()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		vector center = AIO_Maneuvers.Centroid(men);
+		float off = vector.DistanceXZ(center, s_vTarget);
+		vector dir = AIO_Maneuvers.Flat(s_vPoint - s_vStart);
+		vector side = Vector(dir[2], 0, -dir[0]);
+		float rightOf = vector.Dot(center - s_vPoint, side);
+		Check("flank", off < 15 && rightOf > 15, string.Format("men %1 m from the flank position, %2 m right of the target", off, rightOf));
+
+		// Fire control on one man.
+		IEntity a = men[0];
+		SCR_AIUtilityComponent utility = AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(a));
+		AIO_Maneuvers.SetROE(a, EAIGroupCombatMode.HOLD_FIRE);
+		bool held = utility.m_CombatComponent.GetCombatMode() == EAIGroupCombatMode.HOLD_FIRE;
+		bool groupFree = s_Group.GetGroupUtilityComponent().GetCombatModeActual() != EAIGroupCombatMode.HOLD_FIRE;
+		AIO_Maneuvers.SetROE(a, -1);
+		bool back = utility.m_CombatComponent.GetCombatMode() == s_Group.GetGroupUtilityComponent().GetCombatModeActual();
+		Check("roe-per-man", held && groupFree && back, string.Format("held %1, group still free %2, back to group %3", held, groupFree, back));
+		AIO_Maneuvers.SetEngage(a, 1);
+		bool keep = utility.ShouldKeepFormation();
+		AIO_Maneuvers.SetEngage(a, 0);
+		bool free = !utility.ShouldKeepFormation();
+		AIO_Maneuvers.SetEngage(a, -1);
+		Check("engage-disengage", keep && free, string.Format("disengage keeps formation %1, engage frees %2", keep, free));
+		AIO_Maneuvers.FireOnMyLead(a, Leader());
+		bool waiting = AIO_Maneuvers.IsWaitingForLead(AIO_Tasks.AgentOf(a)) && utility.m_CombatComponent.GetCombatMode() == EAIGroupCombatMode.HOLD_FIRE;
+		AIO_Maneuvers.Fired(Leader());
+		bool opened = !AIO_Maneuvers.IsWaitingForLead(AIO_Tasks.AgentOf(a)) && utility.m_CombatComponent.GetCombatMode() == EAIGroupCombatMode.FIRE_AT_WILL;
+		AIO_Maneuvers.SetROE(a, -1);
+		Check("fire-on-my-lead", waiting && opened, string.Format("waiting %1, opened fire %2", waiting, opened));
+
+		// Bound forward 70 m further on.
+		s_vPoint = AIO_Maneuvers.Ground(center + Vector(70, 0, 0));
+		string reply = AIO_Maneuvers.Attack(men, Leader(), AIO_EOrder.BOUND, s_vPoint, 0);
+		Check("bound-order", reply.Contains("bounding"), reply);
+		GetGame().GetCallqueue().CallLater(Bounded, 110000, false);
+	}
+
+	protected static void Bounded()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		vector center = AIO_Maneuvers.Centroid(men);
+		float left = vector.DistanceXZ(center, s_vPoint);
+		Check("bound", left < 15, string.Format("men %1 m from the bound target", left));
+		foreach (IEntity man : men)
+			AIO_Tasks.Release(man);
+		Finish();
+	}
+
+	// ---------------------------------------------------------------- defense test
+
+	protected static ref array<IEntity> s_aBuildings;
+	protected static bool CollectBuilding(IEntity entity)
+	{
+		if (!entity.GetPrefabData())
+			return true;
+		string name = entity.GetPrefabData().GetPrefabName();
+		if (!name.Contains("Structures/Houses") && !name.Contains("Structures/Buildings"))
+			return true;
+		if (AIO_Maneuvers.BuildingOf(entity) == entity)
+			s_aBuildings.Insert(entity);
+		return true;
+	}
+
+	protected static IEntity FindBuilding(vector near)
+	{
+		s_aBuildings = {};
+		GetGame().GetWorld().QueryEntitiesBySphere(near, 700, CollectBuilding, null, EQueryEntitiesFlags.ALL);
+		IEntity best = null;
+		float bestDistance = float.MAX;
+		foreach (IEntity building : s_aBuildings)
+		{
+			vector mins, maxs;
+			building.GetWorldBounds(mins, maxs);
+			vector size = maxs - mins;
+			if (size[0] < 7 || size[2] < 7 || size[0] > 25 || size[2] > 25)
+				continue; // a house, not a shed or a factory
+			float distance = vector.DistanceXZ(building.GetOrigin(), near);
+			if (distance < bestDistance)
+			{
+				best = building;
+				bestDistance = distance;
+			}
+		}
+		Print(string.Format("[AIO] TEST defense: %1 buildings looked at", s_aBuildings.Count()));
+		return best;
+	}
+
+	protected static void AllRound()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		string reply = AIO_Maneuvers.Defense(men, Leader(), AIO_EOrder.DEF_360, vector.Zero, null);
+		Check("360-order", reply.Contains("all-round"), reply);
+		GetGame().GetCallqueue().CallLater(AllRounded, 25000, false);
+	}
+
+	protected static void AllRounded()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		int total;
+		int crouched = CountStance(ECharacterStance.CROUCH, total);
+		float worst = SlotError();
+		Check("360", crouched == total && worst < 3, string.Format("%1 of %2 crouched, worst %3 m off his spot", crouched, total, worst));
+		array<vector> inside = {};
+		AIO_Maneuvers.InteriorPoints(s_Building, men[0], inside);
+		Print(string.Format("[AIO] TEST defense: %1 interior points", inside.Count()));
+		string reply = AIO_Maneuvers.Defense(men, Leader(), AIO_EOrder.DEF_GARRISON, vector.Zero, s_Building);
+		Check("garrison-order", reply.Contains("garrisoning"), reply);
+		GetGame().GetCallqueue().CallLater(Garrisoned, 45000, false);
+	}
+
+	protected static int MenInside(array<IEntity> men)
+	{
+		vector mins, maxs;
+		s_Building.GetWorldBounds(mins, maxs);
+		int n;
+		foreach (IEntity man : men)
+		{
+			vector p = man.GetOrigin();
+			if (p[0] > mins[0] - 0.5 && p[0] < maxs[0] + 0.5 && p[2] > mins[2] - 0.5 && p[2] < maxs[2] + 0.5)
+				n++;
+		}
+		return n;
+	}
+
+	protected static void Garrisoned()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		int inside = MenInside(men);
+		Check("garrison", inside == men.Count(), string.Format("%1 of %2 men inside the building", inside, men.Count()));
+		foreach (IEntity man : men)
+			AIO_Tasks.Release(man);
+		string reply = AIO_Maneuvers.Defense(men, Leader(), AIO_EOrder.DEF_CLEAR, vector.Zero, s_Building);
+		Check("clear-order", reply.Contains("clearing"), reply);
+		GetGame().GetCallqueue().CallLater(Cleared, 60000, false);
+	}
+
+	protected static void Cleared()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		int done;
+		foreach (IEntity man : men)
+		{
+			AIO_HoldBehavior hold = AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(man)));
+			if (hold && (!hold.m_aLegs || hold.m_aLegs.IsEmpty()))
+				done++;
+		}
+		int inside = MenInside(men);
+		Check("clear", done == men.Count() && inside == men.Count(), string.Format("%1 of %2 men walked every room, %3 inside", done, men.Count(), inside));
+		vector forward, right;
+		AIO_Tasks.Facing(Leader(), forward, right);
+		s_vPoint = AIO_Maneuvers.Ground(Leader().GetOrigin() + Vector(0, 0, -25));
+		foreach (IEntity man : men)
+			AIO_Tasks.Release(man);
+		string reply = AIO_Maneuvers.Defense(men, Leader(), AIO_EOrder.DEF_FORTIFY, s_vPoint, null);
+		Check("fortify-order", reply.Contains("fortifying"), reply);
+		GetGame().GetCallqueue().CallLater(Fortified, 35000, false);
+	}
+
+	protected static void Fortified()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		int total;
+		int crouched = CountStance(ECharacterStance.CROUCH, total);
+		float farthest = 0;
+		foreach (IEntity man : men)
+		{
+			float d = vector.DistanceXZ(man.GetOrigin(), s_vPoint);
+			if (d > farthest)
+				farthest = d;
+			AIO_Tasks.Release(man);
+		}
+		Check("fortify", crouched == total && farthest < 22, string.Format("%1 of %2 crouched, farthest %3 m from the point", crouched, total, farthest));
 		Finish();
 	}
 
