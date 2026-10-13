@@ -68,8 +68,14 @@ class AIO_SquadBar
 			string task = member.m_sTask;
 			if (task.IsEmpty())
 				task = "-";
-			m_aTasks[i].SetText(string.Format("%1%  %2", member.m_iHealth, task));
-			m_aTasks[i].SetColorInt(HealthColor(member.m_iHealth));
+			string ammo = "";
+			if (member.m_iAmmo >= 0)
+				ammo = string.Format("  %1 mag", member.m_iAmmo);
+			m_aTasks[i].SetText(member.m_iHealth.ToString() + "%" + ammo + "  " + task);
+			int color = HealthColor(member.m_iHealth);
+			if (member.m_iAmmo >= 0 && member.m_iAmmo <= 1 && member.m_iHealth >= 40)
+				color = ARGB(255, 255, 200, 80); // low on ammo
+			m_aTasks[i].SetColorInt(color);
 			m_aBacks[i].SetVisible(true);
 			m_aNames[i].SetVisible(true);
 			m_aTasks[i].SetVisible(true);

@@ -44,7 +44,10 @@ enum AIO_EOrder
 	ADMIN_TELEPORT_ME,
 	ADMIN_TELEPORT_SQUAD,
 	ADMIN_KILL_TARGET,
-	TOGGLE_SQUAD_BAR // client only, never sent
+	TOGGLE_SQUAD_BAR, // client only, never sent
+	REARM,
+	REARM_FROM,
+	TAKE_WEAPON
 }
 
 // What an order needs from the player's side.
@@ -150,7 +153,11 @@ class AIO_MenuTree
 		stance.Order("Auto", AIO_EOrder.STANCE_AUTO);
 		stance.Order("Copy my stance", AIO_EOrder.COPY_STANCE);
 
-		root.Order("Heal up!", AIO_EOrder.HEAL_UP);
+		AIO_MenuItem supplies = root.Page("Supplies");
+		supplies.Order("Heal up!", AIO_EOrder.HEAL_UP);
+		supplies.Order("Rearm (nearest bodies, crates, vehicles)", AIO_EOrder.REARM);
+		supplies.Order("Rearm from that", AIO_EOrder.REARM_FROM, AIO_ETarget.POINT);
+		supplies.Order("Take that weapon", AIO_EOrder.TAKE_WEAPON, AIO_ETarget.POINT);
 
 		AIO_MenuItem more = root.Page("More");
 		more.Order("Squad bar on/off", AIO_EOrder.TOGGLE_SQUAD_BAR);

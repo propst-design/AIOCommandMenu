@@ -5,10 +5,12 @@
 //   -aioTaskTest 1 : orders to single soldiers (move a man, hold, rejoin).
 //   -aioMoveTest 1 : Move menu (Advance keeps station on the leader while he moves; Fall back).
 //   -aioInfantryTest 1 : Take cover, stance, Heal up (nobody hurt).
+//   -aioSupplyTest 1 : Rearm from a fallen teammate, Take weapon from an enemy body.
 // Prints "[AIO] TEST <name> PASS|FAIL ..." lines and "[AIO] TEST COMPLETE".
 class AIO_Test
 {
 	static const ResourceName GROUP = "{84E5BBAB25EA23E5}Prefabs/Groups/BLUFOR/Group_US_FireTeam.et";
+	static const ResourceName ENEMY = "{657590C1EC9E27D3}Prefabs/Groups/OPFOR/Group_USSR_LightFireTeam.et";
 
 	protected static SCR_AIGroup s_Group;
 	protected static vector s_vStart;
@@ -20,6 +22,9 @@ class AIO_Test
 	protected static int s_iFail;
 	protected static bool s_bMoveTest;
 	protected static bool s_bInfantryTest;
+	protected static bool s_bSupplyTest;
+	protected static SCR_AIGroup s_Enemy;
+	protected static ResourceName s_sEnemyWeapon;
 	protected static vector s_vForward;
 
 	static void MaybeStart()
@@ -31,7 +36,10 @@ class AIO_Test
 		string infantryValue;
 		System.GetCLIParam("aioInfantryTest", infantryValue);
 		s_bInfantryTest = infantryValue == "1";
-		if (!s_bMoveTest && !s_bInfantryTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
+		string supplyValue;
+		System.GetCLIParam("aioSupplyTest", supplyValue);
+		s_bSupplyTest = supplyValue == "1";
+		if (!s_bMoveTest && !s_bInfantryTest && !s_bSupplyTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
 			return;
 		if (!Replication.IsServer())
 			return;
@@ -99,7 +107,17 @@ class AIO_Test
 		params.Transform[3] = s_vStart;
 		s_Group = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(Resource.Load(GROUP), GetGame().GetWorld(), params));
 		Print(string.Format("[AIO] TEST tasks: group spawned at %1", s_vStart));
-		if (s_bInfantryTest)
+		if (s_bSupplyTest)
+		{
+			// Enemy fire team 20 m away, killed as soon as it is there: bodies to loot.
+			EntitySpawnParams enemyParams = new EntitySpawnParams();
+			enemyParams.TransformMode = ETransformMode.WORLD;
+			enemyParams.Transform[3] = FindSpot(s_vStart, 20);
+			s_Enemy = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(Resource.Load(ENEMY), GetGame().GetWorld(), enemyParams));
+			GetGame().GetCallqueue().CallLater(KillEnemies, 6000, false);
+			GetGame().GetCallqueue().CallLater(Supply, 14000, false);
+		}
+		else if (s_bInfantryTest)
 			GetGame().GetCallqueue().CallLater(Cover, 12000, false);
 		else if (s_bMoveTest)
 			GetGame().GetCallqueue().CallLater(Advance, 12000, false);
@@ -325,6 +343,126 @@ class AIO_Test
 		int total;
 		int prone = CountStance(ECharacterStance.PRONE, total);
 		Check("auto", prone < total, string.Format("%1 of %2 men still prone after Auto (calm: they should get up)", prone, total));
+		Finish();
+	}
+
+	// ---------------------------------------------------------------- supply test
+
+	protected static void KillEnemies()
+	{
+		array<IEntity> enemies = {};
+		AIO_Server.Members(s_Enemy, enemies);
+		foreach (IEntity enemy : enemies)
+		{
+			SCR_DamageManagerComponent damage = SCR_DamageManagerComponent.GetDamageManager(enemy);
+			if (damage)
+				damage.Kill(Instigator.CreateInstigator(enemy));
+		}
+		Print(string.Format("[AIO] TEST supply: %1 enemies killed for loot", enemies.Count()));
+	}
+
+	// Magazines for the current muzzle of a man's first rifle-type weapon.
+	protected static int Mags(IEntity body)
+	{
+		return AIO_Supplies.MagazineCount(body);
+	}
+
+	protected static void Supply()
+	{
+		IEntity leader = Leader();
+		array<IEntity> members = {};
+		AIO_Server.Members(s_Group, members);
+		members.RemoveItem(leader);
+		if (members.Count() < 3)
+		{
+			Check("setup", false, "not enough men");
+			Finish();
+			return;
+		}
+		s_A = members[0];
+		s_B = members[1];
+		s_C = members[2];
+		// C falls: his body is the friendly source. A loses all his spare magazines.
+		SCR_DamageManagerComponent damage = SCR_DamageManagerComponent.GetDamageManager(s_C);
+		damage.Kill(Instigator.CreateInstigator(s_C));
+		SCR_InventoryStorageManagerComponent inventory = AIO_Supplies.InventoryOf(s_A);
+		array<IEntity> items = {};
+		inventory.GetItems(items);
+		int deleted;
+		foreach (IEntity item : items)
+		{
+			if (item.FindComponent(MagazineComponent) && inventory.TryDeleteItem(item))
+				deleted++;
+		}
+		GetGame().GetCallqueue().CallLater(SupplyOrders, 3000, false);
+		Print(string.Format("[AIO] TEST supply: A dropped %1 magazines", deleted));
+	}
+
+	protected static void SupplyOrders()
+	{
+		int before = Mags(s_A);
+		array<IEntity> men = {s_A};
+		string reply = AIO_Supplies.Rearm(men, null, 0);
+		Check("rearm-order", reply.Contains("1 men going"), string.Format("%1 (A had %2 magazines)", reply, before));
+		// B takes the best weapon off an enemy body.
+		// Enemy bodies: dead characters near the enemy spawn.
+		s_aDead = {};
+		GetGame().GetWorld().QueryEntitiesBySphere(s_vStart, 60, CollectDead, null, EQueryEntitiesFlags.ALL);
+		IEntity enemyBody = null;
+		foreach (IEntity dead : s_aDead)
+		{
+			if (dead == s_C)
+				continue;
+			enemyBody = dead;
+			break;
+		}
+		if (!enemyBody)
+		{
+			Check("take-order", false, "no enemy body found");
+			GetGame().GetCallqueue().CallLater(Supplied, 30000, false);
+			return;
+		}
+		IEntity weapon = AIO_Supplies.WeaponAt(enemyBody);
+		if (weapon && weapon.GetPrefabData())
+			s_sEnemyWeapon = weapon.GetPrefabData().GetPrefabName();
+		array<IEntity> taker = {s_B};
+		reply = AIO_Supplies.TakeWeapon(taker, enemyBody, enemyBody, 0);
+		Check("take-order", reply.Contains("going to take"), string.Format("%1 (%2)", reply, s_sEnemyWeapon));
+		GetGame().GetCallqueue().CallLater(Supplied, 35000, false);
+	}
+
+	protected static ref array<IEntity> s_aDead;
+	protected static bool CollectDead(IEntity entity)
+	{
+		if (AIO_Supplies.IsDeadCharacter(entity))
+			s_aDead.Insert(entity);
+		return true;
+	}
+
+	protected static void Supplied()
+	{
+		int after = Mags(s_A);
+		Check("rearm", after >= 2, string.Format("A now has %1 magazines", after));
+		bool hasWeapon = false;
+		BaseWeaponManagerComponent weapons = BaseWeaponManagerComponent.Cast(s_B.FindComponent(BaseWeaponManagerComponent));
+		array<IEntity> list = {};
+		if (weapons)
+			weapons.GetWeaponsList(list);
+		foreach (IEntity weaponEntity : list)
+		{
+			if (weaponEntity.GetPrefabData() && weaponEntity.GetPrefabData().GetPrefabName() == s_sEnemyWeapon)
+				hasWeapon = true;
+		}
+		Check("take-weapon", hasWeapon, string.Format("B carries %1: %2", s_sEnemyWeapon, hasWeapon));
+		array<ref AIO_Need> needs = {};
+		AIO_Supplies.Needs(s_B, needs);
+		int magNeeds;
+		foreach (AIO_Need need : needs)
+		{
+			if (need.m_iKind == AIO_Supplies.KIND_MAGAZINE)
+				magNeeds++;
+		}
+		Check("take-weapon-ammo", hasWeapon && Mags(s_B) > 0, string.Format("B has %1 magazines for his current weapon", Mags(s_B)));
 		Finish();
 	}
 

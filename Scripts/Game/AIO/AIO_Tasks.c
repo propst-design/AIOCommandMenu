@@ -103,6 +103,7 @@ class AIO_Tasks
 		SCR_AIUtilityComponent utility = UtilityOf(agent);
 		if (!utility)
 			return;
+		AIO_Supplies.Cancel(agent); // any new order ends an errand
 		array<ref AIActionBase> holds = {};
 		utility.FindActionsOfType(AIO_HoldBehavior, holds);
 		foreach (AIActionBase action : holds)
@@ -188,6 +189,8 @@ class AIO_Tasks
 		}
 		if (utility.HasActionOfType(SCR_AIHealBehavior))
 			label = "Healing";
+		if (AIO_Supplies.IsFetching(agent))
+			label = "Rearming";
 		if (s_aCopyAgents.Contains(agent))
 		{
 			if (!label.IsEmpty())
@@ -420,7 +423,7 @@ class AIO_Tasks
 
 	// ---------------------------------------------------------------- watchdog
 
-	protected static void Watch()
+	static void Watch()
 	{
 		if (s_bWatching)
 			return;
@@ -432,6 +435,7 @@ class AIO_Tasks
 	protected static void WatchTick()
 	{
 		KeepStances();
+		AIO_Supplies.Tick();
 		for (int c = s_aCopyAgents.Count() - 1; c >= 0; c--)
 		{
 			AIAgent copier = s_aCopyAgents[c];

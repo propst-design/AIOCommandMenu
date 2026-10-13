@@ -17,6 +17,7 @@ class AIO_Member
 	int m_iHealth; // percent
 	int m_iTeam;   // AIO_Menu.TEAM_*
 	string m_sTask; // what he's doing (from the server), "" = with the squad
+	int m_iAmmo = -1; // magazines for his weapon, -1 = unknown/none
 }
 
 // The menu on the local player's screen. Client only; orders go to the server through
@@ -328,8 +329,14 @@ class AIO_Menu
 				ShowFeedback("Look at a spot first");
 				return;
 			}
+			// The ray may hit a part (a weapon on a body, a wheel): use the nearest replicated parent.
+			while (hitEntity && !hitEntity.FindComponent(RplComponent))
+				hitEntity = hitEntity.GetParent();
 			if (hitEntity)
-				target = Replication.FindItemId(hitEntity);
+			{
+				RplComponent rpl = RplComponent.Cast(hitEntity.FindComponent(RplComponent));
+				target = rpl.Id();
+			}
 		}
 		if (item.m_eOrder == AIO_EOrder.TOGGLE_SQUAD_BAR)
 		{
@@ -433,7 +440,7 @@ class AIO_Menu
 
 	// ------------------------------------------------------------------ server data
 
-	void SetRoster(array<RplId> ids, array<string> names, array<int> health, array<string> tasks, bool admin)
+	void SetRoster(array<RplId> ids, array<string> names, array<int> health, array<string> tasks, array<int> ammo, bool admin)
 	{
 		m_bAdmin = admin;
 		m_aMembers.Clear();
@@ -445,6 +452,8 @@ class AIO_Menu
 			member.m_iHealth = health[i];
 			if (tasks && i < tasks.Count())
 				member.m_sTask = tasks[i];
+			if (ammo && i < ammo.Count())
+				member.m_iAmmo = ammo[i];
 			int team;
 			if (m_mTeams.Find(ids[i], team))
 				member.m_iTeam = team;
