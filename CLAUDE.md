@@ -69,7 +69,7 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
 - Hold behaviour extras: m_aLegs (routes), m_vLook (keeps looking, priority 15). `ActiveHold()` skips
   ended holds that linger in the queue. `Rejoin()` walks far-off men back to the leader (formation
   following alone was sometimes slow to pick them up).
-- `AIO_SquadBar.c`: bottom-centre strip while leading AI (roster every 2 s, 1 s with the menu open):
+- `AIO_SquadBar.c`: bottom-centre strip, only while the menu is open (Jacob, 13 Oct; roster every 1 s then):
   key number, name (team colour), health, magazines, task label (`AIO_Tasks.TaskLabel`), plus the key
   number over each man's head in his team colour (within 120 m). More > Squad bar on/off.
 - `AIO_Test.c`: server tests (`-aioTaskTest 1`: spawns a US fire team on GM_Arland, moves/holds/releases men).
