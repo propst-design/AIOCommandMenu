@@ -1,4 +1,4 @@
-All-in-One Command Menu (Reforger)
+AiO Command Menu (Reforger)
 
 A fast, numbered command menu for the AI soldiers you lead, in the spirit of Leopard20's All-in-One Command Menu for Arma 3. Press T, then a number or two, and your squad moves, flanks, takes cover or clears a building. No mouse, no wheel.
 
