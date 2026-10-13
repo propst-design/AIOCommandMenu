@@ -11,9 +11,9 @@ modded class SCR_AICombatComponent
 	protected bool m_bAIO_HasMode;
 	protected EAIGroupCombatMode m_eAIO_Mode;
 
-	void AIO_SetCombatMode(bool set, EAIGroupCombatMode mode)
+	void AIO_SetCombatMode(bool enabled, EAIGroupCombatMode mode)
 	{
-		m_bAIO_HasMode = set;
+		m_bAIO_HasMode = enabled;
 		m_eAIO_Mode = mode;
 	}
 
