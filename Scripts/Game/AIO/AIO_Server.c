@@ -89,12 +89,15 @@ class AIO_Server
 		if (!slave)
 			return "No soldiers under your command";
 		if (members && !members.IsEmpty())
-			return ExecuteMen(slave, order, members, point);
+			return ExecuteMen(slave, order, members, point, pc.GetControlledEntity());
 		// Whole-squad movement orders take over from any single-man tasks.
 		if (order == AIO_EOrder.HALT || order == AIO_EOrder.FOLLOW || order == AIO_EOrder.MOVE_HERE || order == AIO_EOrder.HOLD_HERE)
 			AIO_Tasks.ReleaseGroup(slave);
 
 		IEntity player = pc.GetControlledEntity();
+		string moved = MoveMenu(slave, player, order, null);
+		if (!moved.IsEmpty())
+			return moved;
 		switch (order)
 		{
 			case AIO_EOrder.HALT:
@@ -137,14 +140,90 @@ class AIO_Server
 		return "Not built yet: " + typename.EnumToString(AIO_EOrder, order);
 	}
 
+	static const float SHIFT_DISTANCE = 50; // Advance / Stay back / Flank, as in Arma 3
+	static const float FALL_BACK_DISTANCE = 40;
+
+	// Move menu: Advance, Stay back, Flank left/right keep station on the player; Fall back goes to
+	// a spot behind him and holds. men = null means the whole squad. Empty string = not a Move order.
+	static string MoveMenu(SCR_AIGroup slave, IEntity player, int order, array<IEntity> men)
+	{
+		if (order != AIO_EOrder.ADVANCE && order != AIO_EOrder.STAY_BACK && order != AIO_EOrder.FLANK_LEFT
+			&& order != AIO_EOrder.FLANK_RIGHT && order != AIO_EOrder.FALL_BACK)
+			return "";
+		if (!player)
+			return "You need to be on foot in the world to give that order";
+		array<IEntity> bodies = {};
+		if (men)
+			bodies.Copy(men);
+		else
+			Members(slave, bodies);
+		bodies.RemoveItem(player);
+		if (bodies.IsEmpty())
+			return "No soldiers under your command";
+		vector forward, right;
+		AIO_Tasks.Facing(player, forward, right);
+		vector offset;
+		vector across = right;
+		string what;
+		if (order == AIO_EOrder.ADVANCE)
+		{
+			offset = forward * SHIFT_DISTANCE;
+			what = "advancing";
+		}
+		else if (order == AIO_EOrder.STAY_BACK)
+		{
+			offset = forward * -SHIFT_DISTANCE;
+			what = "staying back";
+		}
+		else if (order == AIO_EOrder.FLANK_LEFT)
+		{
+			offset = right * -SHIFT_DISTANCE;
+			across = forward;
+			what = "flanking left";
+		}
+		else if (order == AIO_EOrder.FLANK_RIGHT)
+		{
+			offset = right * SHIFT_DISTANCE;
+			across = forward;
+			what = "flanking right";
+		}
+		else
+		{
+			offset = forward * -FALL_BACK_DISTANCE;
+			what = "falling back";
+		}
+		int count;
+		for (int i = 0; i < bodies.Count(); i++)
+		{
+			vector slot = AIO_Tasks.LineOffset(offset, across, i, bodies.Count());
+			bool ok;
+			if (order == AIO_EOrder.FALL_BACK)
+			{
+				vector spot = player.GetOrigin() + slot;
+				spot[1] = GetGame().GetWorld().GetSurfaceY(spot[0], spot[2]);
+				ok = AIO_Tasks.MoveTo(bodies[i], spot);
+			}
+			else
+			{
+				ok = AIO_Tasks.KeepOffset(bodies[i], player, slot);
+			}
+			if (ok)
+				count++;
+		}
+		return string.Format("%1 men %2", count, what);
+	}
+
 	// Orders to the selected men only (AIO_Tasks.c).
-	static string ExecuteMen(SCR_AIGroup slave, int order, array<RplId> ids, vector point)
+	static string ExecuteMen(SCR_AIGroup slave, int order, array<RplId> ids, vector point, IEntity player)
 	{
 		array<IEntity> bodies = {};
 		AIO_Tasks.Resolve(slave, ids, bodies);
 		if (bodies.IsEmpty())
 			return "Those men are no longer in your squad";
 		int count;
+		string moved = MoveMenu(slave, player, order, bodies);
+		if (!moved.IsEmpty())
+			return moved;
 		if (order == AIO_EOrder.MOVE_HERE)
 		{
 			for (int i = 0; i < bodies.Count(); i++)
