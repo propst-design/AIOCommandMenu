@@ -89,7 +89,10 @@ class AIO_Server
 		if (!slave)
 			return "No soldiers under your command";
 		if (members && !members.IsEmpty())
-			return "Orders to selected men come in the next build (whole squad only for now)";
+			return ExecuteMen(slave, order, members, point);
+		// Whole-squad movement orders take over from any single-man tasks.
+		if (order == AIO_EOrder.HALT || order == AIO_EOrder.FOLLOW || order == AIO_EOrder.MOVE_HERE || order == AIO_EOrder.HOLD_HERE)
+			AIO_Tasks.ReleaseGroup(slave);
 
 		IEntity player = pc.GetControlledEntity();
 		switch (order)
@@ -132,6 +135,43 @@ class AIO_Server
 				return "Return fire needs the game's commanding (not in this scenario)";
 		}
 		return "Not built yet: " + typename.EnumToString(AIO_EOrder, order);
+	}
+
+	// Orders to the selected men only (AIO_Tasks.c).
+	static string ExecuteMen(SCR_AIGroup slave, int order, array<RplId> ids, vector point)
+	{
+		array<IEntity> bodies = {};
+		AIO_Tasks.Resolve(slave, ids, bodies);
+		if (bodies.IsEmpty())
+			return "Those men are no longer in your squad";
+		int count;
+		if (order == AIO_EOrder.MOVE_HERE)
+		{
+			for (int i = 0; i < bodies.Count(); i++)
+			{
+				if (AIO_Tasks.MoveTo(bodies[i], AIO_Tasks.SpreadSpot(point, i)))
+					count++;
+			}
+			return string.Format("%1 men moving", count);
+		}
+		if (order == AIO_EOrder.HALT || order == AIO_EOrder.HOLD_HERE)
+		{
+			foreach (IEntity holder : bodies)
+			{
+				if (AIO_Tasks.HoldHere(holder))
+					count++;
+			}
+			return string.Format("%1 men holding", count);
+		}
+		if (order == AIO_EOrder.FOLLOW)
+		{
+			foreach (IEntity follower : bodies)
+				AIO_Tasks.Release(follower);
+			return string.Format("%1 men rejoining", bodies.Count());
+		}
+		if (order == AIO_EOrder.HOLD_FIRE || order == AIO_EOrder.FIRE_AT_WILL || order == AIO_EOrder.RETURN_FIRE)
+			return "Rules of engagement go to the whole squad for now (clear the selection)";
+		return "Not built yet for selected men: " + typename.EnumToString(AIO_EOrder, order);
 	}
 
 	// Runs one of the game's own commanding-menu commands for the player (voice reply,
