@@ -278,6 +278,16 @@ class AIO_Test
 		int total;
 		int crouched = CountStance(ECharacterStance.CROUCH, total);
 		Check("cover", crouched == total && total > 0, string.Format("%1 of %2 men crouched; worst man %3 m off his cover spot", crouched, total, SlotError()));
+		// Cover spots hug walls, where nobody fits lying down: test prone back in the open formation.
+		array<IEntity> members = {};
+		AIO_Server.Members(s_Group, members);
+		foreach (IEntity member : members)
+			AIO_Tasks.Release(member);
+		GetGame().GetCallqueue().CallLater(ProneOrder, 12000, false);
+	}
+
+	protected static void ProneOrder()
+	{
 		string reply = AIO_Server.Infantry(s_Group, Leader(), AIO_EOrder.STANCE_PRONE, null);
 		Check("prone-order", reply.Contains("prone"), reply);
 		GetGame().GetCallqueue().CallLater(Proned, 10000, false);
