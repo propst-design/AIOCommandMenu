@@ -4,6 +4,7 @@
 // Automated checks on a dedicated server (no player). Started by host options:
 //   -aioTaskTest 1 : orders to single soldiers (move a man, hold, rejoin).
 //   -aioMoveTest 1 : Move menu (Advance keeps station on the leader while he moves; Fall back).
+//   -aioInfantryTest 1 : Take cover, stance, Heal up (nobody hurt).
 // Prints "[AIO] TEST <name> PASS|FAIL ..." lines and "[AIO] TEST COMPLETE".
 class AIO_Test
 {
@@ -18,6 +19,7 @@ class AIO_Test
 	protected static int s_iPass;
 	protected static int s_iFail;
 	protected static bool s_bMoveTest;
+	protected static bool s_bInfantryTest;
 	protected static vector s_vForward;
 
 	static void MaybeStart()
@@ -26,7 +28,10 @@ class AIO_Test
 		string moveValue;
 		System.GetCLIParam("aioMoveTest", moveValue);
 		s_bMoveTest = moveValue == "1";
-		if (!s_bMoveTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
+		string infantryValue;
+		System.GetCLIParam("aioInfantryTest", infantryValue);
+		s_bInfantryTest = infantryValue == "1";
+		if (!s_bMoveTest && !s_bInfantryTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
 			return;
 		if (!Replication.IsServer())
 			return;
@@ -94,7 +99,9 @@ class AIO_Test
 		params.Transform[3] = s_vStart;
 		s_Group = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(Resource.Load(GROUP), GetGame().GetWorld(), params));
 		Print(string.Format("[AIO] TEST tasks: group spawned at %1", s_vStart));
-		if (s_bMoveTest)
+		if (s_bInfantryTest)
+			GetGame().GetCallqueue().CallLater(Cover, 12000, false);
+		else if (s_bMoveTest)
 			GetGame().GetCallqueue().CallLater(Advance, 12000, false);
 		else
 			GetGame().GetCallqueue().CallLater(Order, 12000, false);
@@ -238,6 +245,66 @@ class AIO_Test
 		if (!members.IsEmpty())
 			error = total / members.Count();
 		Check("fallback", error < 12, string.Format("men average %1 m from the fall-back spot", error));
+		Finish();
+	}
+
+	// ---------------------------------------------------------------- infantry test
+
+	protected static int CountStance(int stance, out int total)
+	{
+		array<IEntity> members = {};
+		AIO_Server.Members(s_Group, members);
+		members.RemoveItem(Leader());
+		total = members.Count();
+		int n;
+		foreach (IEntity member : members)
+		{
+			ChimeraCharacter character = ChimeraCharacter.Cast(member);
+			if (character && character.GetCharacterController() && character.GetCharacterController().GetStance() == stance)
+				n++;
+		}
+		return n;
+	}
+
+	protected static void Cover()
+	{
+		string reply = AIO_Server.Infantry(s_Group, Leader(), AIO_EOrder.TAKE_COVER, null);
+		Check("cover-order", reply.Contains("taking cover") || reply.Contains("crouch in place"), reply);
+		GetGame().GetCallqueue().CallLater(Covered, 25000, false);
+	}
+
+	protected static void Covered()
+	{
+		int total;
+		int crouched = CountStance(ECharacterStance.CROUCH, total);
+		Check("cover", crouched == total && total > 0, string.Format("%1 of %2 men crouched; worst man %3 m off his cover spot", crouched, total, SlotError()));
+		string reply = AIO_Server.Infantry(s_Group, Leader(), AIO_EOrder.STANCE_PRONE, null);
+		Check("prone-order", reply.Contains("prone"), reply);
+		GetGame().GetCallqueue().CallLater(Proned, 10000, false);
+	}
+
+	protected static void Proned()
+	{
+		int total;
+		int prone = CountStance(ECharacterStance.PRONE, total);
+		Check("prone", prone == total && total > 0, string.Format("%1 of %2 men prone", prone, total));
+		string reply = AIO_Server.Infantry(s_Group, Leader(), AIO_EOrder.HEAL_UP, null);
+		Check("heal-unhurt", reply.Contains("Nobody is hurt"), reply);
+		// Release: back to formation; Auto stance.
+		array<IEntity> members = {};
+		AIO_Server.Members(s_Group, members);
+		foreach (IEntity member : members)
+			AIO_Tasks.Release(member);
+		reply = AIO_Server.Infantry(s_Group, Leader(), AIO_EOrder.STANCE_AUTO, null);
+		Check("auto-order", reply.Contains("own stance"), reply);
+		GetGame().GetCallqueue().CallLater(Autoed, 12000, false);
+	}
+
+	protected static void Autoed()
+	{
+		int total;
+		int prone = CountStance(ECharacterStance.PRONE, total);
+		Check("auto", prone < total, string.Format("%1 of %2 men still prone after Auto (calm: they should get up)", prone, total));
 		Finish();
 	}
 
