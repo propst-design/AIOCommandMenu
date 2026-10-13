@@ -1,7 +1,7 @@
 // All-in-One Command Menu for Arma Reforger
 // Copyright (C) 2026 Jacob (propst-design). Licensed under the GNU GPL v3 or later (see LICENSE).
 
-// The squad bar: a strip at the bottom of the screen while you lead AI. One box per man:
+// The squad bar: a strip at the bottom of the screen while the menu is open and you lead AI. One box per man:
 // his number (the Select members key), name, health, team colour, what he's doing.
 // Selected men are highlighted. More > "Squad bar on/off" hides it (remembered per game).
 class AIO_SquadBar

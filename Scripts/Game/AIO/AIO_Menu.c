@@ -129,13 +129,11 @@ class AIO_Menu
 			AIO_SquadBar.Get().Hide();
 			return;
 		}
-		// The squad bar needs the roster too: every 2 s while closed (1 s while open, below).
-		if (!m_bOpen && now >= m_iNextRosterAsk)
-		{
-			m_iNextRosterAsk = now + 2000;
-			pc.AIO_AskRoster();
-		}
-		AIO_SquadBar.Get().Update(now, m_aMembers, m_aSelected);
+		// The squad bar and the markers over the men show only while the menu is open.
+		if (m_bOpen)
+			AIO_SquadBar.Get().Update(now, m_aMembers, m_aSelected);
+		else
+			AIO_SquadBar.Get().Hide();
 
 		if (!m_bOpen)
 		{
