@@ -180,7 +180,13 @@ class AIO_Tasks
 			s_aStances.RemoveOrdered(at);
 		}
 		if (stance < 0)
+		{
+			// Auto: stand up now; the man's own behaviours pick his stance from here on.
+			ChimeraCharacter freed = ChimeraCharacter.Cast(agent.GetControlledEntity());
+			if (freed && freed.GetCharacterController() && freed.GetCharacterController().GetStance() == ECharacterStance.PRONE)
+				SCR_AIStanceHandling.SetStance(freed.GetCharacterController(), ECharacterStance.CROUCH);
 			return;
+		}
 		s_aStanceAgents.Insert(agent);
 		s_aStances.Insert(stance);
 		Watch();

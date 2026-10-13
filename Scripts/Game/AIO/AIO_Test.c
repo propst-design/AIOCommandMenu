@@ -262,6 +262,16 @@ class AIO_Test
 			ChimeraCharacter character = ChimeraCharacter.Cast(member);
 			if (character && character.GetCharacterController() && character.GetCharacterController().GetStance() == stance)
 				n++;
+			else if (character && character.GetCharacterController())
+			{
+				CharacterControllerComponent controller = character.GetCharacterController();
+				AIAgent agent = AIO_Tasks.AgentOf(member);
+				SCR_AIUtilityComponent utility = AIO_Tasks.UtilityOf(agent);
+				string action = "none";
+				if (utility && utility.GetCurrentAction())
+					action = utility.GetCurrentAction().ClassName();
+				Print(string.Format("[AIO] TEST detail: %1 stance %2 (wanted %3), speed %4, action %5", AIO_Server.NameOf(member), controller.GetStance(), stance, controller.GetVelocity().Length(), action));
+			}
 		}
 		return n;
 	}
