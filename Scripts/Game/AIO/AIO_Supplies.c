@@ -128,7 +128,7 @@ class AIO_Supplies
 		foreach (IEntity item : items)
 		{
 			MagazineComponent magazine = MagazineComponent.Cast(item.FindComponent(MagazineComponent));
-			if (magazine && magazine.GetMagazineWell() && magazine.GetMagazineWell().Type() == well && item.GetPrefabData())
+			if (magazine && magazine.GetMagazineWell() && magazine.GetMagazineWell().Type().ToString() == well.ToString() && item.GetPrefabData())
 				return item.GetPrefabData().GetPrefabName();
 		}
 		return "";
@@ -171,7 +171,10 @@ class AIO_Supplies
 		if (kind != KIND_MAGAZINE)
 			return true;
 		MagazineComponent magazine = MagazineComponent.Cast(item.FindComponent(MagazineComponent));
-		if (!magazine || !magazine.GetMagazineWell() || magazine.GetMagazineWell().Type() != need.m_tWell)
+		if (!magazine || !magazine.GetMagazineWell())
+			return false;
+		// Compare well types by name (typename inequality isn't reliable in Enforce).
+		if (magazine.GetMagazineWell().Type().ToString() != need.m_tWell.ToString())
 			return false;
 		return magazine.GetAmmoCount() > 0;
 	}
@@ -194,8 +197,8 @@ class AIO_Supplies
 	// Loose item lying on the ground (not in anyone's inventory).
 	static bool IsLooseItem(IEntity entity)
 	{
-		if (!entity)
-			return false;
+		if (!entity || ChimeraCharacter.Cast(entity))
+			return false; // characters have an inventory item component too
 		InventoryItemComponent item = InventoryItemComponent.Cast(entity.FindComponent(InventoryItemComponent));
 		if (!item)
 			return false;
@@ -477,6 +480,10 @@ class AIO_Supplies
 		}
 		if (!IsDeadCharacter(target))
 			return null;
+		// Soldiers drop their weapon when they fall: the best weapon lying within 3 m of the body.
+		IEntity dropped = BestLooseWeaponNear(target.GetOrigin(), 3);
+		if (dropped)
+			return dropped;
 		BaseWeaponManagerComponent weapons = BaseWeaponManagerComponent.Cast(target.FindComponent(BaseWeaponManagerComponent));
 		if (!weapons)
 			return null;
@@ -505,6 +512,51 @@ class AIO_Supplies
 				bestRank = rank;
 			}
 		}
+		return best;
+	}
+
+	protected static ref array<IEntity> s_aWeaponHits;
+
+	protected static bool WeaponHit(IEntity entity)
+	{
+		if (entity.FindComponent(BaseWeaponComponent) && IsLooseItem(entity))
+			s_aWeaponHits.Insert(entity);
+		return true;
+	}
+
+	static int WeaponRank(IEntity weaponEntity)
+	{
+		BaseWeaponComponent weapon = BaseWeaponComponent.Cast(weaponEntity.FindComponent(BaseWeaponComponent));
+		if (!weapon)
+			return 0;
+		EWeaponType type = weapon.GetWeaponType();
+		if (type == EWeaponType.WT_ROCKETLAUNCHER)
+			return 4;
+		if (type == EWeaponType.WT_MACHINEGUN || type == EWeaponType.WT_SNIPERRIFLE)
+			return 3;
+		if (type == EWeaponType.WT_RIFLE || type == EWeaponType.WT_GRENADELAUNCHER)
+			return 2;
+		if (type == EWeaponType.WT_HANDGUN)
+			return 1;
+		return 0;
+	}
+
+	static IEntity BestLooseWeaponNear(vector center, float radius)
+	{
+		s_aWeaponHits = {};
+		GetGame().GetWorld().QueryEntitiesBySphere(center, radius, WeaponHit, null, EQueryEntitiesFlags.ALL);
+		IEntity best = null;
+		int bestRank = 0;
+		foreach (IEntity hit : s_aWeaponHits)
+		{
+			int rank = WeaponRank(hit);
+			if (rank > bestRank)
+			{
+				best = hit;
+				bestRank = rank;
+			}
+		}
+		s_aWeaponHits = null;
 		return best;
 	}
 
