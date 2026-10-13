@@ -1,3 +1,4 @@
 # name|-aio...Test 1|timeout seconds[|aca]  (server tests, re-read on every request)
 tasks|-aioTaskTest 1|180
 moves|-aioMoveTest 1|220
+infantry|-aioInfantryTest 1|180

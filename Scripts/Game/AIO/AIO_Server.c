@@ -98,6 +98,9 @@ class AIO_Server
 		string moved = MoveMenu(slave, player, order, null);
 		if (!moved.IsEmpty())
 			return moved;
+		string infantry = Infantry(slave, player, order, null);
+		if (!infantry.IsEmpty())
+			return infantry;
 		switch (order)
 		{
 			case AIO_EOrder.HALT:
@@ -213,6 +216,95 @@ class AIO_Server
 		return string.Format("%1 men %2", count, what);
 	}
 
+	// Take cover, Stance, Copy my stance, Heal up. men = null means the whole squad.
+	// Empty string = not one of these orders.
+	static string Infantry(SCR_AIGroup slave, IEntity player, int order, array<IEntity> men)
+	{
+		if (order != AIO_EOrder.TAKE_COVER && order != AIO_EOrder.HEAL_UP && order != AIO_EOrder.COPY_STANCE
+			&& order != AIO_EOrder.STANCE_UP && order != AIO_EOrder.STANCE_CROUCH && order != AIO_EOrder.STANCE_PRONE && order != AIO_EOrder.STANCE_AUTO)
+			return "";
+		array<IEntity> bodies = {};
+		if (men)
+			bodies.Copy(men);
+		else
+			Members(slave, bodies);
+		if (player)
+			bodies.RemoveItem(player);
+		if (bodies.IsEmpty())
+			return "No soldiers under your command";
+
+		if (order == AIO_EOrder.TAKE_COVER)
+		{
+			if (!player)
+				return "You need to be on foot in the world to give that order";
+			vector forward, right;
+			AIO_Tasks.Facing(player, forward, right);
+			vector threat = player.GetOrigin() + forward * 150;
+			int inCover;
+			foreach (IEntity coverer : bodies)
+			{
+				if (AIO_Tasks.TakeCover(coverer, threat))
+					inCover++;
+			}
+			int crouching = bodies.Count() - inCover;
+			if (crouching == 0)
+				return string.Format("%1 men taking cover", inCover);
+			return string.Format("%1 men taking cover, %2 found none and crouch in place", inCover, crouching);
+		}
+		if (order == AIO_EOrder.HEAL_UP)
+		{
+			int treating, unhurt, noKit;
+			foreach (IEntity patient : bodies)
+			{
+				int result = AIO_Tasks.HealSelf(patient);
+				if (result > 0)
+					treating++;
+				else if (result == 0)
+					unhurt++;
+				else
+					noKit++;
+			}
+			string reply = string.Format("%1 men treating wounds", treating);
+			if (noKit > 0)
+				reply += string.Format(", %1 hurt with nothing to treat with", noKit);
+			if (treating == 0 && noKit == 0)
+				reply = "Nobody is hurt";
+			return reply;
+		}
+		if (order == AIO_EOrder.COPY_STANCE)
+		{
+			if (!player)
+				return "You need to be on foot in the world to give that order";
+			foreach (IEntity copier : bodies)
+				AIO_Tasks.CopyStance(copier, player);
+			return string.Format("%1 men copying your stance", bodies.Count());
+		}
+		int stance = -1;
+		string what = "choosing their own stance";
+		if (order == AIO_EOrder.STANCE_UP)
+		{
+			stance = ECharacterStance.STAND;
+			what = "standing";
+		}
+		else if (order == AIO_EOrder.STANCE_CROUCH)
+		{
+			stance = ECharacterStance.CROUCH;
+			what = "crouching";
+		}
+		else if (order == AIO_EOrder.STANCE_PRONE)
+		{
+			stance = ECharacterStance.PRONE;
+			what = "going prone";
+		}
+		foreach (IEntity body : bodies)
+		{
+			AIAgent agent = AIO_Tasks.AgentOf(body);
+			AIO_Tasks.StopCopying(agent);
+			AIO_Tasks.SetStance(agent, stance);
+		}
+		return string.Format("%1 men %2", bodies.Count(), what);
+	}
+
 	// Orders to the selected men only (AIO_Tasks.c).
 	static string ExecuteMen(SCR_AIGroup slave, int order, array<RplId> ids, vector point, IEntity player)
 	{
@@ -224,6 +316,9 @@ class AIO_Server
 		string moved = MoveMenu(slave, player, order, bodies);
 		if (!moved.IsEmpty())
 			return moved;
+		string infantry = Infantry(slave, player, order, bodies);
+		if (!infantry.IsEmpty())
+			return infantry;
 		if (order == AIO_EOrder.MOVE_HERE)
 		{
 			for (int i = 0; i < bodies.Count(); i++)
