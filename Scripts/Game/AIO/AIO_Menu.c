@@ -469,8 +469,37 @@ class AIO_Menu
 			m_iSelectPage = 0;
 	}
 
+	// Server messages carry names as localisation keys (#AR-Surname_...): translate those words.
+	static string TranslateWords(string text)
+	{
+		if (!text.Contains("#"))
+			return text;
+		array<string> words = {};
+		text.Split(" ", words, false);
+		string result = "";
+		foreach (string word : words)
+		{
+			string tail = "";
+			if (word.StartsWith("#"))
+			{
+				// keep trailing punctuation outside the key ("#AR-Surname_EN_Smith," -> "Smith,")
+				while (word.Length() > 1 && (word.EndsWith(",") || word.EndsWith(".") || word.EndsWith(":")))
+				{
+					tail = word.Substring(word.Length() - 1, 1) + tail;
+					word = word.Substring(0, word.Length() - 1);
+				}
+				word = WidgetManager.Translate(word);
+			}
+			if (!result.IsEmpty())
+				result += " ";
+			result += word + tail;
+		}
+		return result;
+	}
+
 	void ShowFeedback(string text)
 	{
+		text = TranslateWords(text);
 		m_sFeedback = text;
 		m_iFeedbackUntil = System.GetTickCount() + FEEDBACK_MS;
 		if (!m_wFeedback)
