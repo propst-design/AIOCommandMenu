@@ -71,6 +71,18 @@ class AIO_Bound
 	int m_iPlayerId;
 }
 
+// Garrison / Clear on a building whose inside could not be found from afar: the men walk up
+// to it first and the order is given again when they get there.
+class AIO_Approach
+{
+	ref array<AIAgent> m_aMen = {};
+	IEntity m_Building;
+	IEntity m_Player;
+	int m_iOrder;
+	int m_iPlayerId;
+	int m_iTicks;
+}
+
 class AIO_Maneuvers
 {
 	static const float BOUND_STEP = 30;
@@ -546,6 +558,8 @@ class AIO_Maneuvers
 		if (s_bIssuing || !agent)
 			return;
 		StopLead(agent);
+		foreach (AIO_Approach approach : s_aApproaches)
+			approach.m_aMen.RemoveItem(agent);
 		foreach (AIO_Bound bound : s_aBounds)
 		{
 			bound.m_aA.RemoveItem(agent);
@@ -566,6 +580,7 @@ class AIO_Maneuvers
 	static void Tick()
 	{
 		TickLead();
+		TickApproaches();
 		for (int i = s_aBounds.Count() - 1; i >= 0; i--)
 		{
 			AIO_Bound bound = s_aBounds[i];
@@ -642,8 +657,9 @@ class AIO_Maneuvers
 			return "Look at a building";
 		array<vector> inside = {};
 		InteriorPoints(building, bodies[0], inside);
+		Print("[AIO] Interior of " + InteriorReport(building));
 		if (inside.IsEmpty())
-			return "No way into that building";
+			return Approach(bodies, player, order, building);
 		vector mins, maxs;
 		building.GetWorldBounds(mins, maxs);
 		vector middle = (mins + maxs) * 0.5;
@@ -675,6 +691,81 @@ class AIO_Maneuvers
 			SetEngage(bodies[c], 0);
 		}
 		return string.Format("%1 men clearing the building (%2 rooms)", bodies.Count(), sweep.Count());
+	}
+
+	static ref array<ref AIO_Approach> s_aApproaches = {};
+
+	// No inside found (yet): walk the men to the side of the building facing them, then try again.
+	static string Approach(array<IEntity> bodies, IEntity player, int order, IEntity building)
+	{
+		vector mins, maxs;
+		building.GetWorldBounds(mins, maxs);
+		vector middle = (mins + maxs) * 0.5;
+		vector side = Flat(Centroid(bodies) - middle);
+		if (side == vector.Zero)
+			side = "1 0 0";
+		float half = Math.Max(maxs[0] - mins[0], maxs[2] - mins[2]) * 0.5;
+		vector door = Ground(middle + side * (half + 3));
+		AIO_Approach approach = new AIO_Approach();
+		approach.m_Building = building;
+		approach.m_Player = player;
+		approach.m_iOrder = order;
+		if (player)
+			approach.m_iPlayerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(player);
+		int index;
+		foreach (IEntity body : bodies)
+		{
+			AIO_Tasks.MoveTo(body, AIO_Tasks.SpreadSpot(door, index));
+			index++;
+			AIAgent agent = AIO_Tasks.AgentOf(body);
+			if (agent)
+				approach.m_aMen.Insert(agent);
+		}
+		if (approach.m_aMen.IsEmpty())
+			return "No way into that building";
+		s_aApproaches.Insert(approach);
+		AIO_Tasks.Watch();
+		return string.Format("%1 men moving up to the building first", approach.m_aMen.Count());
+	}
+
+	protected static void TickApproaches()
+	{
+		for (int i = s_aApproaches.Count() - 1; i >= 0; i--)
+		{
+			AIO_Approach approach = s_aApproaches[i];
+			approach.m_iTicks++;
+			array<IEntity> men = {};
+			Bodies(approach.m_aMen, men);
+			if (men.IsEmpty() || !approach.m_Building)
+			{
+				s_aApproaches.Remove(i);
+				continue;
+			}
+			vector mins, maxs;
+			approach.m_Building.GetWorldBounds(mins, maxs);
+			vector middle = (mins + maxs) * 0.5;
+			float half = Math.Max(maxs[0] - mins[0], maxs[2] - mins[2]) * 0.5;
+			bool close = vector.DistanceXZ(Centroid(men), middle) < half + 10;
+			// Try every 5 s on the way, and once more when they are there.
+			if (!close && approach.m_iTicks % 5 != 0 && approach.m_iTicks < 90)
+				continue;
+			array<vector> inside = {};
+			InteriorPoints(approach.m_Building, men[0], inside);
+			if (inside.IsEmpty() && !close && approach.m_iTicks < 90)
+				continue;
+			s_aApproaches.Remove(i);
+			string result;
+			if (inside.IsEmpty())
+			{
+				Print("[AIO] Interior of " + InteriorReport(approach.m_Building));
+				result = "No way into that building";
+			}
+			else
+				result = Defense(men, approach.m_Player, approach.m_iOrder, vector.Zero, approach.m_Building);
+			AIO_Supplies.Report(approach.m_iPlayerId, result);
+			Print("[AIO] " + result);
+			return; // lists may have changed
+		}
 	}
 
 	// Hold a spot looking outward; crouched if asked.
@@ -743,65 +834,122 @@ class AIO_Maneuvers
 		return found;
 	}
 
-	// The building the player means: the top entity of what he looked at, if it is big enough.
+	// The building the player means: walking up from what he looked at, the topmost entity
+	// that has a model of its own and is big enough (a composition root has no model; a door,
+	// window or piece of furniture is too small).
 	static IEntity BuildingOf(IEntity looked)
 	{
 		if (!looked)
 			return null;
-		IEntity top = looked.GetRootParent();
-		if (!top)
-			top = looked;
-		if (ChimeraCharacter.Cast(top) || top.FindComponent(InventoryItemComponent) || Vehicle.Cast(top))
-			return null;
-		vector mins, maxs;
-		top.GetWorldBounds(mins, maxs);
-		vector size = maxs - mins;
-		if (size[0] < 4 || size[2] < 4 || size[1] < 2.5)
-			return null;
-		return top;
+		IEntity best = null;
+		IEntity walk = looked;
+		while (walk)
+		{
+			if (ChimeraCharacter.Cast(walk) || walk.FindComponent(InventoryItemComponent) || Vehicle.Cast(walk))
+				return null;
+			if (walk.GetVObject() && BigEnough(walk))
+				best = walk;
+			walk = walk.GetParent();
+		}
+		return best;
 	}
 
+	static bool BigEnough(IEntity entity)
+	{
+		vector mins, maxs;
+		entity.GetWorldBounds(mins, maxs);
+		vector size = maxs - mins;
+		return size[0] >= 4 && size[2] >= 4 && size[1] >= 2.5;
+	}
+
+	// Why the last InteriorPoints call found nothing (for the log).
+	static int s_iProbes;
+	static int s_iNavHits;
+	static int s_iOutside;
+	static int s_iOpen;
+
 	// Standable points inside the building: a grid over its footprint on each floor, snapped to
-	// the navmesh, kept when they stay inside the walls.
+	// the navmesh, kept when they stay inside the walls and have a roof over them. Buildings
+	// with no roofed navmesh (open towers, decks) fall back to the open points inside.
 	static void InteriorPoints(IEntity building, IEntity walker, notnull array<vector> points)
 	{
+		s_iProbes = 0;
+		s_iNavHits = 0;
+		s_iOutside = 0;
+		s_iOpen = 0;
 		AIPathfindingComponent pathfinding = AIPathfindingComponent.Cast(walker.FindComponent(AIPathfindingComponent));
 		if (!pathfinding)
 			return;
 		vector mins, maxs;
 		building.GetWorldBounds(mins, maxs);
+		array<vector> open = {};
 		float inset = 1.0;
-		for (float y = mins[1] + 0.5; y < maxs[1] - 1.5; y += 3.0)
+		for (float y = mins[1] + 0.5; y < maxs[1] - 1.0; y += 2.5)
 		{
-			for (float x = mins[0] + inset; x <= maxs[0] - inset; x += 2.5)
+			for (float x = mins[0] + inset; x <= maxs[0] - inset; x += 2.0)
 			{
-				for (float z = mins[2] + inset; z <= maxs[2] - inset; z += 2.5)
+				for (float z = mins[2] + inset; z <= maxs[2] - inset; z += 2.0)
 				{
+					if (s_iProbes >= 4000)
+						break;
+					s_iProbes++;
 					vector probe = Vector(x, y, z);
 					vector corrected;
 					if (!pathfinding.GetClosestPositionOnNavmesh(probe, PROBE_EXTENT, corrected))
 						continue;
-					if (corrected[0] < mins[0] + 0.3 || corrected[0] > maxs[0] - 0.3 || corrected[2] < mins[2] + 0.3 || corrected[2] > maxs[2] - 0.3)
+					s_iNavHits++;
+					if (corrected[0] < mins[0] + 0.3 || corrected[0] > maxs[0] - 0.3 || corrected[2] < mins[2] + 0.3 || corrected[2] > maxs[2] - 0.3 || corrected[1] < mins[1] - 1.0)
+					{
+						s_iOutside++;
 						continue;
+					}
 					// Under a roof: something solid above (rules out yards inside the bounds).
 					if (!Covered(corrected, maxs[1] + 1))
-						continue;
-					bool near = false;
-					foreach (vector existing : points)
 					{
-						if (vector.Distance(existing, corrected) < 2.0)
-						{
-							near = true;
-							break;
-						}
+						s_iOpen++;
+						if (open.Count() < 200)
+							AddSpaced(open, corrected, 2.0);
+						continue;
 					}
-					if (!near)
-						points.Insert(corrected);
+					AddSpaced(points, corrected, 2.0);
 					if (points.Count() >= 40)
 						return;
 				}
 			}
 		}
+		// Nothing roofed: use the open points well inside the footprint (a tower's deck).
+		if (points.IsEmpty())
+		{
+			vector middle = (mins + maxs) * 0.5;
+			float reach = Math.Min(maxs[0] - mins[0], maxs[2] - mins[2]) * 0.5;
+			foreach (vector spot : open)
+			{
+				if (vector.DistanceXZ(spot, middle) <= reach && spot[1] > GetGame().GetWorld().GetSurfaceY(spot[0], spot[2]) + 1.5)
+					AddSpaced(points, spot, 2.0);
+				if (points.Count() >= 40)
+					return;
+			}
+		}
+	}
+
+	static void AddSpaced(notnull array<vector> points, vector spot, float spacing)
+	{
+		foreach (vector existing : points)
+		{
+			if (vector.Distance(existing, spot) < spacing)
+				return;
+		}
+		points.Insert(spot);
+	}
+
+	static string InteriorReport(IEntity building)
+	{
+		vector mins, maxs;
+		building.GetWorldBounds(mins, maxs);
+		string name = "?";
+		if (building.GetPrefabData())
+			name = building.GetPrefabData().GetPrefabName();
+		return string.Format("%1 size %2: %3 probes, %4 on navmesh, %5 outside, %6 unroofed", name, maxs - mins, s_iProbes, s_iNavHits, s_iOutside, s_iOpen);
 	}
 
 	static bool Covered(vector point, float top)

@@ -63,15 +63,20 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
   Fire on my lead = per-man hold fire until the player's loaded rounds drop, Bound/Peel = two elements
   (by colour team if the men are in 2+ teams, else alternating) moving 30/25 m in turns.
   Defense: 360 = ring around the player, crouched, looking out; Fortify = cover within 20 m of the point
-  facing away from the player; Garrison/Clear = interior points (navmesh grid inside the bounds, under
-  a roof), garrison spreads over them looking out, clear walks the rooms nearest-first.
+  facing away from the player; Garrison/Clear = interior points (navmesh grid 2 m x 2.5 m floors inside
+  the bounds, under a roof; else open points high up, e.g. a tower deck), garrison spreads over them
+  looking out, clear walks the rooms nearest-first. BuildingOf = topmost ancestor with a model that is
+  >= 4x4x2.5 m. Navmesh far from any AI is sparse (the ATC gave 57 hits from 16 m, 123 once the men were
+  inside), so when no inside is found the men walk up to the building (AIO_Approach, retried every 5 s
+  and on arrival, gives up after 90 s) and the order is re-issued; "[AIO] Interior of ..." logs counts.
   Teams are sent to the server (AIO_RpcTeam). Speed = character movement-speed setting (GROUP_GOAL).
 - Hold behaviour extras: m_aLegs (routes), m_vLook (keeps looking, priority 15). `ActiveHold()` skips
   ended holds that linger in the queue. `Rejoin()` walks far-off men back to the leader (formation
   following alone was sometimes slow to pick them up).
 - `AIO_SquadBar.c`: bottom-centre strip, only while the menu is open (Jacob, 13 Oct; roster every 1 s then):
   key number, name (team colour), health, magazines, task label (`AIO_Tasks.TaskLabel`), plus the key
-  number over each man's head in his team colour (within 120 m). More > Squad bar on/off.
+  number over each man's head in his team colour (within 120 m; every frame, render camera via
+  BaseWorld.GetCurrentCamera; logs `[AIO] head markers:` skip reasons every 5 s when some man has none). More > Squad bar on/off.
 - `AIO_Test.c`: server tests (`-aioTaskTest 1`: spawns a US fire team on GM_Arland, moves/holds/releases men).
 - `AIO_Server.c`: squad = the player's group's slave AI group (`SCR_AIGroup.GetSlave()`), the same
   setup the vanilla commanding wheel and ACA's possession use. Whole-squad orders go through the
@@ -91,7 +96,8 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
   <new-id> <preset> <polls>`; results in `.aio-requests/<id>.result.txt`.
 - Extra server tests come from `tools/test-presets.txt` (re-read per request, no launcher restart):
   `tasks` (~100 s), `moves` (~160 s), `infantry` (~110 s; prone can fail next to walls/at cover spots),
-  `supply` (~100 s), `attack` (~210 s), `defense` (~190 s; finds a house near the map centre).
+  `supply` (~100 s), `attack` (~210 s), `defense` (~190 s; finds a house near the map centre),
+  `tower` (~300 s; defense on Arland's ControlTowerMilitary_E_01 + walk-up fallback).
 - Presets: `compile` (dedicated server, GM_Arland, this mod only; done at "[AIO] ready"),
   `compile-aca` (with ACA on its test range). The launcher waits for another dedicated server (your SP game is fine;
   ACA's test server shares port 2001).
@@ -112,6 +118,9 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
 - 13 Oct: Supplies (rearm, take weapon, ammo on the bar), Attack maneuvers, Defense, per-man ROE,
   engage/disengage, fire on my lead, speed, team markers. Server tests all pass: tasks 6/6, moves 5/5,
   infantry 7/7, supply 5/5, attack 7/7, defense 8/8.
+- 13 Oct: Garrison/Clear failed on the airfield ATC ("No way into that building"): finer interior grid,
+  open-deck fallback, BuildingOf ignores model-less roots, walk-up fallback. `tower` 10/10, `defense` 8/8.
+  (The two VM exceptions in Jacob's log at that time were vanilla Game Master attribute UI, not ours.)
 - Not covered by tests (live checks): arsenals with supplies, rearm from vehicles/crates, real
   firefights (suppress, flank under fire, fire on my lead with a player), garrison on other buildings,
   head markers and squad bar look, MP. (Advance/Stay back/Flank = offset from the player's facing, ~50 m), Take cover,

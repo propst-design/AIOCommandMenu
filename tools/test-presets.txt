@@ -5,3 +5,4 @@ infantry|-aioInfantryTest 1|180
 supply|-aioSupplyTest 1|170
 attack|-aioAttackTest 1|260
 defense|-aioDefenseTest 1|260
+tower|-aioTowerTest 1|400
