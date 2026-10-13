@@ -421,9 +421,9 @@ class AIO_Menu
 			foreach (RplId id : m_aSelected)
 				m_mTeams.Set(id, team);
 			// The server needs teams too (Bound forward / Peel back split by team).
-			array<RplId> assigned = {};
-			assigned.Copy(m_aSelected);
-			pc.AIO_SendTeam(assigned, team);
+			array<RplId> teamIds = {};
+			teamIds.Copy(m_aSelected);
+			pc.AIO_SendTeam(teamIds, team);
 			foreach (AIO_Member assigned : m_aMembers)
 			{
 				if (m_aSelected.Contains(assigned.m_Id))
