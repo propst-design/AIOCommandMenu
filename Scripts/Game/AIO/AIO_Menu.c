@@ -48,6 +48,32 @@ class AIO_Menu
 	protected int m_iFeedbackUntil;
 	protected int m_iNextRosterAsk;
 
+	// Input self-check, logged once ~5 s after the player controller starts updating.
+	protected bool m_bDiagnosed;
+	protected int m_iDiagnoseAt;
+
+	protected void Diagnose(InputManager input, SCR_PlayerController pc)
+	{
+		m_bDiagnosed = true;
+		int found;
+		string names = "";
+		for (int i = 0; i < input.GetActionCount(); i++)
+		{
+			string action = input.GetActionName(i);
+			if (action.StartsWith("AIO_"))
+			{
+				found++;
+				names += action + " ";
+			}
+		}
+		bool activated = input.ActivateContext("AIO_OpenContext");
+		bool active = input.IsContextActive("AIO_OpenContext");
+		Print(string.Format("[AIO] INPUT check: %1 of %2 actions are ours (%3); open context activate=%4 active=%5; can use menu=%6",
+			found, input.GetActionCount(), names, activated, active, CanUse(pc)));
+		if (found == 0)
+			Print("[AIO] INPUT check: our key config was NOT loaded (Configs/System/chimeraInputCommon.conf override)");
+	}
+
 	// Widgets
 	protected ImageWidget m_wBack;
 	protected ref array<TextWidget> m_aLines = {};
@@ -64,6 +90,7 @@ class AIO_Menu
 	void AIO_Menu()
 	{
 		m_Root = AIO_MenuTree.Build();
+		m_iDiagnoseAt = System.GetTickCount() + 5000;
 	}
 
 	bool IsOpen()
@@ -85,6 +112,9 @@ class AIO_Menu
 			m_aSelected.Clear();
 			m_iSelectionClearAt = 0;
 		}
+
+		if (!m_bDiagnosed && now > m_iDiagnoseAt)
+			Diagnose(input, pc);
 
 		bool usable = CanUse(pc);
 		if (!usable)
