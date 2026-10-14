@@ -166,5 +166,22 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
   gunner/passenger, switch seat, get out, disembark passengers, eject, engine/lights, unflip.
   `vehicles` 13/13 PASS, `tasks` 6/6. Untested live: player-driven vehicles, AI driving the player around,
   unflip of a vehicle a client still owns in MP, statics (mortar/MG tripods as "vehicles").
-- Next: MP check with a second player, Jacob's live check of vehicle orders, then
+- 13 Oct evening, Jacob's live vehicle check (GM launcher), NOT FIXED YET (he ran out of usage; do these next):
+  - Works well: get in/out, specific seats (e.g. gunner).
+  - AI driver ignores Move here (whole squad and/or selected; check which), but obeys Advance. Suspect: Move
+    here for a seated man = per-man AIO_MoveBehavior/hold (a seated driver doesn't drive on that); the
+    keep-station path somehow does. Read both paths for a mounted driver; maybe give a vehicle's crew a group
+    waypoint / drive order instead.
+  - Mortars and tripod MGs: looking straight at the emplacement, men got into the nearby HMMWV instead.
+    Suspect TargetVehicle: the looked entity isn't accepted by VehicleRoot (root without
+    BaseCompartmentManagerComponent? seats on a child?) and the 15 m fallback only takes Vehicle.Cast, so
+    the HMMWV wins. Accept any root whose subtree has seats; include statics in the nearest search.
+  - Suppress given from inside the HMMWV: the gunner did nothing; from outside he suppressed perfectly.
+    Suspect LookPoint: the camera ray excludes only the controlled character, so from inside it hits the
+    own vehicle (window/hull) and the point is on the HMMWV. Exclude the player's vehicle from the trace
+    (and from the target entity). Also check any "player in vehicle" checks in the attack path.
+  - GM "take control" of an AI leader: roster now shows his men (first fix worked); orders said "Those men
+    are no longer in your squad". e2c13ac sends whole-squad orders straight to the men and logs
+    `[AIO] order ...: none of N ids matched` if selected-men orders still fail. Unconfirmed live.
+- Next: MP check with a second player, the vehicle findings above, then
   formations, map-click orders. Workshop prep DONE 13 Oct (release copy, texts, placeholder image).
