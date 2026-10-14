@@ -17,11 +17,12 @@ Game Master, Arma Commander Actual...).
   selected men to one.
 - Orders that need a place use where you are looking, or the map cursor while the map is open.
 
-Top page: 1 Move, 2 Attack, 3 Vehicles, 4 Defense (including Take cover), 5 R.O.E., 6 Stance, 7 Supplies,
+Top page: 1 Move, 2 Attack, 3 Vehicles, 4 Defense (including Take cover), 5 R.O.E., 6 Stance & speed, 7 Supplies,
 8 More (squad bar on/off, Admin), 9 HALT, 0 Select members.
 
-Formations: Move > 9 Formation & speed: Column, Staggered column, Wedge, Line (the game's own
-formations; always the whole squad, also with men selected), and Speed.
+Formations: Move > 9 Formation: Arma 3's formation menu with the formations Reforger has itself:
+Column, Staggered column, Wedge, Line (always the whole squad, also with men selected).
+Speed: Stance & speed > 6 Speed.
 
 ## Admin page (More > Admin)
 

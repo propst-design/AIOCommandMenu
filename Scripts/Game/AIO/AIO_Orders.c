@@ -144,16 +144,13 @@ class AIO_MenuTree
 		move.Order("Flank right", AIO_EOrder.FLANK_RIGHT);
 		move.Order("Fall back", AIO_EOrder.FALL_BACK);
 		move.Order("Hold here", AIO_EOrder.HOLD_HERE);
-		AIO_MenuItem formation = move.Page("Formation & speed");
+		// Arma 3's formation menu, in its order, with the formations Reforger itself has
+		// (no echelons, vee, file or diamond in the game's formation list).
+		AIO_MenuItem formation = move.Page("Formation");
 		formation.Order("Column", AIO_EOrder.FORM_COLUMN);
 		formation.Order("Staggered column", AIO_EOrder.FORM_STAGGERED_COLUMN);
 		formation.Order("Wedge", AIO_EOrder.FORM_WEDGE);
 		formation.Order("Line", AIO_EOrder.FORM_LINE);
-		AIO_MenuItem speed = formation.Page("Speed");
-		speed.Order("Walk", AIO_EOrder.SPEED_WALK);
-		speed.Order("Run", AIO_EOrder.SPEED_NORMAL);
-		speed.Order("Sprint", AIO_EOrder.SPEED_FAST);
-		speed.Order("Auto", AIO_EOrder.SPEED_AUTO);
 
 		AIO_MenuItem attack = root.Page("Attack");
 		attack.Order("Advance", AIO_EOrder.ATK_ADVANCE, AIO_ETarget.POINT);
@@ -200,12 +197,17 @@ class AIO_MenuTree
 		roe.Order("Engage at will", AIO_EOrder.ENGAGE_AT_WILL);
 		roe.Order("Disengage", AIO_EOrder.DISENGAGE);
 
-		AIO_MenuItem stance = root.Page("Stance");
+		AIO_MenuItem stance = root.Page("Stance & speed");
 		stance.Order("Stand", AIO_EOrder.STANCE_UP);
 		stance.Order("Crouch", AIO_EOrder.STANCE_CROUCH);
 		stance.Order("Prone", AIO_EOrder.STANCE_PRONE);
 		stance.Order("Auto", AIO_EOrder.STANCE_AUTO);
 		stance.Order("Copy my stance", AIO_EOrder.COPY_STANCE);
+		AIO_MenuItem speed = stance.Page("Speed");
+		speed.Order("Walk", AIO_EOrder.SPEED_WALK);
+		speed.Order("Run", AIO_EOrder.SPEED_NORMAL);
+		speed.Order("Sprint", AIO_EOrder.SPEED_FAST);
+		speed.Order("Auto", AIO_EOrder.SPEED_AUTO);
 
 		AIO_MenuItem supplies = root.Page("Supplies");
 		supplies.Order("Heal up!", AIO_EOrder.HEAL_UP);

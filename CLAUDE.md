@@ -115,8 +115,9 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   key number, name (team colour), health, magazines, task label (`AIO_Tasks.TaskLabel`), plus the key
   number over each man's head in his team colour (within 120 m; every frame, render camera via
   BaseWorld.GetCurrentCamera; logs `[AIO] head markers:` skip reasons every 5 s when some man has none). More > Squad bar on/off.
-- `AIO_Formations.c` (Formations, 14 Oct): Move > 9 Formation & speed > Column / Staggered column / Wedge /
-  Line (+ Speed page). Whole squad always (selection ignored; handled before ExecuteMen in Execute). Adds a
+- `AIO_Formations.c` (Formations, 14 Oct): Move > 9 Formation = Arma 3's formation menu (its order) limited to
+  what Reforger handles natively: Column / Staggered column / Wedge / Line. Jacob, 14 Oct: only formations
+  the game itself can do, no scripted shapes. Speed lives under Stance & speed > 6 Speed. Whole squad always (selection ignored; handled before ExecuteMen in Execute). Adds a
   COMMANDING `SCR_AIGroupFormationSetting` to the group's SCR_AIGroupSettingsComponent (the game's
   ActivityMove.bt node SCR_AISetGroupFormation re-reads it on every move; EDITOR/SCENARIO/WAYPOINT origin
   settings still outrank it) and applies it at once like that node (AIFormationComponent.SetFormation +
@@ -126,7 +127,8 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   E0A05C76552E7F58) + `modded enum SCR_EAIGroupFormation` was tried and NOT loaded by the dedicated
   server (prefab still 4 formations, with or without resourceDatabase.rdb; the world's AI world entity
   reports no prefab name). Untested: whether Workbench registering the override (rdb) changes that.
-  Fallback idea if wanted: script keep-station shapes like the Move menu (anchored holds).
+  Scripted keep-station shapes were declined (Jacob, 14 Oct). Add more entries only if the game's
+  formation list grows.
 - `AIO_Test.c`: server tests (`-aioTaskTest 1`: spawns a US fire team on GM_Arland, moves/holds/releases men).
 - `AIO_Server.c`: squad = the player's group's slave AI group (`SCR_AIGroup.GetSlave()`), the same
   setup the vanilla commanding wheel and ACA's possession use. Whole-squad orders go through the
@@ -296,8 +298,8 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   tightening the nonresponsive-door guard. Release refreshed with the fixes and new change notes;
   source/release hashes verified and thumbnail preserved. Live full-squad/church retry is still
   Jacob's check; 0.2.0 remains unpublished.
-- 14 Oct, Claude: Formations (Jacob: "Build formations"). Move > Formation & speed: Column, Staggered
-  column, Wedge, Line through the game's group formation setting; Speed moved into that page. Custom
+- 14 Oct, Claude: Formations (Jacob: "Build formations"). Move > Formation (Arma 3's menu, native formations
+  only, Jacob's call): Column, Staggered column, Wedge, Line; Speed moved to Stance & speed. Custom
   Arma 3 shapes blocked by the AI world prefab (see code map). Tests: `form-test15` formations 10/10, `form-aca3` formations-aca 10/10, `form-tasks1`
   tasks 7/7, `form-moves1` moves 5/5. Live check for Jacob: pick each formation
   while walking/running and confirm the men take it and keep it after Move here / Follow.
