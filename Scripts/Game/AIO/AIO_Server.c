@@ -114,6 +114,9 @@ class AIO_Server
 		SCR_AIGroup slave = Slave(playerId);
 		if (!slave)
 			return "No soldiers under your command";
+		// Formations belong to the whole squad, also when men are selected.
+		if (AIO_Formations.IsFormationOrder(order))
+			return AIO_Formations.Set(slave, order);
 		if (members && !members.IsEmpty())
 			return ExecuteMen(slave, order, members, point, pc.GetControlledEntity(), target, playerId);
 		// A possessed AI group isn't set up for the game's commanding: every man gets the order himself.

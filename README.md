@@ -20,6 +20,9 @@ Game Master, Arma Commander Actual...).
 Top page: 1 Move, 2 Attack, 3 Vehicles, 4 Defense (including Take cover), 5 R.O.E., 6 Stance, 7 Supplies,
 8 More (squad bar on/off, Admin), 9 HALT, 0 Select members.
 
+Formations: Move > 9 Formation & speed: Column, Staggered column, Wedge, Line (the game's own
+formations; always the whole squad, also with men selected), and Speed.
+
 ## Admin page (More > Admin)
 
 Single player and the host of your own game always; on dedicated servers only
@@ -28,7 +31,7 @@ logged-in admins. Host option: `-aioCheats all|admins|off`.
 ## Status
 
 Infantry orders, vehicle orders, the admin page, and destinations from the map cursor
-are implemented. Formations are planned; multiplayer and recent fixes need live testing.
+are implemented. Formations (column, staggered column, wedge, line) are in; multiplayer and recent fixes need live testing.
 
 ## Credits
 

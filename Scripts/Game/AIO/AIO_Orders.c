@@ -67,7 +67,11 @@ enum AIO_EOrder
 	VEH_LIGHTS_ON,
 	VEH_LIGHTS_OFF,
 	VEH_UNFLIP,
-	VEH_LIGHTS_AUTO
+	VEH_LIGHTS_AUTO,
+	FORM_COLUMN,
+	FORM_STAGGERED_COLUMN,
+	FORM_WEDGE,
+	FORM_LINE
 }
 
 // What an order needs from the player's side.
@@ -140,7 +144,12 @@ class AIO_MenuTree
 		move.Order("Flank right", AIO_EOrder.FLANK_RIGHT);
 		move.Order("Fall back", AIO_EOrder.FALL_BACK);
 		move.Order("Hold here", AIO_EOrder.HOLD_HERE);
-		AIO_MenuItem speed = move.Page("Speed");
+		AIO_MenuItem formation = move.Page("Formation & speed");
+		formation.Order("Column", AIO_EOrder.FORM_COLUMN);
+		formation.Order("Staggered column", AIO_EOrder.FORM_STAGGERED_COLUMN);
+		formation.Order("Wedge", AIO_EOrder.FORM_WEDGE);
+		formation.Order("Line", AIO_EOrder.FORM_LINE);
+		AIO_MenuItem speed = formation.Page("Speed");
 		speed.Order("Walk", AIO_EOrder.SPEED_WALK);
 		speed.Order("Run", AIO_EOrder.SPEED_NORMAL);
 		speed.Order("Sprint", AIO_EOrder.SPEED_FAST);
