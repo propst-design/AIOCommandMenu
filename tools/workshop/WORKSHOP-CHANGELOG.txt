@@ -8,3 +8,7 @@
 - Fixed camera targeting from inside vehicles so orders ignore your own vehicle's hull and attached parts.
 - Added squad command support when taking control of an AI soldier in Game Master.
 - Vehicles is now menu slot 3; Take cover is under Defense.
+- Fixed soldiers remaining stuck on inaccessible building positions; garrison releases blocked posts and clear routes skip unreachable rooms with feedback.
+- Fixed Return to formation clustering soldiers on the leader and leaving old building orders active.
+- Improved interior-position checks and avoided duplicate garrison post assignments.
+- Soldiers can open nearby closed building doors and retry a stalled interior route.

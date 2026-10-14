@@ -124,9 +124,13 @@ class AIO_Server
 			everyone.RemoveItem(pc.GetControlledEntity());
 			if (everyone.IsEmpty())
 				return "No soldiers under your command";
+			if (order == AIO_EOrder.FOLLOW || order == AIO_EOrder.DEF_GARRISON || order == AIO_EOrder.DEF_CLEAR)
+				ClearWaypoints(slave); // a GM waypoint must not keep reissuing the previous move
 			return ExecuteBodies(slave, order, everyone, point, pc.GetControlledEntity(), target, playerId);
 		}
 		// Whole-squad movement orders take over from any single-man tasks.
+		if (order == AIO_EOrder.DEF_GARRISON || order == AIO_EOrder.DEF_CLEAR)
+			ClearWaypoints(slave);
 		if (order == AIO_EOrder.HALT || order == AIO_EOrder.FOLLOW || order == AIO_EOrder.MOVE_HERE || order == AIO_EOrder.HOLD_HERE)
 			AIO_Tasks.ReleaseGroup(slave);
 		if (order == AIO_EOrder.FOLLOW)

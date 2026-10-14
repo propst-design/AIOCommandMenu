@@ -29,6 +29,17 @@ class AIO_HoldBehavior : SCR_AIBehaviorBase
 	int m_iCoverId;
 	ref array<vector> m_aLegs; // further points of a route (flanking): walked one after another
 	vector m_vLook;            // keeps looking there (360 defense, fortify); zero = his own choice
+	bool m_bInterior;          // bounded movement to a building post/room
+	vector m_vProgressPos;
+	float m_fProgressAt;
+	float m_fCheckedAt;
+	float m_fTravelMs;
+	int m_iPlayerId;
+	int m_iVisitedRooms;
+	int m_iSkippedRooms;
+	bool m_bRouteComplete;
+	vector m_vLastRoom;
+	IEntity m_Building;
 
 	// Current spot (for anchored holds: follows the anchor, on the ground).
 	vector Spot()
@@ -59,8 +70,15 @@ class AIO_Tasks
 	static const float HOLD_SLACK = 6;
 	static const int WATCH_MS = 1000;
 	static const float LOOK_PRIORITY = 15; // below danger reactions (20) and targets (50+)
+	static const float INTERIOR_STALL_MS = 45000;
+	static const float ROOM_STALL_MS = 20000;
+	static const float INTERIOR_RADIUS = 0.7;
+	static const float INTERIOR_TRAVEL_MS = 180000;
 
 	protected static bool s_bWatching;
+	protected static IEntity s_DoorBody;
+	protected static IEntity s_DoorBuilding;
+	protected static bool s_bDoorOpened;
 
 	// ---------------------------------------------------------------- lookups
 
@@ -120,22 +138,41 @@ class AIO_Tasks
 				ChimeraCoverManagerComponent covers = Covers();
 				if (covers)
 					covers.SetOccupiedCover(hold.m_iCoverTileX, hold.m_iCoverTileY, hold.m_iCoverId, false);
+				hold.m_iCoverTileX = -1;
 			}
+			hold.SetRemoveAction(true);
 		}
+		array<ref AIActionBase> moves = {};
+		utility.FindActionsOfType(AIO_MoveBehavior, moves);
+		foreach (AIActionBase move : moves)
+			move.SetRemoveAction(true);
 		utility.SetStateAllActionsOfType(AIO_MoveBehavior, EAIActionState.FAILED);
 		utility.SetStateAllActionsOfType(AIO_HoldBehavior, EAIActionState.FAILED);
 	}
 
-	// Back to the formation (Follow me): release, and if he is far off, walk him to his leader first
-	// (the game's formation following can be slow to pick a far-off man up again).
+	// Return to his actual formation slot. A move-to-leader override crowds every man onto the
+	// same point and can keep outranking formation while the leader moves.
 	static void Rejoin(IEntity body, IEntity leader)
 	{
 		Release(body);
-		if (!leader || vector.DistanceXZ(body.GetOrigin(), leader.GetOrigin()) < 12)
-			return;
 		SCR_AIUtilityComponent utility = UtilityOf(AgentOf(body));
-		if (utility)
-			utility.AddAction(new AIO_MoveBehavior(utility, null, leader.GetOrigin(), ent: leader, radius: 6.0));
+		if (!utility)
+			return;
+		AIO_Maneuvers.SetEngage(body, -1);
+		// A canceled waypoint can send its cancel message after Follow has been issued.
+		// Do not reuse a formation action belonging to that old group activity.
+		array<ref AIActionBase> formation = {};
+		utility.FindActionsOfType(SCR_AIMoveInFormationBehavior, formation);
+		foreach (AIActionBase action : formation)
+		{
+			if (action.GetRelatedGroupActivity())
+			{
+				action.SetRemoveAction(true);
+				action.Fail();
+			}
+		}
+		if (!HasFormation(utility))
+			utility.AddAction(new SCR_AIMoveInFormationBehavior(utility, null));
 	}
 
 	static void ReleaseGroup(SCR_AIGroup group)
@@ -187,10 +224,195 @@ class AIO_Tasks
 		foreach (AIActionBase action : holds)
 		{
 			AIO_HoldBehavior hold = AIO_HoldBehavior.Cast(action);
-			if (hold && hold.GetActionState() != EAIActionState.FAILED && hold.GetActionState() != EAIActionState.COMPLETED)
+			if (hold && !hold.GetRemoveAction() && hold.GetActionState() != EAIActionState.FAILED && hold.GetActionState() != EAIActionState.COMPLETED)
 				return hold;
 		}
 		return null;
+	}
+
+	static bool HasFormation(SCR_AIUtilityComponent utility)
+	{
+		if (!utility)
+			return false;
+		array<ref AIActionBase> actions = {};
+		utility.FindActionsOfType(SCR_AIMoveInFormationBehavior, actions);
+		foreach (AIActionBase action : actions)
+		{
+			if (!action.GetRemoveAction() && action.GetActionState() != EAIActionState.FAILED && action.GetActionState() != EAIActionState.COMPLETED)
+				return true;
+		}
+		return false;
+	}
+
+	static AIO_MoveBehavior ActiveMove(SCR_AIUtilityComponent utility)
+	{
+		if (!utility)
+			return null;
+		array<ref AIActionBase> moves = {};
+		utility.FindActionsOfType(AIO_MoveBehavior, moves);
+		foreach (AIActionBase action : moves)
+		{
+			AIO_MoveBehavior move = AIO_MoveBehavior.Cast(action);
+			if (move && !move.GetRemoveAction() && move.GetActionState() != EAIActionState.FAILED && move.GetActionState() != EAIActionState.COMPLETED)
+				return move;
+		}
+		return null;
+	}
+
+	static void GuardInterior(IEntity body, AIO_HoldBehavior hold, int playerId = 0)
+	{
+		if (!hold)
+			return;
+		hold.m_bInterior = true;
+		hold.m_vProgressPos = body.GetOrigin();
+		hold.m_fProgressAt = GetGame().GetWorld().GetWorldTime();
+		hold.m_fCheckedAt = hold.m_fProgressAt;
+		hold.m_fTravelMs = 0;
+		hold.m_iPlayerId = playerId;
+		AIO_MoveBehavior move = ActiveMove(UtilityOf(AgentOf(body)));
+		if (move)
+			move.m_Radius.m_Value = INTERIOR_RADIUS;
+	}
+
+	static bool InteriorArrived(IEntity body, AIO_HoldBehavior hold)
+	{
+		vector position = body.GetOrigin();
+		if (vector.DistanceXZ(position, hold.m_vSpot) > 1.5 || Math.AbsFloat(position[1] - hold.m_vSpot[1]) > 1.5)
+			return false;
+		if (hold.m_Building)
+		{
+			vector mins, maxs;
+			hold.m_Building.GetWorldBounds(mins, maxs);
+			if (position[0] < mins[0] + 0.15 || position[0] > maxs[0] - 0.15 || position[2] < mins[2] + 0.15 || position[2] > maxs[2] - 0.15)
+				return false;
+			if (!AIO_Maneuvers.BuildingFloor(position, body, hold.m_Building))
+				return false;
+			TraceParam trace = new TraceParam();
+			trace.Start = position + Vector(0, 1, 0);
+			trace.End = hold.m_vSpot + Vector(0, 1, 0);
+			trace.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
+			trace.Exclude = body;
+			if (GetGame().GetWorld().TraceMove(trace, null) < 1)
+				return false; // close to the point through a wall is not arrival
+		}
+		return true;
+	}
+
+	protected static void StopMoves(SCR_AIUtilityComponent utility)
+	{
+		array<ref AIActionBase> moves = {};
+		utility.FindActionsOfType(AIO_MoveBehavior, moves);
+		foreach (AIActionBase move : moves)
+			move.SetRemoveAction(true);
+		utility.SetStateAllActionsOfType(AIO_MoveBehavior, EAIActionState.FAILED);
+	}
+
+	protected static void FinishRooms(AIO_HoldBehavior hold)
+	{
+		hold.m_bRouteComplete = true;
+		AIO_Supplies.Report(hold.m_iPlayerId, string.Format("Clear route finished: %1 positions reached, %2 inaccessible positions skipped", hold.m_iVisitedRooms, hold.m_iSkippedRooms));
+	}
+
+	protected static bool OpenInteriorDoor(IEntity entity)
+	{
+		DoorComponent door = DoorComponent.Cast(entity.FindComponent(DoorComponent));
+		if (!door || door.IsOpening() || Math.AbsFloat(door.GetNormalizedDoorState()) > 0.05 || Math.AbsFloat(door.GetControlValue()) > 0.05)
+			return true;
+		IEntity parent = entity;
+		while (parent && parent != s_DoorBuilding)
+			parent = parent.GetParent();
+		if (!parent)
+			return true;
+		SCR_DoorUserAction action = SCR_AIOpenDoor.FindDoorUserAction(entity);
+		if (!action || !action.CanBePerformedScript(s_DoorBody))
+			return true;
+		action.PerformAction(entity, s_DoorBody);
+		if (!door.IsOpening() && Math.AbsFloat(door.GetNormalizedDoorState()) <= 0.05 && Math.AbsFloat(door.GetControlValue()) <= 0.05)
+			return true; // locked/nonresponsive doors must not keep resetting the timeout
+		s_bDoorOpened = true;
+		Print("[AIO] Opening nearby door for interior movement: " + entity);
+		return false;
+	}
+
+	// Pause the budget during combat; stop an inaccessible room from consuming the man forever.
+	protected static bool CheckInterior(IEntity body, SCR_AIUtilityComponent utility, AIO_HoldBehavior hold)
+	{
+		float now = GetGame().GetWorld().GetWorldTime();
+		float elapsed = Math.Max(0, now - hold.m_fCheckedAt);
+		hold.m_fCheckedAt = now;
+		if (InteriorArrived(body, hold))
+		{
+			if (hold.m_aLegs && !hold.m_bRouteComplete)
+			{
+				hold.m_iVisitedRooms++;
+				hold.m_vLastRoom = body.GetOrigin();
+				if (hold.m_aLegs.IsEmpty())
+					FinishRooms(hold);
+			}
+			hold.m_fProgressAt = now;
+			hold.m_fTravelMs = 0;
+			hold.m_vProgressPos = body.GetOrigin();
+			return true;
+		}
+		SCR_AIBehaviorBase current = SCR_AIBehaviorBase.Cast(utility.GetExecutedAction());
+		if (current && current.GetCause() >= SCR_EAIBehaviorCause.COMBAT)
+		{
+			hold.m_fProgressAt += elapsed;
+			return true;
+		}
+		hold.m_fTravelMs += elapsed;
+		if (vector.Distance(body.GetOrigin(), hold.m_vProgressPos) >= 1)
+		{
+			hold.m_vProgressPos = body.GetOrigin();
+			hold.m_fProgressAt = now;
+		}
+		if (hold.m_Building && now - hold.m_fProgressAt >= 5000)
+		{
+			s_DoorBody = body;
+			s_DoorBuilding = hold.m_Building;
+			s_bDoorOpened = false;
+			GetGame().GetWorld().QueryEntitiesBySphere(body.GetOrigin() + Vector(0, 1, 0), 2.5, OpenInteriorDoor, null, EQueryEntitiesFlags.ALL);
+			s_DoorBody = null;
+			s_DoorBuilding = null;
+			if (s_bDoorOpened)
+			{
+				hold.m_fProgressAt = now;
+				StopMoves(utility);
+				utility.AddAction(new AIO_MoveBehavior(utility, null, hold.m_vSpot, radius: INTERIOR_RADIUS));
+				return true;
+			}
+		}
+		float stall = INTERIOR_STALL_MS;
+		if (hold.m_aLegs)
+			stall = ROOM_STALL_MS;
+		if (now - hold.m_fProgressAt < stall && hold.m_fTravelMs < INTERIOR_TRAVEL_MS)
+			return true;
+		int playerId = hold.m_iPlayerId;
+		Print(string.Format("[AIO] %1 cannot reach interior post %2 from %3 (action %4); abandoning that position", AIO_Server.NameOf(body), hold.m_vSpot, body.GetOrigin(), utility.GetExecutedAction()));
+		if (hold.m_aLegs && !hold.m_bRouteComplete)
+		{
+			hold.m_iSkippedRooms++;
+			StopMoves(utility);
+			if (!hold.m_aLegs.IsEmpty())
+			{
+				hold.m_vSpot = hold.m_aLegs[0];
+				hold.m_aLegs.RemoveOrdered(0);
+				GuardInterior(body, hold, playerId);
+				utility.AddAction(new AIO_MoveBehavior(utility, null, hold.m_vSpot, radius: INTERIOR_RADIUS));
+				return true;
+			}
+			if (hold.m_iVisitedRooms > 0)
+			{
+				hold.m_vSpot = hold.m_vLastRoom;
+				GuardInterior(body, hold, playerId);
+				FinishRooms(hold);
+				utility.AddAction(new AIO_MoveBehavior(utility, null, hold.m_vSpot, radius: INTERIOR_RADIUS));
+				return true;
+			}
+		}
+		Rejoin(body, null);
+		AIO_Supplies.Report(playerId, "A soldier cannot reach his building position; returning to formation");
+		return false;
 	}
 
 	// Short label of what the man is doing for the squad bar ("" = nothing special).
@@ -210,7 +432,7 @@ class AIO_Tasks
 				label = "Station";
 			else
 				label = "Holding";
-			if (utility.HasActionOfType(AIO_MoveBehavior))
+			if (ActiveMove(utility))
 				label = "Moving";
 		}
 		if (utility.HasActionOfType(SCR_AIHealBehavior))
@@ -527,6 +749,8 @@ class AIO_Tasks
 			IEntity body = agent.GetControlledEntity();
 			if (!body || !AIO_Server.IsAlive(body))
 				continue;
+			if (hold.m_bInterior && !CheckInterior(body, utility, hold))
+				continue;
 			if (hold.m_Anchor && !AIO_Server.IsAlive(hold.m_Anchor))
 			{
 				Release(body); // the player he was keeping station on is gone: back to formation
@@ -536,27 +760,38 @@ class AIO_Tasks
 			if (hold.m_vLook != vector.Zero)
 				utility.m_LookAction.LookAt(hold.m_vLook, LOOK_PRIORITY, 2.0);
 			// Route: next leg once he's near the current point.
-			if (hold.m_aLegs && !hold.m_aLegs.IsEmpty() && vector.DistanceXZ(body.GetOrigin(), hold.m_vSpot) <= 5)
+			bool arrived = vector.DistanceXZ(body.GetOrigin(), hold.m_vSpot) <= 5;
+			if (hold.m_bInterior)
+				arrived = InteriorArrived(body, hold);
+			float radius = 2;
+			if (hold.m_bInterior)
+				radius = INTERIOR_RADIUS;
+			if (hold.m_aLegs && !hold.m_aLegs.IsEmpty() && arrived)
 			{
 				hold.m_vSpot = hold.m_aLegs[0];
 				hold.m_aLegs.RemoveOrdered(0);
-				utility.SetStateAllActionsOfType(AIO_MoveBehavior, EAIActionState.FAILED);
-				utility.AddAction(new AIO_MoveBehavior(utility, null, hold.m_vSpot, radius: 2.0));
+				if (hold.m_bInterior)
+					GuardInterior(body, hold, hold.m_iPlayerId);
+				StopMoves(utility);
+				utility.AddAction(new AIO_MoveBehavior(utility, null, hold.m_vSpot, radius: radius));
 				continue;
 			}
 			vector spot = hold.Spot();
 			bool spotMoved = vector.Distance(spot, hold.m_vSpot) > HOLD_SLACK;
-			if (!spotMoved && vector.Distance(body.GetOrigin(), spot) <= HOLD_SLACK)
+			bool settled = vector.Distance(body.GetOrigin(), spot) <= HOLD_SLACK;
+			if (hold.m_bInterior)
+				settled = InteriorArrived(body, hold);
+			if (!spotMoved && settled)
 				continue;
-			if (utility.HasActionOfType(AIO_MoveBehavior))
+			if (ActiveMove(utility))
 			{
 				if (!spotMoved)
 					continue;
 				// The anchor moved on: drop the walk to the old spot.
-				utility.SetStateAllActionsOfType(AIO_MoveBehavior, EAIActionState.FAILED);
+				StopMoves(utility);
 			}
 			hold.m_vSpot = spot;
-			utility.AddAction(new AIO_MoveBehavior(utility, null, spot, radius: 2.0));
+			utility.AddAction(new AIO_MoveBehavior(utility, null, spot, radius: radius));
 		}
 	}
 }

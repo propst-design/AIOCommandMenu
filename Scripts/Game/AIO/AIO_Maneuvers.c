@@ -663,6 +663,9 @@ class AIO_Maneuvers
 		vector mins, maxs;
 		building.GetWorldBounds(mins, maxs);
 		vector middle = (mins + maxs) * 0.5;
+		int playerId;
+		if (player)
+			playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(player);
 		if (order == AIO_EOrder.DEF_GARRISON)
 		{
 			// Spread over the building: farthest-apart points first.
@@ -670,11 +673,20 @@ class AIO_Maneuvers
 			PickSpread(inside, bodies.Count(), posts);
 			for (int g = 0; g < bodies.Count(); g++)
 			{
-				vector post = posts[g % posts.Count()];
+				if (g >= posts.Count())
+				{
+					AIO_Tasks.Rejoin(bodies[g], player);
+					continue;
+				}
+				vector post = posts[g];
 				vector outward = Flat(post - middle);
 				HoldFacing(bodies[g], post, post + outward * 60, false);
+				AIO_Tasks.GuardInterior(bodies[g], AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(bodies[g]))), playerId);
+				AIO_HoldBehavior garrison = AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(bodies[g])));
+				if (garrison)
+					garrison.m_Building = building;
 			}
-			return string.Format("%1 men garrisoning (%2 positions)", bodies.Count(), posts.Count());
+			return string.Format("%1 men garrisoning (%2 remain in formation)", posts.Count(), bodies.Count() - posts.Count());
 		}
 		// Clear: everyone walks through the building room by room, then holds inside.
 		array<vector> sweep = {};
@@ -686,8 +698,12 @@ class AIO_Maneuvers
 		{
 			array<vector> legs = {};
 			foreach (vector room : sweep)
-				legs.Insert(room + Vector(c * 0.6, 0, 0));
+				legs.Insert(room); // sideways offsets can put later squad members inside walls
 			Route(bodies[c], legs);
+			AIO_Tasks.GuardInterior(bodies[c], AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(bodies[c]))), playerId);
+			AIO_HoldBehavior clearing = AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(bodies[c])));
+			if (clearing)
+				clearing.m_Building = building;
 			SetEngage(bodies[c], 0);
 		}
 		return string.Format("%1 men clearing the building (%2 rooms)", bodies.Count(), sweep.Count());
@@ -739,6 +755,8 @@ class AIO_Maneuvers
 			if (men.IsEmpty() || !approach.m_Building)
 			{
 				s_aApproaches.Remove(i);
+				foreach (IEntity man : men)
+					AIO_Tasks.Rejoin(man, approach.m_Player);
 				continue;
 			}
 			vector mins, maxs;
@@ -759,6 +777,8 @@ class AIO_Maneuvers
 			{
 				Print("[AIO] Interior of " + InteriorReport(approach.m_Building));
 				result = "No way into that building";
+				foreach (IEntity man : men)
+					AIO_Tasks.Rejoin(man, approach.m_Player);
 			}
 			else
 				result = Defense(men, approach.m_Player, approach.m_iOrder, vector.Zero, approach.m_Building);
@@ -903,6 +923,8 @@ class AIO_Maneuvers
 						s_iOutside++;
 						continue;
 					}
+					if (!StandingRoom(corrected, walker) || !BuildingFloor(corrected, walker, building))
+						continue;
 					// Under a roof: something solid above (rules out yards inside the bounds).
 					if (!Covered(corrected, maxs[1] + 1))
 					{
@@ -960,6 +982,58 @@ class AIO_Maneuvers
 		trace.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
 		float fraction = GetGame().GetWorld().TraceMove(trace, null);
 		return fraction < 1;
+	}
+
+	// Navmesh samples can land on low roof/attic surfaces that do not fit a standing soldier.
+	static bool StandingRoom(vector point, IEntity walker)
+	{
+		TraceParam trace = new TraceParam();
+		trace.Start = point + Vector(0, 0.15, 0);
+		trace.End = point + Vector(0, 1.8, 0);
+		trace.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
+		trace.Exclude = walker;
+		return GetGame().GetWorld().TraceMove(trace, null) >= 1;
+	}
+
+	// A roof overhead alone also accepts grass underneath overhangs/foundations. Require an
+	// actual, reasonably level floor beneath the sample. Bare-ground/separate-floor rooms must
+	// be enclosed by this building, so barns work while grass beneath an overhang is rejected.
+	static bool BuildingFloor(vector point, IEntity walker, IEntity building)
+	{
+		TraceParam trace = new TraceParam();
+		trace.Start = point + Vector(0, 0.4, 0);
+		trace.End = point - Vector(0, 0.5, 0);
+		trace.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
+		trace.Exclude = walker;
+		if (GetGame().GetWorld().TraceMove(trace, null) >= 1 || trace.TraceNorm[1] < 0.9)
+			return false;
+		IEntity floor = trace.TraceEnt;
+		while (floor)
+		{
+			if (floor == building)
+				return true;
+			floor = floor.GetParent();
+		}
+		vector mins, maxs;
+		building.GetWorldBounds(mins, maxs);
+		array<vector> ends = {Vector(mins[0] - 1, point[1] + 1, point[2]), Vector(maxs[0] + 1, point[1] + 1, point[2]), Vector(point[0], point[1] + 1, mins[2] - 1), Vector(point[0], point[1] + 1, maxs[2] + 1)};
+		int walls;
+		foreach (vector end : ends)
+		{
+			TraceParam wall = new TraceParam();
+			wall.Start = point + Vector(0, 1, 0);
+			wall.End = end;
+			wall.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
+			wall.Exclude = walker;
+			if (GetGame().GetWorld().TraceMove(wall, null) >= 1)
+				continue;
+			IEntity entity = wall.TraceEnt;
+			while (entity && entity != building)
+				entity = entity.GetParent();
+			if (entity)
+				walls++;
+		}
+		return walls >= 3;
 	}
 
 	// 'count' points spread out over the set (greedy farthest-first).
