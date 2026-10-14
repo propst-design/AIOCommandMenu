@@ -140,7 +140,10 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   `tasks` (~100 s), `moves` (~160 s), `infantry` (~110 s; prone can fail next to walls/at cover spots),
   `supply` (~100 s), `attack` (~210 s), `defense` (~190 s; finds a house near the map centre),
   `tower` (~300 s; defense on Arland's ControlTowerMilitary_E_01 + walk-up fallback),
-  `vehicles` (~200 s; M1025: board, switch seats, lights/engine, disembark, get out, eject, unflip; 13 checks).
+  `vehicles` (~235 s; M1025: board, mounted look trace and Move here, switch seats, lights/engine,
+  disembark, get out, eject, unflip; mortar/tripod target lookups too; 19 checks).
+  Mounted Move here is a known failing regression (Codex, 13 Oct). The flipped setup can also fail when
+  physics rights the vehicle before helpers reach it; distinguish setup from actual unflip failure.
 - `<test>-aca` presets (tasks, moves, infantry, supply, attack, defense, vehicles) run the same tests with ACA + BBB
   on ACR_TestRange (ACA's AI commanders and battle running alongside). The test squad is made the slave
   of a playable "master" group like the player's real squad (`AIO_Test.MakeMaster/LinkToMaster`):
@@ -205,10 +208,21 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
 - 13 Oct, Codex: vehicle targeting now checks seats recursively and includes static entities in the
   nearest search; camera traces exclude the player's vehicle and its children as well as the character.
   Compile `codex-target-compile` PASS. New mortar/tripod direct and nearest targeting checks PASS.
-  Vehicle regression and a mounted selected-men Move here check are in progress; live gunner/driver
-  verification still needed. The first trace test's 5 m clear-ray assumption hit a nearby tree; corrected
-  to check the actual exclusion. First run's flipped setup also failed (physics righted it three times).
+  `codex-mounted-vehicles`: 17/19 PASS; failures are mounted selected-men Move here (vehicle stayed
+  ~33 m from a 35 m destination) and flipped setup (physics righted it three times). All four emplacement
+  checks, mounted ray exclusion, boarding, seat switches, controls, dismount/eject and unflip end-state
+  checks passed. Actual gunner fire still needs a live check. The first trace test's 5 m clear-ray
+  assumption hit a nearby tree; corrected to check the actual exclusion.
 - 13 Oct, Codex: menu can now open with the map, point orders use GetMapCursorWorldPosition + terrain
   height, with a vertical trace for entity targets. A separate menu input context preserves the cursor;
   opener priority raised above MapContext. `codex-map-compile` PASS; input/cursor and map orders need
   Jacob's live check. README now reflects Vehicles in root slot 3 and map destinations.
+- 13 Oct, Codex: mounted Move here remains open. Experimenting with a group move waypoint caused
+  the crew to dismount and did not drive the vehicle (`codex-groupdrive-vehicles`); that experiment
+  was removed. Do not substitute a vanilla group waypoint blindly for the possessed/selected path.
+  The task preset now resolves selected roster IDs and issues through ExecuteMen instead of calling
+  MoveTo directly, to cover the selection path in e2c13ac: `codex-roster-tasks` 7/7 PASS.
+  `codex-compat-compile` (ACA + its dependencies) PASS. Actual GM possession and MP remain live checks.
+- Next live checks for Jacob: T with the map open (cursor remains visible; numbers only operate the
+  menu), Move here/Suppress at the map cursor, gunner Suppress from inside the HMMWV, and mortar/tripod
+  Get in as Gunner. Next code work: mounted Move here; then live possession/MP and formations.
