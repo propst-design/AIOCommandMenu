@@ -15,9 +15,9 @@ Game Master, Arma Commander Actual...).
   (1-7 toggle men, 8 next page, 9 Teams, 0 done, Backspace clears).
 - Teams: Red, Green, Blue, Yellow (White = none). Select a team, or assign the
   selected men to one.
-- Orders that need a place use where you are looking.
+- Orders that need a place use where you are looking, or the map cursor while the map is open.
 
-Top page: 1 Move, 2 Attack, 3 Take cover, 4 Defense, 5 R.O.E., 6 Stance, 7 Supplies,
+Top page: 1 Move, 2 Attack, 3 Vehicles, 4 Defense (including Take cover), 5 R.O.E., 6 Stance, 7 Supplies,
 8 More (squad bar on/off, Admin), 9 HALT, 0 Select members.
 
 ## Admin page (More > Admin)
@@ -27,8 +27,8 @@ logged-in admins. Host option: `-aioCheats all|admins|off`.
 
 ## Status
 
-First release: infantry orders and the admin page. Vehicle orders, formations and map
-orders are planned.
+Infantry orders, vehicle orders, the admin page, and destinations from the map cursor
+are implemented. Formations are planned; multiplayer and recent fixes need live testing.
 
 ## Credits
 

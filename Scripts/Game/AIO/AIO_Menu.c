@@ -141,7 +141,7 @@ class AIO_Menu
 			// context on so that release can't reach the weapon/quick-slot keys.
 			if (now < m_iSwallowUntil)
 			{
-				input.ActivateContext("AIO_MenuContext");
+				ActivateMenuContext(input);
 				UpdateFeedback(now);
 				return;
 			}
@@ -153,7 +153,7 @@ class AIO_Menu
 		}
 
 		// Open: our context outranks the character's, so 0-9 and Backspace reach only the menu.
-		input.ActivateContext("AIO_MenuContext");
+		ActivateMenuContext(input);
 		if (now >= m_iNextRosterAsk)
 		{
 			m_iNextRosterAsk = now + 1000;
@@ -195,10 +195,16 @@ class AIO_Menu
 		CharacterControllerComponent controller = character.GetCharacterController();
 		if (controller && controller.IsDead())
 			return false;
+		return true;
+	}
+
+	protected void ActivateMenuContext(InputManager input)
+	{
 		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
 		if (mapEntity && mapEntity.IsOpen())
-			return false;
-		return true;
+			input.ActivateContext("AIO_MapMenuContext");
+		else
+			input.ActivateContext("AIO_MenuContext");
 	}
 
 	// ------------------------------------------------------------------ open / close
@@ -524,6 +530,20 @@ class AIO_Menu
 	// Where the player is looking (camera ray, 1.5 km), and what entity is there if any.
 	static bool LookPoint(SCR_PlayerController pc, out vector point, out IEntity hitEntity)
 	{
+		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
+		if (mapEntity && mapEntity.IsOpen())
+		{
+			if (!mapEntity.GetMapWidget())
+				return false;
+			float x, z;
+			mapEntity.GetMapCursorWorldPosition(x, z);
+			point = Vector(x, GetGame().GetWorld().GetSurfaceY(x, z), z);
+			// Resolve the entity under the map cursor for building/vehicle/supply orders.
+			// The destination itself remains the cursor's terrain position.
+			vector hitPoint;
+			TracePoint(pc.GetControlledEntity(), point + Vector(0, 500, 0), point - Vector(0, 50, 0), hitPoint, hitEntity);
+			return true;
+		}
 		CameraManager cameras = GetGame().GetCameraManager();
 		if (!cameras)
 			return false;

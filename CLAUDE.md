@@ -39,7 +39,8 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
 - `AIO_Menu.c`: client menu. Modes ORDERS / SELECT / TEAMS. Keys 1-9 lines, 0 = Select members
   (root) or Back, Backspace = back (on Select: clear selection), menu key closes. Selection is kept
   8 s after an order. Teams are client-side for now (Red/Green/Blue/Yellow, White = none).
-  Look point = camera ray (1.5 km). Widgets built in script from vanilla Text_BodySmall layouts;
+  Look point = camera ray (1.5 km, excluding own vehicle) or the map cursor's terrain position when
+  the map is open. Widgets built in script from vanilla Text_BodySmall layouts;
   removed in `OnBeforeWorldCleanup` (`AIO_Game.c`).
 - `AIO_PlayerController.c`: modded SCR_PlayerController. OnUpdate drives the menu on the local
   controller. RPCs: roster (server -> owner every 1 s while open), orders, feedback.
@@ -117,10 +118,11 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   `-aioCheats all|admins|off`.
 - Input: `Configs/System/chimeraInputCommon.conf` is an OVERRIDE (delta, same GUID as vanilla) like
   ACE and most Workshop mods, so it stacks with other mods (ACA's gproj input config inherits it).
-  `AIO_OpenContext` (prio 15) holds the menu key (default T; Y is Game Master); `AIO_MenuContext`
+  `AIO_OpenContext` (prio 60, above the map's 50) holds the menu key (default T; Y is Game Master); `AIO_MenuContext`
   (prio 150, flags 0xa like vanilla weapon selection: 0x4 would show the mouse cursor) takes 0-9/Backspace while the menu is open so the
   weapon/quick-slot keys (SwitchWeaponCategoryN, prio 10) don't fire; it stays on 0.5 s after closing so the closing key's release is swallowed too. `keyBindingMenu.conf` override
-  adds the Controls category.
+  adds the Controls category. `AIO_MapMenuContext` (prio 150, flags 0xe) captures the same menu keys
+  while preserving the map cursor; also used to swallow the closing key while the map is open.
 
 ## Workshop release
 - `bash tools/make_release.sh` builds the stripped copy `addons/_AIO-release/AIOCommandMenu` (same GUID,
@@ -206,3 +208,7 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   Vehicle regression and a mounted selected-men Move here check are in progress; live gunner/driver
   verification still needed. The first trace test's 5 m clear-ray assumption hit a nearby tree; corrected
   to check the actual exclusion. First run's flipped setup also failed (physics righted it three times).
+- 13 Oct, Codex: menu can now open with the map, point orders use GetMapCursorWorldPosition + terrain
+  height, with a vertical trace for entity targets. A separate menu input context preserves the cursor;
+  opener priority raised above MapContext. `codex-map-compile` PASS; input/cursor and map orders need
+  Jacob's live check. README now reflects Vehicles in root slot 3 and map destinations.
