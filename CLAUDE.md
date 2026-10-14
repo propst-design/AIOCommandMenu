@@ -115,6 +115,18 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   key number, name (team colour), health, magazines, task label (`AIO_Tasks.TaskLabel`), plus the key
   number over each man's head in his team colour (within 120 m; every frame, render camera via
   BaseWorld.GetCurrentCamera; logs `[AIO] head markers:` skip reasons every 5 s when some man has none). More > Squad bar on/off.
+- `AIO_Formations.c` (Formations, 14 Oct): Move > 9 Formation & speed > Column / Staggered column / Wedge /
+  Line (+ Speed page). Whole squad always (selection ignored; handled before ExecuteMen in Execute). Adds a
+  COMMANDING `SCR_AIGroupFormationSetting` to the group's SCR_AIGroupSettingsComponent (the game's
+  ActivityMove.bt node SCR_AISetGroupFormation re-reads it on every move; EDITOR/SCENARIO/WAYPOINT origin
+  settings still outrank it) and applies it at once like that node (AIFormationComponent.SetFormation +
+  every AIGroupMovementComponent handler). Only the game's four exist (SCR_AIWorld.et `Formations`:
+  Wedge, Line, Column, StaggeredColumn; 3 m spacing). Arma 3's echelons, vee, diamond and file need new
+  AIFormationDefinition entries in that prefab: a delta override `Prefabs/AI/SCR_AIWorld.et` (meta GUID
+  E0A05C76552E7F58) + `modded enum SCR_EAIGroupFormation` was tried and NOT loaded by the dedicated
+  server (prefab still 4 formations, with or without resourceDatabase.rdb; the world's AI world entity
+  reports no prefab name). Untested: whether Workbench registering the override (rdb) changes that.
+  Fallback idea if wanted: script keep-station shapes like the Move menu (anchored holds).
 - `AIO_Test.c`: server tests (`-aioTaskTest 1`: spawns a US fire team on GM_Arland, moves/holds/releases men).
 - `AIO_Server.c`: squad = the player's group's slave AI group (`SCR_AIGroup.GetSlave()`), the same
   setup the vanilla commanding wheel and ACA's possession use. Whole-squad orders go through the
@@ -167,6 +179,11 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
 - `recovery` (~130 s): a nine-man rifle squad without a playable master/slave, leader AI disabled
   to simulate GM possession. Impossible interior posts must release; Follow cancels approach jobs,
   restores formation despite a late waypoint cancel and follows the moved leader without clustering.
+- `formations` (~330 s): rifle squad (slave of a playable master) walks a 180 m square, one leg per
+  formation (Column, Staggered column, Line, Wedge), shape sampled on the move every 4 s, best sample counts.
+  Columns are checked fully; Line and Wedge sideways only (vs Column): the AI leader sprints and after a
+  turn the wings of a wide formation trail 10-40 m behind (vanilla movement; full-shape wedge passed
+  in about half the runs). `formations-aca` too.
 - `<test>-aca` presets (tasks, moves, infantry, supply, attack, defense, vehicles) run the same tests with ACA + BBB
   on ACR_TestRange (ACA's AI commanders and battle running alongside). The test squad is made the slave
   of a playable "master" group like the player's real squad (`AIO_Test.MakeMaster/LinkToMaster`):
@@ -227,7 +244,7 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
     point use the map cursor's world position instead of the camera ray (covers the planned map-click
     orders). Check that the input contexts still fire with the map open.
 - Next: MP check with a second player, the vehicle findings above, then
-  formations, map-click orders. Workshop prep DONE 13 Oct (release copy, texts, placeholder image).
+  map-click orders. Formations built 14 Oct (see Status). Workshop prep DONE 13 Oct (release copy, texts, placeholder image).
 - 13 Oct, Codex: vehicle targeting now checks seats recursively and includes static entities in the
   nearest search; camera traces exclude the player's vehicle and its children as well as the character.
   Compile `codex-target-compile` PASS. New mortar/tripod direct and nearest targeting checks PASS.
@@ -279,3 +296,8 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   tightening the nonresponsive-door guard. Release refreshed with the fixes and new change notes;
   source/release hashes verified and thumbnail preserved. Live full-squad/church retry is still
   Jacob's check; 0.2.0 remains unpublished.
+- 14 Oct, Claude: Formations (Jacob: "Build formations"). Move > Formation & speed: Column, Staggered
+  column, Wedge, Line through the game's group formation setting; Speed moved into that page. Custom
+  Arma 3 shapes blocked by the AI world prefab (see code map). Tests: `form-test15` formations 10/10, `form-aca3` formations-aca 10/10, `form-tasks1`
+  tasks 7/7, `form-moves1` moves 5/5. Live check for Jacob: pick each formation
+  while walking/running and confirm the men take it and keep it after Move here / Follow.
