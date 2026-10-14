@@ -86,14 +86,12 @@ class AIO_Tasks
 	{
 		array<IEntity> members = {};
 		AIO_Server.Members(group, members);
-		foreach (RplId id : ids)
+		// Same id the roster sent for each man (no round trip through the replication item).
+		foreach (IEntity member : members)
 		{
-			RplComponent rpl = RplComponent.Cast(Replication.FindItem(id));
-			if (!rpl)
-				continue;
-			IEntity body = rpl.GetEntity();
-			if (body && members.Contains(body))
-				bodies.Insert(body);
+			RplId id = Replication.FindItemId(member);
+			if (ids.Contains(id))
+				bodies.Insert(member);
 		}
 	}
 

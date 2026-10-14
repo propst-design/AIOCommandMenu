@@ -124,10 +124,7 @@ class AIO_Server
 			everyone.RemoveItem(pc.GetControlledEntity());
 			if (everyone.IsEmpty())
 				return "No soldiers under your command";
-			array<RplId> all = {};
-			foreach (IEntity man : everyone)
-				all.Insert(Replication.FindItemId(man));
-			return ExecuteMen(slave, order, all, point, pc.GetControlledEntity(), target, playerId);
+			return ExecuteBodies(slave, order, everyone, point, pc.GetControlledEntity(), target, playerId);
 		}
 		// Whole-squad movement orders take over from any single-man tasks.
 		if (order == AIO_EOrder.HALT || order == AIO_EOrder.FOLLOW || order == AIO_EOrder.MOVE_HERE || order == AIO_EOrder.HOLD_HERE)
@@ -483,7 +480,20 @@ class AIO_Server
 		array<IEntity> bodies = {};
 		AIO_Tasks.Resolve(slave, ids, bodies);
 		if (bodies.IsEmpty())
+		{
+			array<IEntity> members = {};
+			Members(slave, members);
+			Print(string.Format("[AIO] order %1: none of %2 ids matched the %3 men of %4 (possessed %5)", typename.EnumToString(AIO_EOrder, order), ids.Count(), members.Count(), slave, IsPossessed(slave)));
 			return "Those men are no longer in your squad";
+		}
+		return ExecuteBodies(slave, order, bodies, point, player, target, playerId);
+	}
+
+	static string ExecuteBodies(SCR_AIGroup slave, int order, array<IEntity> bodies, vector point, IEntity player, RplId target, int playerId)
+	{
+		bodies.RemoveItem(player);
+		if (bodies.IsEmpty())
+			return "No soldiers under your command";
 		int count;
 		string moved = MoveMenu(slave, player, order, bodies);
 		if (!moved.IsEmpty())
