@@ -34,6 +34,12 @@ logged-in admins. Host option: `-aioCheats all|admins|off`.
 Infantry orders, vehicle orders, the admin page, and destinations from the map cursor
 are implemented. Formations (column, staggered column, wedge, line) are in; multiplayer and recent fixes need live testing.
 
+## Reporting bugs
+
+Please report bugs on GitHub: https://github.com/propst-design/AIOCommandMenu/issues
+(New issue > Bug report). Include your mod version, game mode, what you did, and
+console.log / script.log from `Documents\My Games\ArmaReforger\profile\logs`.
+
 ## Credits
 
 Original Arma 3 mod, design and manual: Leopard20 (All-in-One Command Menu). This
