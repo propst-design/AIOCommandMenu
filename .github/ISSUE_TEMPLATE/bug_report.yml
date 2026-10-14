@@ -1,0 +1,87 @@
+name: Bug report
+description: Something in the command menu doesn't work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! The more of this you fill in, the faster it gets fixed.
+  - type: input
+    id: version
+    attributes:
+      label: Mod version
+      description: Shown on the Workshop page and in the game's mod list (e.g. 0.2.1).
+      placeholder: "0.2.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Game mode
+      options:
+        - Conflict
+        - Game Master
+        - Arma Commander Actual (ACA)
+        - Other (say which under Steps)
+    validations:
+      required: true
+  - type: dropdown
+    id: session
+    attributes:
+      label: Session type
+      options:
+        - Single player
+        - Hosted game, I was the host
+        - Hosted game, I joined
+        - Dedicated server
+    validations:
+      required: true
+  - type: dropdown
+    id: who
+    attributes:
+      label: Who got the order
+      options:
+        - Whole squad
+        - Selected men (or a colour team)
+        - Both / not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: target
+    attributes:
+      label: Where the order pointed
+      description: Orders that need a place use where you look (camera) or the map cursor.
+      options:
+        - Camera (where I was looking)
+        - Map cursor (map open)
+        - The order needs no place
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps
+      description: What you did (menu path, e.g. "4 Defense > 2 Garrison building"), what happened, and what you expected.
+      placeholder: |
+        1. Opened the menu with T, chose ...
+        2. ...
+        What happened: ...
+        Expected: ...
+    validations:
+      required: true
+  - type: textarea
+    id: mods
+    attributes:
+      label: Mod list
+      description: Other mods loaded in that session (names are enough).
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        Attach console.log and script.log from the session's folder in `Documents\My Games\ArmaReforger\profile\logs` (newest folder; drag the files in here, zip them if they're too big). On a dedicated server, the server's logs folder.
+    validations:
+      required: false
