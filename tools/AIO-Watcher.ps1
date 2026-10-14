@@ -138,7 +138,9 @@ function Invoke-Request($file) {
             $text = Get-Content -LiteralPath $log -Raw -ErrorAction SilentlyContinue
             if ($text -match 'Unable to start replication') { $outcome = 'port busy (a hosted game or server is using 2001)'; break }
             if ($text -match "Can't compile") { Start-Sleep -Seconds 2; $outcome = 'compile error'; break }
-            if ($text -match 'SCRIPT\s+\(E\)') { Start-Sleep -Seconds 3; $outcome = 'script error'; break }
+            # Vanilla noise (crash damage, AI movement, suppression) is not a script error of ours.
+            $errors = ($text -split "`n") | Where-Object { $_ -match 'SCRIPT\s+\(E\)' -and $_ -notmatch 'SCR_InstigatorContextData|SCR_AIProcessFailedMovementResult|No suppression volume provided' }
+            if ($errors) { Start-Sleep -Seconds 3; $outcome = 'script error'; break }
             if ($text -match $config.DoneWhen) { Start-Sleep -Seconds 5; $outcome = 'completed'; break }
         }
         if (((Get-Date) - $started).TotalSeconds -gt $config.TimeoutSec) { break }

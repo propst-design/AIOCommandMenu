@@ -221,6 +221,16 @@ class AIO_Tasks
 			label = "Rearming";
 		if (AIO_Maneuvers.IsBounding(agent))
 			label = "Bounding";
+		if (AIO_Vehicles.IsPushing(body))
+			label = "Unflipping";
+		string seat = AIO_Vehicles.Label(body);
+		if (!seat.IsEmpty())
+		{
+			if (!label.IsEmpty())
+				label = seat + ", " + label;
+			else
+				label = seat;
+		}
 		if (AIO_Maneuvers.IsWaitingForLead(agent))
 		{
 			if (!label.IsEmpty())
@@ -488,6 +498,7 @@ class AIO_Tasks
 		KeepStances();
 		AIO_Supplies.Tick();
 		AIO_Maneuvers.Tick();
+		AIO_Vehicles.Tick();
 		for (int c = s_aCopyAgents.Count() - 1; c >= 0; c--)
 		{
 			AIAgent copier = s_aCopyAgents[c];

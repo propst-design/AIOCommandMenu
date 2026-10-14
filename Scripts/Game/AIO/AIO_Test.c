@@ -9,6 +9,7 @@
 //   -aioAttackTest 1 : Flank right, per-man ROE / engage / fire on my lead, Bound forward.
 //   -aioDefenseTest 1 : 360 defense, Garrison and Clear a building, Fortify.
 //   -aioTowerTest 1 : the defense test on the airfield control tower.
+//   -aioVehicleTest 1 : get in, switch seats, lights/engine, disembark, get out, eject, unflip.
 // Prints "[AIO] TEST <name> PASS|FAIL ..." lines and "[AIO] TEST COMPLETE".
 class AIO_Test
 {
@@ -35,6 +36,10 @@ class AIO_Test
 	protected static SCR_AIGroup s_Master; // playable group standing in for the player's group
 	protected static ResourceName s_sEnemyWeapon;
 	protected static vector s_vForward;
+	protected static bool s_bVehicleTest;
+	protected static IEntity s_Vehicle;
+	protected static IEntity s_Gunner;
+	static const ResourceName HUMVEE = "{3EA6F47D95867114}Prefabs/Vehicles/Wheeled/M998/M1025_armed_M2HB.et";
 
 	static void MaybeStart()
 	{
@@ -59,7 +64,10 @@ class AIO_Test
 		s_bTower = towerValue == "1";
 		if (s_bTower)
 			s_bDefenseTest = true;
-		if (!s_bMoveTest && !s_bInfantryTest && !s_bSupplyTest && !s_bAttackTest && !s_bDefenseTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
+		string vehicleValue;
+		System.GetCLIParam("aioVehicleTest", vehicleValue);
+		s_bVehicleTest = vehicleValue == "1";
+		if (!s_bVehicleTest && !s_bMoveTest && !s_bInfantryTest && !s_bSupplyTest && !s_bAttackTest && !s_bDefenseTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
 			return;
 		if (!Replication.IsServer())
 			return;
@@ -168,7 +176,9 @@ class AIO_Test
 		s_Group = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(Resource.Load(GROUP), GetGame().GetWorld(), params));
 		LinkToMaster();
 		Print(string.Format("[AIO] TEST tasks: group spawned at %1", s_vStart));
-		if (s_bAttackTest)
+		if (s_bVehicleTest)
+			GetGame().GetCallqueue().CallLater(VehStart, 10000, false);
+		else if (s_bAttackTest)
 			GetGame().GetCallqueue().CallLater(Flank, 12000, false);
 		else if (s_bDefenseTest)
 			GetGame().GetCallqueue().CallLater(AllRound, 12000, false);
@@ -859,6 +869,214 @@ class AIO_Test
 		string labelA = AIO_Tasks.TaskLabel(s_A);
 		Check("squad-bar-labels", labelB == "Holding" && labelA == "", string.Format("B '%1', A '%2'", labelB, labelA));
 		AIO_Tasks.Release(s_B);
+		Finish();
+	}
+
+	// ---------------------------------------------------------------- vehicle test
+
+	protected static void Squad(notnull array<IEntity> members)
+	{
+		AIO_Server.Members(s_Group, members);
+	}
+
+	protected static int Aboard(out int cargo)
+	{
+		array<IEntity> members = {};
+		Squad(members);
+		int n;
+		cargo = 0;
+		foreach (IEntity member : members)
+		{
+			if (AIO_Vehicles.VehicleOf(member) != s_Vehicle)
+				continue;
+			n++;
+			BaseCompartmentSlot seat = AIO_Vehicles.SeatOf(member);
+			if (seat && seat.GetType() == ECompartmentType.CARGO)
+				cargo++;
+		}
+		return n;
+	}
+
+	protected static IEntity InSeat(int type)
+	{
+		array<BaseCompartmentSlot> seats = {};
+		AIO_Vehicles.Seats(s_Vehicle, seats);
+		foreach (BaseCompartmentSlot seat : seats)
+		{
+			if (seat.GetType() == type && seat.GetOccupant())
+				return seat.GetOccupant();
+		}
+		return null;
+	}
+
+	protected static void VehStart()
+	{
+		EntitySpawnParams params = new EntitySpawnParams();
+		params.TransformMode = ETransformMode.WORLD;
+		params.Transform[3] = FindSpot(s_vStart, 15) + Vector(0, 0.5, 0);
+		s_Vehicle = GetGame().SpawnEntityPrefab(Resource.Load(HUMVEE), GetGame().GetWorld(), params);
+		Check("vehicle-spawn", s_Vehicle != null, string.Format("M1025 at %1", params.Transform[3]));
+		if (!s_Vehicle)
+		{
+			Finish();
+			return;
+		}
+		GetGame().GetCallqueue().CallLater(VehBoard, 4000, false);
+	}
+
+	protected static void VehBoard()
+	{
+		array<IEntity> members = {};
+		Squad(members);
+		string reply = AIO_Vehicles.GetIn(members, s_Vehicle, -1);
+		Check("board-order", reply.Contains("getting in"), reply);
+		GetGame().GetCallqueue().CallLater(VehBoarded, 30000, false);
+	}
+
+	protected static void VehBoarded()
+	{
+		array<IEntity> members = {};
+		Squad(members);
+		int cargo;
+		int aboard = Aboard(cargo);
+		s_Gunner = InSeat(ECompartmentType.TURRET);
+		IEntity driver = InSeat(ECompartmentType.PILOT);
+		Check("board", aboard == members.Count() && driver != null && s_Gunner != null, string.Format("%1 of %2 aboard, driver %3, gunner %4, %5 passengers", aboard, members.Count(), driver != null, s_Gunner != null, cargo));
+		if (!s_Gunner)
+		{
+			Finish();
+			return;
+		}
+		array<IEntity> one = {s_Gunner};
+		string reply = AIO_Vehicles.SwitchSeat(one, ECompartmentType.CARGO);
+		Print("[AIO] TEST vehicle: " + reply);
+		GetGame().GetCallqueue().CallLater(VehSwitched, 12000, false);
+	}
+
+	protected static void VehSwitched()
+	{
+		BaseCompartmentSlot seat = AIO_Vehicles.SeatOf(s_Gunner);
+		bool ok = seat != null && seat.GetType() == ECompartmentType.CARGO && AIO_Vehicles.VehicleOf(s_Gunner) == s_Vehicle && InSeat(ECompartmentType.TURRET) == null;
+		string where = "nowhere";
+		if (seat)
+			where = AIO_Vehicles.SeatName(seat.GetType());
+		Check("switch-to-passenger", ok, "gunner now " + where);
+		array<IEntity> one = {s_Gunner};
+		Print("[AIO] TEST vehicle: " + AIO_Vehicles.SwitchSeat(one, ECompartmentType.TURRET));
+		GetGame().GetCallqueue().CallLater(VehSwitchedBack, 12000, false);
+	}
+
+	protected static void VehSwitchedBack()
+	{
+		BaseCompartmentSlot seat = AIO_Vehicles.SeatOf(s_Gunner);
+		string where = "nowhere";
+		if (seat)
+			where = AIO_Vehicles.SeatName(seat.GetType());
+		Check("switch-to-gunner", seat != null && seat.GetType() == ECompartmentType.TURRET, "now " + where + ", squad bar: " + AIO_Tasks.TaskLabel(s_Gunner));
+		array<IEntity> members = {};
+		Squad(members);
+		Print("[AIO] TEST vehicle: " + AIO_Vehicles.Controls(members, AIO_EOrder.VEH_LIGHTS_ON));
+		Print("[AIO] TEST vehicle: " + AIO_Vehicles.Controls(members, AIO_EOrder.VEH_ENGINE_ON));
+		GetGame().GetCallqueue().CallLater(VehControls, 6000, false);
+	}
+
+	protected static void VehControls()
+	{
+		BaseLightManagerComponent lights = BaseLightManagerComponent.Cast(s_Vehicle.FindComponent(BaseLightManagerComponent));
+		BaseVehicleControllerComponent controller = BaseVehicleControllerComponent.Cast(s_Vehicle.FindComponent(BaseVehicleControllerComponent));
+		bool lit = lights != null && lights.GetLightsState(ELightType.Head);
+		bool running = controller != null && controller.IsEngineOn();
+		Check("lights-engine", lit && running, string.Format("lights %1, engine %2", lit, running));
+		array<IEntity> members = {};
+		Squad(members);
+		Print("[AIO] TEST vehicle: " + AIO_Vehicles.Controls(members, AIO_EOrder.VEH_ENGINE_OFF));
+		string reply = AIO_Vehicles.GetOut(members, s_Group, AIO_EOrder.VEH_DISEMBARK);
+		Print("[AIO] TEST vehicle: " + reply);
+		GetGame().GetCallqueue().CallLater(VehDisembarked, 15000, false);
+	}
+
+	protected static void VehDisembarked()
+	{
+		BaseVehicleControllerComponent controller = BaseVehicleControllerComponent.Cast(s_Vehicle.FindComponent(BaseVehicleControllerComponent));
+		Check("engine-off", controller != null && !controller.IsEngineOn(), "");
+		int cargo;
+		int aboard = Aboard(cargo);
+		bool crew = InSeat(ECompartmentType.PILOT) != null && InSeat(ECompartmentType.TURRET) != null;
+		Check("disembark", cargo == 0 && aboard == 2 && crew, string.Format("%1 aboard, %2 passengers, crew stayed %3", aboard, cargo, crew));
+		array<IEntity> members = {};
+		Squad(members);
+		Print("[AIO] TEST vehicle: " + AIO_Vehicles.GetOut(members, s_Group, AIO_EOrder.VEH_GET_OUT));
+		GetGame().GetCallqueue().CallLater(VehOut, 20000, false);
+	}
+
+	protected static void VehOut()
+	{
+		int cargo;
+		int aboard = Aboard(cargo);
+		SCR_AIGroupUtilityComponent utility = SCR_AIGroupUtilityComponent.Cast(s_Group.FindComponent(SCR_AIGroupUtilityComponent));
+		bool used = utility != null && utility.IsUsableVehicle(s_Vehicle);
+		Check("get-out", aboard == 0 && !used, string.Format("%1 still aboard, still the squad's vehicle %2", aboard, used));
+		array<IEntity> members = {};
+		Squad(members);
+		array<IEntity> one = {members[members.Count() - 1]};
+		s_A = one[0];
+		Print("[AIO] TEST vehicle: " + AIO_Vehicles.GetIn(one, s_Vehicle, ECompartmentType.PILOT));
+		GetGame().GetCallqueue().CallLater(VehEjectGo, 20000, false);
+	}
+
+	protected static void VehEjectGo()
+	{
+		BaseCompartmentSlot seat = AIO_Vehicles.SeatOf(s_A);
+		Check("get-in-driver", seat != null && seat.GetType() == ECompartmentType.PILOT, "");
+		array<IEntity> one = {s_A};
+		Print("[AIO] TEST vehicle: " + AIO_Vehicles.GetOut(one, s_Group, AIO_EOrder.VEH_EJECT));
+		GetGame().GetCallqueue().CallLater(VehEjected, 3000, false);
+	}
+
+	protected static int s_iFlips;
+
+	protected static void VehEjected()
+	{
+		Check("eject", AIO_Vehicles.VehicleOf(s_A) == null, "out within 3 s");
+		Flip();
+	}
+
+	protected static void FlipAngles()
+	{
+		Print(string.Format("[AIO] TEST vehicle: 1 s after the flip %1", s_Vehicle.GetYawPitchRoll()));
+	}
+
+	protected static void Flip()
+	{
+		s_iFlips++;
+		vector angles = s_Vehicle.GetYawPitchRoll();
+		vector mat[4];
+		Math3D.AnglesToMatrix(Vector(angles[0], 0, 178), mat);
+		mat[3] = s_Vehicle.GetOrigin() + Vector(0, 2.5, 0); // short drop: crash damage logs vanilla (E) noise
+		AIO_Vehicles.SetPose(s_Vehicle, mat);
+		Print(string.Format("[AIO] TEST vehicle: flipped to %1", s_Vehicle.GetYawPitchRoll()));
+		GetGame().GetCallqueue().CallLater(FlipAngles, 1000, false);
+		GetGame().GetCallqueue().CallLater(VehFlipGo, 5000, false);
+	}
+
+	protected static void VehFlipGo()
+	{
+		if (!AIO_Vehicles.IsFlipped(s_Vehicle) && s_iFlips < 3)
+		{
+			Print(string.Format("[AIO] TEST vehicle: flip %1 did not hold (%2), again", s_iFlips, s_Vehicle.GetYawPitchRoll()));
+			Flip();
+			return;
+		}
+		Check("flipped", AIO_Vehicles.IsFlipped(s_Vehicle), string.Format("angles %1 after %2 tries", s_Vehicle.GetYawPitchRoll(), s_iFlips));
+		array<IEntity> members = {};
+		Squad(members);
+		Print("[AIO] TEST vehicle: " + AIO_Vehicles.Unflip(members, s_Vehicle));
+		GetGame().GetCallqueue().CallLater(VehUnflipped, 35000, false);
+	}
+
+	protected static void VehUnflipped()
+	{
+		Check("unflip", !AIO_Vehicles.IsFlipped(s_Vehicle), string.Format("angles %1", s_Vehicle.GetYawPitchRoll()));
 		Finish();
 	}
 }
