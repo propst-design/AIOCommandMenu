@@ -14,6 +14,18 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
   (README has the full manual).
 - Concise replies. Ask before big scope changes. Jacob iterates on the menu layout.
 
+## Two agents (Claude and Codex, Jacob 13 Oct)
+Codex works on this mod too under Jacob's direction and reads this same handbook (AGENTS.md points here).
+- One handbook (this file), no parallel task lists. Codex can't reach claude.ai: it claims work and reports
+  results in `docs/handoff/codex-log.md`. Claude: at session start read that log, carry what matters into
+  this file (Status / next) and mark lines `[synced]`; append `- <date time> | note | Claude: ... | <sha>`
+  lines for what Codex should know (Jacob's decisions, live findings, releases).
+- Claim before starting (a `claim` line); Jacob's reassignments win. One testable tree: commit or stash
+  before handing over, check `git status` and the `.aio-requests` queue first.
+- Small commits, one change each, each agent's own attribution lines; note test runs and results.
+- AGENTS.md, docs/ and tools/ never ship (make_release.sh copies only Scripts, Configs, rdb, README,
+  licence files).
+
 ## Where things are
 - Windows: `Documents\my games\ArmaReforgerWorkbench\addons\AIOCommandMenu`
   (Cowork VM: `$HOME/mnt/ArmaReforgerWorkbench--addons/AIOCommandMenu`). Mod GUID 629405AEFC950C12,
