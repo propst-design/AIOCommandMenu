@@ -125,13 +125,21 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   while preserving the map cursor; also used to swallow the closing key while the map is open.
 
 ## Workshop release
-- `bash tools/make_release.sh` builds the stripped copy `addons/_AIO-release/AIOCommandMenu` (same GUID,
-  title "AiO Command Menu (Reforger)"; only Scripts, Configs, rdb, README, licence files) and puts
+- Windows: `pwsh -File tools/make_release.ps1` (or `powershell -File tools/make_release.ps1`).
+  On Unix: `bash tools/make_release.sh`. These refresh `addons/_AIO-release/AIOCommandMenu` (same GUID,
+  title "AiO Command Menu (Reforger)"; only Scripts, Configs, rdb, README, CHANGELOG, licence files) and put
   `tools/workshop/` (summary, description, placeholder preview image) beside it. Re-run before every
   publish. One level down so the game/Workbench never see two copies in addons/.
+  Existing thumbnail and publisher metadata are preserved; Scripts and Configs are replaced to avoid
+  stale assets. The Windows builder validates its target paths before replacing managed directories.
 - Jacob publishes from Workbench under his Bohemia login: open the release gproj, Publish, Unlisted first.
   PUBLISHED 13 Oct as "AiO Command Menu (Reforger)" 0.1.0, Unlisted: https://reforger.armaplatform.com/workshop/629405AEFC950C12
   (custom licence = LICENSE.txt). Next: MP check from the Workshop copy, then Public.
+- 0.2.0 prepared 13 Oct: vehicles, map commands, targeting and GM possession improvements since
+  published 0.1.0. Release refreshed; NOT yet published. Paste `tools/workshop/WORKSHOP-CHANGELOG.txt`
+  into Change Notes and enter `0.2.0` as Version in Workbench's publish dialog. The gproj has no version
+  field; keep its GUID unchanged to update the existing Workshop item. Recommended numbering:
+  0.2.1 for subsequent fixes, 0.3.0 for the next feature update; 1.0.0 once the stable release is ready.
 
 ## Testing
 - Jacob runs `Start-AIO-Test-Launcher.cmd` (tools/AIO-Watcher.ps1). Claude: `bash tools/runtest.sh

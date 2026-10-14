@@ -10,14 +10,14 @@ CONTROLS
 - While the menu is open the number keys only drive the menu, so you never switch weapons by accident.
 - Orders go to the whole squad, or only to the men you pick on Select members (toggle men 1-7, 8 next page, 9 Teams).
 - Colour teams: Red, Green, Blue, Yellow. Select a team, or put the selected men in one.
-- Orders that need a place use the spot you are looking at.
+- Orders that need a place use the spot you are looking at, or the map cursor while the map is open. The menu works with the map open.
 - While the menu is open a squad bar shows each man's number, health, magazines and current task, and his number floats over his head in his team colour.
 
 THE MENU
 1 Move: Move here, Follow me, Advance, Stay back, Flank left, Flank right (they keep station about 50 m from you and move with you), Fall back, Hold here, Speed (walk, run, sprint, auto)
 2 Attack: Advance, Flank left, Flank right, Assault, Suppress, Fire on my lead, Bound forward, Peel back
-3 Take cover: each man finds cover facing the threat ahead of you
-4 Defense: Garrison building, Clear building, 360 defense, Fortify here
+3 Vehicles: Get in as driver/gunner/passenger, Switch seat, Get out, Disembark passengers, Eject, Engine and light controls, Unflip
+4 Defense: Take cover (each man finds cover facing the threat ahead of you), Garrison building, Clear building, 360 defense, Fortify here
 5 R.O.E.: Fire at will, Return fire only, Hold fire, Engage at will, Disengage
 6 Stance: Stand, Crouch, Prone, Auto, Copy my stance
 7 Supplies: Heal up, Rearm (from bodies, loose gear, vehicles, crates and arsenals nearby), Rearm from that, Take that weapon

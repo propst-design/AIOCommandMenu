@@ -1,0 +1,10 @@
+0.2.0 - Vehicles and map commands
+
+- Added vehicle boarding by seat role, seat switching, get out, passenger disembark and eject.
+- Added engine/light controls and squad-assisted vehicle unflip.
+- Added vehicle seat and boarding/dismounting status to the squad bar.
+- The command menu now works with the map open; destination orders use the map cursor.
+- Improved mortar and tripod machine gun targeting.
+- Fixed camera targeting from inside vehicles so orders ignore your own vehicle's hull and attached parts.
+- Added squad command support when taking control of an AI soldier in Game Master.
+- Vehicles is now menu slot 3; Take cover is under Defense.
