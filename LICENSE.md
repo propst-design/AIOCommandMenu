@@ -44,5 +44,5 @@ redistributed here.
 ## Working with Jacob's other mods
 
 This mod shares no code with **Arma Commander Actual** (Arma Public License
-Share-Alike, which is not GPL-compatible) or Drongo's Command Enhancements. The mods
-only talk to each other while the game runs, and each works without the others.
+Share-Alike, which is not GPL-compatible). The two mods only talk to each other
+while the game runs, and each works without the other.
