@@ -145,7 +145,8 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
 - Jacob publishes from Workbench under his Bohemia login: open the release gproj, Publish, Unlisted first.
   PUBLISHED 13 Oct as "AiO Command Menu (Reforger)" 0.1.0, Unlisted: https://reforger.armaplatform.com/workshop/629405AEFC950C12
   (custom licence = LICENSE.txt). 0.2.0 PUBLISHED 14 Oct by Claude (computer use, Jacob's request), still
-  Unlisted, change notes = tools/workshop/WORKSHOP-CHANGELOG.txt, description refreshed. Next: MP check from the Workshop copy, then Public.
+  Unlisted, change notes = tools/workshop/WORKSHOP-CHANGELOG.txt, description refreshed. 0.2.1 = same content, PUBLIC
+  (Jacob, 14 Oct: go public before the MP check). Next: MP check from the Workshop copy.
 - 0.2.0 prepared 13 Oct: vehicles, map commands, targeting and GM possession improvements since
   published 0.1.0. Release refreshed; NOT yet published. Paste `tools/workshop/WORKSHOP-CHANGELOG.txt`
   into Change Notes and enter `0.2.0` as Version in Workbench's publish dialog. The gproj has no version
