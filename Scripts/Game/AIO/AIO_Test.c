@@ -10,6 +10,7 @@
 //   -aioDefenseTest 1 : 360 defense, Garrison and Clear a building, Fortify.
 //   -aioTowerTest 1 : the defense test on the airfield control tower.
 //   -aioVehicleTest 1 : get in, switch seats, lights/engine, disembark, get out, eject, unflip.
+//   -aioRecoveryTest 1 : GM-style rifle squad, unreachable interior posts, cancel, formation recovery.
 // Prints "[AIO] TEST <name> PASS|FAIL ..." lines and "[AIO] TEST COMPLETE".
 class AIO_Test
 {
@@ -37,6 +38,8 @@ class AIO_Test
 	protected static ResourceName s_sEnemyWeapon;
 	protected static vector s_vForward;
 	protected static bool s_bVehicleTest;
+	protected static bool s_bRecoveryTest;
+	static const ResourceName RIFLE_SQUAD = "{DDF3799FA1387848}Prefabs/Groups/BLUFOR/Group_US_RifleSquad.et";
 	protected static IEntity s_Vehicle;
 	protected static IEntity s_Gunner;
 	static const ResourceName HUMVEE = "{3EA6F47D95867114}Prefabs/Vehicles/Wheeled/M998/M1025_armed_M2HB.et";
@@ -69,12 +72,16 @@ class AIO_Test
 		string vehicleValue;
 		System.GetCLIParam("aioVehicleTest", vehicleValue);
 		s_bVehicleTest = vehicleValue == "1";
-		if (!s_bVehicleTest && !s_bMoveTest && !s_bInfantryTest && !s_bSupplyTest && !s_bAttackTest && !s_bDefenseTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
+		string recoveryValue;
+		System.GetCLIParam("aioRecoveryTest", recoveryValue);
+		s_bRecoveryTest = recoveryValue == "1";
+		if (!s_bRecoveryTest && !s_bVehicleTest && !s_bMoveTest && !s_bInfantryTest && !s_bSupplyTest && !s_bAttackTest && !s_bDefenseTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
 			return;
 		if (!Replication.IsServer())
 			return;
 		Print("[AIO] TEST tasks: starting in 8 s");
-		GetGame().GetCallqueue().CallLater(MakeMaster, 2000, false);
+		if (!s_bRecoveryTest)
+			GetGame().GetCallqueue().CallLater(MakeMaster, 2000, false);
 		GetGame().GetCallqueue().CallLater(Spawn, 8000, false);
 	}
 
@@ -175,10 +182,15 @@ class AIO_Test
 		EntitySpawnParams params = new EntitySpawnParams();
 		params.TransformMode = ETransformMode.WORLD;
 		params.Transform[3] = s_vStart;
-		s_Group = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(Resource.Load(GROUP), GetGame().GetWorld(), params));
+		ResourceName prefab = GROUP;
+		if (s_bRecoveryTest)
+			prefab = RIFLE_SQUAD;
+		s_Group = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(Resource.Load(prefab), GetGame().GetWorld(), params));
 		LinkToMaster();
 		Print(string.Format("[AIO] TEST tasks: group spawned at %1", s_vStart));
-		if (s_bVehicleTest)
+		if (s_bRecoveryTest)
+			GetGame().GetCallqueue().CallLater(RecoveryStart, 12000, false);
+		else if (s_bVehicleTest)
 			GetGame().GetCallqueue().CallLater(VehStart, 10000, false);
 		else if (s_bAttackTest)
 			GetGame().GetCallqueue().CallLater(Flank, 12000, false);
@@ -232,6 +244,111 @@ class AIO_Test
 		string reply = AIO_Server.ExecuteMen(s_Group, AIO_EOrder.MOVE_HERE, ids, s_vTarget, leader, RplId.Invalid(), 0);
 		Check("order", reply == "2 men moving", string.Format("%1; destination %2 m away", reply, vector.Distance(s_vStart, s_vTarget)));
 		GetGame().GetCallqueue().CallLater(Arrived, 35000, false);
+	}
+
+	// ---------------------------------------------------------------- garrison recovery test
+
+	protected static void RecoveryStart()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		IEntity leader = Leader();
+		Check("possessed-squad-setup", leader && men.Count() >= 8 && AIO_Server.IsPossessed(s_Group), string.Format("%1 men, no playable master/slave", men.Count()));
+		if (!leader || men.IsEmpty())
+		{
+			Finish();
+			return;
+		}
+		AIO_Tasks.AgentOf(leader).DeactivateAI(); // stand-in for a GM-controlled leader
+		foreach (IEntity man : men)
+		{
+			// No navmesh/standing position 20 m above the man: genuinely impossible to reach.
+			AIO_Maneuvers.HoldFacing(man, man.GetOrigin() + Vector(0, 20, 0), leader.GetOrigin(), false);
+			AIO_Tasks.GuardInterior(man, AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(man))));
+		}
+		GetGame().GetCallqueue().CallLater(RecoveryTimedOut, 60000, false);
+	}
+
+	protected static void RecoveryTimedOut()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		int stuck;
+		foreach (IEntity man : men)
+		{
+			SCR_AIUtilityComponent utility = AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(man));
+			if (AIO_Tasks.ActiveHold(utility) || AIO_Tasks.ActiveMove(utility))
+				stuck++;
+		}
+		Check("unreachable-post-release", stuck == 0, string.Format("%1 men still have interior move/hold tasks after 60 s", stuck));
+		s_Building = FindBuilding(s_vStart);
+		if (!s_Building)
+		{
+			Check("approach-cancel", false, "no building found for pending approach");
+			Finish();
+			return;
+		}
+		AIO_Maneuvers.Approach(men, Leader(), AIO_EOrder.DEF_GARRISON, s_Building);
+		SCR_AIGroupUtilityComponent groupUtility = SCR_AIGroupUtilityComponent.Cast(s_Group.FindComponent(SCR_AIGroupUtilityComponent));
+		SCR_AIMoveActivity oldActivity = new SCR_AIMoveActivity(groupUtility, null, Leader().GetOrigin(), null, useVehicles: false);
+		foreach (IEntity man : men)
+		{
+			AIO_Maneuvers.SetEngage(man, 0); // clear/assault's old formation override must not survive Follow
+			SCR_AIUtilityComponent utility = AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(man));
+			array<ref AIActionBase> formation = {};
+			utility.FindActionsOfType(SCR_AIMoveInFormationBehavior, formation);
+			foreach (AIActionBase action : formation)
+				action.SetRelatedGroupActivity(oldActivity);
+		}
+		Print("[AIO] TEST recovery: " + AIO_Server.ExecuteBodies(s_Group, AIO_EOrder.FOLLOW, men, vector.Zero, Leader(), RplId.Invalid(), 0));
+		SCR_AIMessage_Cancel cancel = new SCR_AIMessage_Cancel();
+		cancel.m_RelatedGroupActivity = oldActivity;
+		SCR_AIGoalReaction_Cancel reaction = new SCR_AIGoalReaction_Cancel();
+		foreach (IEntity man : men)
+			reaction.PerformReaction(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(man)), cancel);
+		GetGame().GetCallqueue().CallLater(RecoveryFollowing, 3000, false);
+	}
+
+	protected static void RecoveryFollowing()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		int clean;
+		foreach (IEntity man : men)
+		{
+			SCR_AIUtilityComponent utility = AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(man));
+			if (!AIO_Tasks.ActiveHold(utility) && !AIO_Tasks.ActiveMove(utility) && utility.AIO_GetKeepFormation() == -1 && AIO_Tasks.HasFormation(utility))
+				clean++;
+		}
+		Check("follow-cleanup", clean == men.Count() && AIO_Maneuvers.s_aApproaches.IsEmpty(), string.Format("%1 of %2 in native formation after late waypoint cancel, %3 pending approaches", clean, men.Count(), AIO_Maneuvers.s_aApproaches.Count()));
+		IEntity leader = Leader();
+		vector transform[4];
+		leader.GetWorldTransform(transform);
+		transform[3] = FindSpot(leader.GetOrigin(), 40);
+		BaseGameEntity.Cast(leader).Teleport(transform);
+		GetGame().GetCallqueue().CallLater(RecoveryFormed, 35000, false);
+	}
+
+	protected static void RecoveryFormed()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		float farthest;
+		float spread;
+		int clean;
+		foreach (IEntity man : men)
+		{
+			farthest = Math.Max(farthest, vector.DistanceXZ(man.GetOrigin(), Leader().GetOrigin()));
+			foreach (IEntity other : men)
+				spread = Math.Max(spread, vector.DistanceXZ(man.GetOrigin(), other.GetOrigin()));
+			SCR_AIUtilityComponent utility = AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(man));
+			if (!AIO_Tasks.ActiveHold(utility) && !AIO_Tasks.ActiveMove(utility) && AIO_Tasks.HasFormation(utility))
+				clean++;
+			Print(string.Format("[AIO] TEST recovery member %1 at %2, action %3", AIO_Server.NameOf(man), man.GetOrigin(), utility.GetExecutedAction()));
+		}
+		Check("follow-moving-leader", farthest < 30 && clean == men.Count(), string.Format("farthest %1 m, %2 of %3 without AIO movement overrides", farthest, clean, men.Count()));
+		Check("formation-spread", spread > 8, string.Format("native formation span %1 m", spread));
+		Finish();
 	}
 
 	// ---------------------------------------------------------------- Move menu test
@@ -611,7 +728,10 @@ class AIO_Test
 			AIO_Tasks.Release(man);
 		string reply = AIO_Maneuvers.Defense(men, Leader(), AIO_EOrder.DEF_CLEAR, vector.Zero, s_Building);
 		Check("clear-order", reply.Contains("clearing"), reply);
-		GetGame().GetCallqueue().CallLater(Cleared, 60000, false);
+		int clearWait = 140000;
+		if (s_bTower)
+			clearWait = 180000;
+		GetGame().GetCallqueue().CallLater(Cleared, clearWait, false);
 	}
 
 	protected static void Cleared()
@@ -619,14 +739,21 @@ class AIO_Test
 		array<IEntity> men = {};
 		NonLeaders(men);
 		int done;
+		int visited;
+		int skipped;
 		foreach (IEntity man : men)
 		{
 			AIO_HoldBehavior hold = AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(man)));
-			if (hold && (!hold.m_aLegs || hold.m_aLegs.IsEmpty()))
+			if (hold && hold.m_bRouteComplete && hold.m_iVisitedRooms > 0 && (!hold.m_aLegs || hold.m_aLegs.IsEmpty()))
 				done++;
+			if (hold)
+			{
+				visited += hold.m_iVisitedRooms;
+				skipped += hold.m_iSkippedRooms;
+			}
 		}
 		int inside = MenInside(men);
-		Check("clear", done == men.Count() && inside == men.Count(), string.Format("%1 of %2 men walked every room, %3 inside", done, men.Count(), inside));
+		Check("clear", done == men.Count() && inside == men.Count(), string.Format("%1 of %2 finished reachable room routes, %3 inside; %4 positions reached, %5 inaccessible positions skipped", done, men.Count(), inside, visited, skipped));
 		vector forward, right;
 		AIO_Tasks.Facing(Leader(), forward, right);
 		s_vPoint = AIO_Maneuvers.Ground(Leader().GetOrigin() + Vector(0, 0, -25));

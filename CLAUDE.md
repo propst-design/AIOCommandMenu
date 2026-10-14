@@ -47,8 +47,16 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
 - `AIO_Tasks.c`: orders to single soldiers (selected men/teams). Per-agent behaviours on the man's
   SCR_AIUtilityComponent: AIO_MoveBehavior (vanilla MoveIndividually, prio 58, combat 70+ still wins) +
   AIO_HoldBehavior (Wait.bt, prio 45 > formation 30). Release = fail both -> back to formation.
-  Watchdog (2 s) walks holders back if >6 m off their spot. Whole-squad Halt/Follow/Move release all.
+  Watchdog (1 s) walks holders back if >6 m off their spot. Whole-squad Halt/Follow/Move release all.
   Anchored holds (m_Anchor + m_vOffset): the spot moves with the player (Move menu).
+  Interior holds use a 0.7 m move radius, a 1.5 m arrival tolerance, floor-height and building-bounds
+  checks. Garrison abandons a post after 45 s without movement or 180 s travel; combat pauses the
+  budget. Clear skips a stalled room after 20 s, reports reached/skipped positions and holds at the
+  last reachable room; if no room is reachable it rejoins. Release marks our actions for removal.
+  Arrival also needs floor support and a clear torso trace to the post (no arrival through a wall).
+  Interior sampling requires standing clearance and building floor support, or an enclosed room
+  for bare-ground/separate floors. Stalled men use vanilla nearby door actions, then replan; locked
+  or nonresponsive doors do not reset the timeout indefinitely.
 - Move menu (`AIO_Server.MoveMenu`): Advance / Stay back / Flank left / Flank right = keep station 50 m
   ahead/behind/left/right of the player's facing at order time (world-fixed bearing, moves with him),
   men in a line 5 m apart across that direction; Fall back = fixed spot 40 m behind, hold. Selection or
@@ -83,9 +91,11 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   inside), so when no inside is found the men walk up to the building (AIO_Approach, retried every 5 s
   and on arrival, gives up after 90 s) and the order is re-issued; "[AIO] Interior of ..." logs counts.
   Teams are sent to the server (AIO_RpcTeam). Speed = character movement-speed setting (GROUP_GOAL).
-- Hold behaviour extras: m_aLegs (routes), m_vLook (keeps looking, priority 15). `ActiveHold()` skips
-  ended holds that linger in the queue. `Rejoin()` walks far-off men back to the leader (formation
-  following alone was sometimes slow to pick them up).
+- Hold behaviour extras: m_aLegs (routes), m_vLook (keeps looking, priority 15). `ActiveHold()` /
+  `ActiveMove()` skip ended/removed tasks that linger in the queue. `Rejoin()` restores the game's
+  MoveInFormation behavior and resets our keep-formation override. It replaces formation tasks tied
+  to an old group activity so a late waypoint cancel cannot remove the new formation task. It no
+  longer sends every man to the same leader position with a higher-priority individual move.
 - `AIO_Vehicles.c` (Vehicles page, 13 Oct): per man through the game's own SCR_AIGetInVehicle /
   SCR_AIGetOutVehicle behaviours, so driving and formation stay vanilla (a seated man's vehicle joins the
   group's vehicles on entering). Target vehicle = the one looked at, else the player's own, else the
@@ -146,12 +156,15 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   <new-id> <preset> <polls>`; results in `.aio-requests/<id>.result.txt`.
 - Extra server tests come from `tools/test-presets.txt` (re-read per request, no launcher restart):
   `tasks` (~100 s), `moves` (~160 s), `infantry` (~110 s; prone can fail next to walls/at cover spots),
-  `supply` (~100 s), `attack` (~210 s), `defense` (~190 s; finds a house near the map centre),
-  `tower` (~300 s; defense on Arland's ControlTowerMilitary_E_01 + walk-up fallback),
+  `supply` (~100 s), `attack` (~210 s), `defense` (~270 s; finds a house near the map centre),
+  `tower` (~400 s; defense on Arland's ControlTowerMilitary_E_01 + walk-up fallback),
   `vehicles` (~235 s; M1025: board, mounted look trace and Move here, switch seats, lights/engine,
   disembark, get out, eject, unflip; mortar/tripod target lookups too; 19 checks).
   Mounted Move here is a known failing regression (Codex, 13 Oct). The flipped setup can also fail when
   physics rights the vehicle before helpers reach it; distinguish setup from actual unflip failure.
+- `recovery` (~130 s): a nine-man rifle squad without a playable master/slave, leader AI disabled
+  to simulate GM possession. Impossible interior posts must release; Follow cancels approach jobs,
+  restores formation despite a late waypoint cancel and follows the moved leader without clustering.
 - `<test>-aca` presets (tasks, moves, infantry, supply, attack, defense, vehicles) run the same tests with ACA + BBB
   on ACR_TestRange (ACA's AI commanders and battle running alongside). The test squad is made the slave
   of a playable "master" group like the player's real squad (`AIO_Test.MakeMaster/LinkToMaster`):
@@ -234,3 +247,18 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
 - Next live checks for Jacob: T with the map open (cursor remains visible; numbers only operate the
   menu), Move here/Suppress at the map cursor, gunner Suppress from inside the HMMWV, and mortar/tripod
   Get in as Gunner. Next code work: mounted Move here; then live possession/MP and formations.
+- 13 Oct, Jacob live: whole rifle squad (eight AI plus him), GM take control in the test scenario:
+  garrison stalled in several buildings, including a church; Follow left the men clustered on him.
+  Codex fixed: bounded interior movement, precise arrival/floor checks, door opening/replanning,
+  distinct garrison posts (extra men stay in formation), unreachable-room skipping with feedback,
+  removal of stale tasks, and native formation restoration that survives a late waypoint cancel.
+  Whole-squad garrison/clear and Follow also remove old GM waypoints; selected orders leave other
+  men's group waypoints alone. No teleporting or changes to RPC order numbers.
+  Tests: `codex-garrison-recovery3` 5/5 (GM-style nine-man squad; about 24 m formation span),
+  `codex-garrison-tasks1` 7/7, `codex-garrison-defense4` 8/8, `codex-garrison-tower3` 10/10.
+  Earlier defense/tower failures exposed false room completion on the floor below and blocked
+  positions; current tests distinguish reached vs skipped positions rather than claiming all rooms
+  were visited. `codex-garrison-final-compile` (ACA) PASS; final vanilla compile also checked after
+  tightening the nonresponsive-door guard. Release refreshed with the fixes and new change notes;
+  source/release hashes verified and thumbnail preserved. Live full-squad/church retry is still
+  Jacob's check; 0.2.0 remains unpublished.
