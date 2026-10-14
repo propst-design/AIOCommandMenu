@@ -15,12 +15,33 @@ class AIO_Server
 	static SCR_AIGroup Slave(int playerId)
 	{
 		SCR_GroupsManagerComponent groups = SCR_GroupsManagerComponent.GetInstance();
-		if (!groups)
+		if (groups)
+		{
+			SCR_AIGroup group = groups.GetPlayerGroup(playerId);
+			if (group && group.IsPlayerLeader(playerId) && group.GetSlave())
+				return group.GetSlave();
+		}
+		return PossessedGroup(playerId);
+	}
+
+	// Game Master "take control" of an AI soldier (usually the leader): his own AI group is the squad.
+	// Never a playable group (that one holds players, not soldiers to command).
+	static SCR_AIGroup PossessedGroup(int playerId)
+	{
+		IEntity body = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerId);
+		AIAgent agent = AIO_Tasks.AgentOf(body);
+		if (!agent)
 			return null;
-		SCR_AIGroup group = groups.GetPlayerGroup(playerId);
-		if (!group || !group.IsPlayerLeader(playerId))
+		SCR_AIGroup group = SCR_AIGroup.Cast(agent.GetParentGroup());
+		if (!group || group.IsPlayable() || group.IsSlave())
 			return null;
-		return group.GetSlave();
+		return group;
+	}
+
+	// True when the squad is a possessed AI group (no slave setup, no vanilla commanding for it).
+	static bool IsPossessed(SCR_AIGroup squad)
+	{
+		return squad && !squad.IsSlave();
 	}
 
 	static void Members(SCR_AIGroup slave, notnull array<IEntity> members)
@@ -52,6 +73,7 @@ class AIO_Server
 	{
 		array<IEntity> members = {};
 		Members(Slave(playerId), members);
+		members.RemoveItem(GetGame().GetPlayerManager().GetPlayerControlledEntity(playerId)); // possessed leader
 		foreach (IEntity body : members)
 		{
 			ids.Insert(Replication.FindItemId(body));
@@ -94,6 +116,19 @@ class AIO_Server
 			return "No soldiers under your command";
 		if (members && !members.IsEmpty())
 			return ExecuteMen(slave, order, members, point, pc.GetControlledEntity(), target, playerId);
+		// A possessed AI group isn't set up for the game's commanding: every man gets the order himself.
+		if (IsPossessed(slave))
+		{
+			array<IEntity> everyone = {};
+			Members(slave, everyone);
+			everyone.RemoveItem(pc.GetControlledEntity());
+			if (everyone.IsEmpty())
+				return "No soldiers under your command";
+			array<RplId> all = {};
+			foreach (IEntity man : everyone)
+				all.Insert(Replication.FindItemId(man));
+			return ExecuteMen(slave, order, all, point, pc.GetControlledEntity(), target, playerId);
+		}
 		// Whole-squad movement orders take over from any single-man tasks.
 		if (order == AIO_EOrder.HALT || order == AIO_EOrder.FOLLOW || order == AIO_EOrder.MOVE_HERE || order == AIO_EOrder.HOLD_HERE)
 			AIO_Tasks.ReleaseGroup(slave);
@@ -582,6 +617,7 @@ class AIO_Server
 		IEntity player = pc.GetControlledEntity();
 		array<IEntity> members = {};
 		Members(Slave(playerId), members);
+		members.RemoveItem(player);
 		switch (order)
 		{
 			case AIO_EOrder.ADMIN_HEAL_ME:

@@ -97,7 +97,11 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
   setup the vanilla commanding wheel and ACA's possession use. Whole-squad orders go through the
   game's own commands (`SCR_CommandingManagerComponent.RequestCommandExecution`: halt, follow,
   waypointMove, waypointDefend, waypointSuppress, holdFire/fireAtWill/returnFire) for voice replies;
-  fallbacks without a commanding manager. Admin page: SP, listen-server host, logged-in admins;
+  fallbacks without a commanding manager. Game Master "take control" of an AI soldier (Jacob, 13 Oct:
+  "no units under your command"): `PossessedGroup` = the controlled body's own AI group (never a
+  playable or slave group); whole-squad orders then go to every other man through ExecuteMen (no vanilla
+  commanding for that group), and the possessed body is left out of the roster and admin squad lists.
+  Admin page: SP, listen-server host, logged-in admins;
   `-aioCheats all|admins|off`.
 - Input: `Configs/System/chimeraInputCommon.conf` is an OVERRIDE (delta, same GUID as vanilla) like
   ACE and most Workshop mods, so it stacks with other mods (ACA's gproj input config inherits it).
