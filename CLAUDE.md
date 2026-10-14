@@ -244,9 +244,24 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   The task preset now resolves selected roster IDs and issues through ExecuteMen instead of calling
   MoveTo directly, to cover the selection path in e2c13ac: `codex-roster-tasks` 7/7 PASS.
   `codex-compat-compile` (ACA + its dependencies) PASS. Actual GM possession and MP remain live checks.
+- 13 Oct, Jacob's live follow-up: "Seems like things are working. Driver Move worked from the map."
+  Jacob also confirmed the driver responded to the camera-ray Move order. Both map and ray Move here
+  work in his live session; selected vs whole squad was not specified. The automated mounted
+  selected-driver failure still needs reconciliation with this live
+  success (destination/obstacles/test setup or order scope). Do not assume mounted movement itself is
+  universally broken or replace it before isolating that difference. Other recent fixes were reported
+  as generally working, but individual suppression/static/possession checks were not specified.
 - Next live checks for Jacob: T with the map open (cursor remains visible; numbers only operate the
   menu), Move here/Suppress at the map cursor, gunner Suppress from inside the HMMWV, and mortar/tripod
-  Get in as Gunner. Next code work: mounted Move here; then live possession/MP and formations.
+  Get in as Gunner. Driver Move from both map and camera ray passed live; next code work is reconciling the automated
+  mounted Move here failure with that result, then live possession/MP and formations.
+- 13 Oct, Codex: Jacob proposed optional Windows voice orders and supplied Workshop archive
+  2582780947 (Asaayu's Integrated AI Voice Control System). Static inspection found System.Speech
+  recognition in Arma 3 extension DLLs, XML command grammars, push-to-talk, confidence/silence
+  settings and ExtensionCallback delivery to SQF. Included licence is APL-ND: reference behavior
+  only; do not copy its scripts, grammars or DLLs into GPLv3 AiO. Proposed independent Windows
+  companion plus local command bridge into existing AiO orders; retail-client bridge feasibility
+  and installed Windows recognizer availability are untested. No voice feature implemented yet.
 - 13 Oct, Jacob live: whole rifle squad (eight AI plus him), GM take control in the test scenario:
   garrison stalled in several buildings, including a church; Follow left the men clustered on him.
   Codex fixed: bounded interior movement, precise arrival/floor checks, door opening/replanning,
