@@ -8,6 +8,9 @@
 # Reforger dedicated server is running (e.g. Arma Commander Actual's test server, they
 # share port 2001), it waits for that to close first.
 #
+# A 'push' request pushes main to the public GitHub repo propst-design/AIOCommandMenu
+# with your GitHub login (creating it with gh the first time). Nothing else.
+#
 # Close this window (or press Ctrl+C) to stop it.
 
 param([string]$ServerPath)
@@ -85,6 +88,36 @@ function Other-ServerRunning {
     return [bool](Get-Process -Name 'ArmaReforgerServer' -ErrorAction SilentlyContinue)
 }
 
+function Invoke-Push($id) {
+    # 'push': pushes main to the public repo propst-design/AIOCommandMenu with your GitHub
+    # login (creates the repo with gh first if it doesn't exist). Nothing else.
+    $ErrorActionPreference = 'Continue'
+    $repo = 'propst-design/AIOCommandMenu'
+    $started = Get-Date
+    $log = @()
+    Write-Host "[$(Get-Date -Format 'HH:mm:ss')] Pushing main to GitHub ($repo)..." -ForegroundColor Cyan
+    $gh = (Get-Command gh -ErrorAction SilentlyContinue).Source
+    if (-not $gh) {
+        foreach ($c in @("$env:ProgramFiles\GitHub CLI\gh.exe", "${env:ProgramFiles(x86)}\GitHub CLI\gh.exe", "$env:LOCALAPPDATA\Programs\GitHub CLI\gh.exe", "$env:LOCALAPPDATA\Microsoft\WinGet\Links\gh.exe")) {
+            if ($c -and (Test-Path $c)) { $gh = $c; break }
+        }
+    }
+    if (-not $gh) { Write-Result $id @('status=failed', 'preset=push', 'reason=GitHub CLI (gh.exe) not found'); return }
+    $null = & $gh repo view $repo 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        $log += (& $gh repo create $repo --public --description "All-in-One Command Menu for Arma Reforger (after Leopard20's Arma 3 mod). Bug reports under Issues." 2>&1 | Out-String)
+        if ($LASTEXITCODE -ne 0) { Write-Result $id (@('status=failed', 'preset=push', 'reason=gh repo create failed', '---') + $log); return }
+    }
+    $log += (& $gh repo edit $repo --enable-issues 2>&1 | Out-String)
+    $null = & git -C $ProjectRoot remote get-url origin 2>&1
+    if ($LASTEXITCODE -ne 0) { $log += (& git -C $ProjectRoot remote add origin "https://github.com/$repo.git" 2>&1 | Out-String) }
+    $log += (& git -C $ProjectRoot push -u origin main 2>&1 | Out-String)
+    $outcome = 'completed'
+    if ($LASTEXITCODE -ne 0) { $outcome = 'failed' }
+    Write-Result $id (@("status=$outcome", 'preset=push', "seconds=$([int]((Get-Date) - $started).TotalSeconds)", '---') + $log)
+    Write-Host "[$(Get-Date -Format 'HH:mm:ss')] Push finished: $outcome" -ForegroundColor Green
+}
+
 function Invoke-Request($file) {
     $id = [IO.Path]::GetFileNameWithoutExtension($file.Name)
     $preset = (Get-Content -LiteralPath $file.FullName -Raw).Trim().ToLower()
@@ -102,6 +135,7 @@ function Invoke-Request($file) {
         }
     }
     $time = Get-Date -Format 'HH:mm:ss'
+    if ($preset -eq 'push') { Invoke-Push $id; return }
     if (!$Presets.ContainsKey($preset)) {
         Write-Host "[$time] Refused unknown preset '$preset'" -ForegroundColor Yellow
         Write-Result $id @('status=refused', "reason=unknown preset '$preset'")
