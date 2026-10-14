@@ -178,7 +178,7 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   gunner/passenger, switch seat, get out, disembark passengers, eject, engine/lights, unflip.
   `vehicles` 13/13 PASS, `tasks` 6/6. Untested live: player-driven vehicles, AI driving the player around,
   unflip of a vehicle a client still owns in MP, statics (mortar/MG tripods as "vehicles").
-- 13 Oct evening, Jacob's live vehicle check (GM launcher), NOT FIXED YET (he ran out of usage; do these next):
+- 13 Oct evening, Jacob's live vehicle check (GM launcher; follow-up status below):
   - Works well: get in/out, specific seats (e.g. gunner).
   - AI driver ignores Move here (whole squad and/or selected; check which), but obeys Advance. Suspect: Move
     here for a seated man = per-man AIO_MoveBehavior/hold (a seated driver doesn't drive on that); the
@@ -200,3 +200,9 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
     orders). Check that the input contexts still fire with the map open.
 - Next: MP check with a second player, the vehicle findings above, then
   formations, map-click orders. Workshop prep DONE 13 Oct (release copy, texts, placeholder image).
+- 13 Oct, Codex: vehicle targeting now checks seats recursively and includes static entities in the
+  nearest search; camera traces exclude the player's vehicle and its children as well as the character.
+  Compile `codex-target-compile` PASS. New mortar/tripod direct and nearest targeting checks PASS.
+  Vehicle regression and a mounted selected-men Move here check are in progress; live gunner/driver
+  verification still needed. The first trace test's 5 m clear-ray assumption hit a nearby tree; corrected
+  to check the actual exclusion. First run's flipped setup also failed (physics righted it three times).

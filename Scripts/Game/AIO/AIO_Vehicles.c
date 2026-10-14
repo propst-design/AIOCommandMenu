@@ -50,7 +50,9 @@ class AIO_Vehicles
 		IEntity root = entity.GetRootParent();
 		if (!root || ChimeraCharacter.Cast(root))
 			return null;
-		if (!root.FindComponent(BaseCompartmentManagerComponent))
+		array<BaseCompartmentSlot> seats = {};
+		Seats(root, seats);
+		if (seats.IsEmpty())
 			return null;
 		return root;
 	}
@@ -174,7 +176,7 @@ class AIO_Vehicles
 		s_Nearest = null;
 		s_fNearest = 15 * 15;
 		s_vNear = point;
-		GetGame().GetWorld().QueryEntitiesBySphere(point, 15, NearestVehicle, null, EQueryEntitiesFlags.DYNAMIC);
+		GetGame().GetWorld().QueryEntitiesBySphere(point, 15, NearestVehicle, null, EQueryEntitiesFlags.ALL);
 		return s_Nearest;
 	}
 
@@ -184,13 +186,14 @@ class AIO_Vehicles
 
 	protected static bool NearestVehicle(IEntity entity)
 	{
-		if (!Vehicle.Cast(entity) || entity.GetParent())
+		IEntity vehicle = VehicleRoot(entity);
+		if (!vehicle)
 			return true;
-		float distance = vector.DistanceSq(entity.GetOrigin(), s_vNear);
+		float distance = vector.DistanceSq(vehicle.GetOrigin(), s_vNear);
 		if (distance < s_fNearest)
 		{
 			s_fNearest = distance;
-			s_Nearest = entity;
+			s_Nearest = vehicle;
 		}
 		return true;
 	}

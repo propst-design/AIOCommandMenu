@@ -40,6 +40,8 @@ class AIO_Test
 	protected static IEntity s_Vehicle;
 	protected static IEntity s_Gunner;
 	static const ResourceName HUMVEE = "{3EA6F47D95867114}Prefabs/Vehicles/Wheeled/M998/M1025_armed_M2HB.et";
+	static const ResourceName MORTAR = "{8094D99689ABE241}Prefabs/Weapons/Mortars/M252/Mortar_M252.et";
+	static const ResourceName TRIPOD = "{73530808E4B455BA}Prefabs/Weapons/Tripods/Tripod_M3_M2HB.et";
 
 	static void MaybeStart()
 	{
@@ -926,11 +928,27 @@ class AIO_Test
 
 	protected static void VehBoard()
 	{
+		VehTarget(MORTAR, "mortar");
+		VehTarget(TRIPOD, "tripod");
 		array<IEntity> members = {};
 		Squad(members);
 		string reply = AIO_Vehicles.GetIn(members, s_Vehicle, -1);
 		Check("board-order", reply.Contains("getting in"), reply);
 		GetGame().GetCallqueue().CallLater(VehBoarded, 30000, false);
+	}
+
+	protected static void VehTarget(ResourceName prefab, string name)
+	{
+		EntitySpawnParams params = new EntitySpawnParams();
+		params.TransformMode = ETransformMode.WORLD;
+		vector spot = s_Vehicle.GetOrigin() + Vector(6, 0, 0);
+		spot[1] = GetGame().GetWorld().GetSurfaceY(spot[0], spot[2]);
+		params.Transform[3] = spot;
+		IEntity weapon = GetGame().SpawnEntityPrefab(Resource.Load(prefab), GetGame().GetWorld(), params);
+		Check(name + "-look-target", weapon && AIO_Vehicles.TargetVehicle(weapon, null, spot) == weapon, "looked emplacement wins over nearby HMMWV");
+		Check(name + "-near-target", weapon && AIO_Vehicles.TargetVehicle(null, null, spot) == weapon, "static emplacement included in nearest search");
+		if (weapon)
+			SCR_EntityHelper.DeleteEntityAndChildren(weapon);
 	}
 
 	protected static void VehBoarded()
@@ -942,14 +960,36 @@ class AIO_Test
 		s_Gunner = InSeat(ECompartmentType.TURRET);
 		IEntity driver = InSeat(ECompartmentType.PILOT);
 		Check("board", aboard == members.Count() && driver != null && s_Gunner != null, string.Format("%1 of %2 aboard, driver %3, gunner %4, %5 passengers", aboard, members.Count(), driver != null, s_Gunner != null, cargo));
+		if (driver)
+		{
+			vector start = s_Vehicle.GetOrigin() + Vector(0, 1, 0);
+			vector end = start + Vector(0, -5, 60);
+			vector point;
+			IEntity hit;
+			bool traced = AIO_Menu.TracePoint(driver, start, end, point, hit);
+			Check("mounted-look-point", traced && hit != driver && AIO_Vehicles.VehicleRoot(hit) != s_Vehicle, string.Format("point %1, hit %2", point, hit));
+		}
 		if (!s_Gunner)
 		{
 			Finish();
 			return;
 		}
+		// Use the selected-men / possessed-group route that failed in the live GM check.
+		s_vTarget = FindSpot(s_Vehicle.GetOrigin(), 35);
+		array<IEntity> one = {driver};
+		Print("[AIO] TEST mounted move: " + AIO_Server.ExecuteBodies(s_Group, AIO_EOrder.MOVE_HERE, one, s_vTarget, null, RplId.Invalid(), 0));
+		GetGame().GetCallqueue().CallLater(VehMoved, 35000, false);
+	}
+
+	protected static void VehMoved()
+	{
+		float distance = vector.DistanceXZ(s_Vehicle.GetOrigin(), s_vTarget);
+		Check("mounted-move-here", distance < 10, string.Format("vehicle %1 m from target", distance));
+		IEntity driver = InSeat(ECompartmentType.PILOT);
+		if (driver)
+			AIO_Tasks.Release(driver);
 		array<IEntity> one = {s_Gunner};
-		string reply = AIO_Vehicles.SwitchSeat(one, ECompartmentType.CARGO);
-		Print("[AIO] TEST vehicle: " + reply);
+		Print("[AIO] TEST vehicle: " + AIO_Vehicles.SwitchSeat(one, ECompartmentType.CARGO));
 		GetGame().GetCallqueue().CallLater(VehSwitched, 12000, false);
 	}
 

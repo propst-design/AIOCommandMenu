@@ -532,17 +532,40 @@ class AIO_Menu
 			return false;
 		vector transform[4];
 		camera.GetTransform(transform);
+		return TracePoint(pc.GetControlledEntity(), transform[3], transform[3] + transform[2] * 1500, point, hitEntity);
+	}
+
+	static bool TracePoint(IEntity body, vector start, vector end, out vector point, out IEntity hitEntity)
+	{
 		TraceParam trace = new TraceParam();
-		trace.Start = transform[3];
-		trace.End = transform[3] + transform[2] * 1500;
+		trace.Start = start;
+		trace.End = end;
 		trace.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
-		trace.Exclude = pc.GetControlledEntity();
+		array<IEntity> excluded = {};
+		IEntity vehicle = AIO_Vehicles.VehicleOf(body);
+		if (vehicle)
+			ExcludeTree(vehicle, excluded);
+		if (body && !excluded.Contains(body))
+			excluded.Insert(body);
+		trace.ExcludeArray = excluded;
 		float fraction = GetGame().GetWorld().TraceMove(trace, null);
 		if (fraction >= 1)
 			return false;
 		point = trace.Start + (trace.End - trace.Start) * fraction;
 		hitEntity = trace.TraceEnt;
 		return true;
+	}
+
+	// Vehicle colliders can live on child entities (turrets, windows and passengers).
+	protected static void ExcludeTree(IEntity entity, notnull array<IEntity> excluded)
+	{
+		excluded.Insert(entity);
+		IEntity child = entity.GetChildren();
+		while (child)
+		{
+			ExcludeTree(child, excluded);
+			child = child.GetSibling();
+		}
 	}
 
 	// ------------------------------------------------------------------ drawing
