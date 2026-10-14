@@ -15,3 +15,5 @@ defense-aca|-aioDefenseTest 1|400|aca
 vehicles|-aioVehicleTest 1|300
 vehicles-aca|-aioVehicleTest 1|360|aca
 recovery|-aioRecoveryTest 1|200
+formations|-aioFormationTest 1|500
+formations-aca|-aioFormationTest 1|560|aca

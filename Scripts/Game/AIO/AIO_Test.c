@@ -11,6 +11,7 @@
 //   -aioTowerTest 1 : the defense test on the airfield control tower.
 //   -aioVehicleTest 1 : get in, switch seats, lights/engine, disembark, get out, eject, unflip.
 //   -aioRecoveryTest 1 : GM-style rifle squad, unreachable interior posts, cancel, formation recovery.
+//   -aioFormationTest 1 : rifle squad walks legs in Column, Staggered column, Line, Wedge; shapes measured on the move.
 // Prints "[AIO] TEST <name> PASS|FAIL ..." lines and "[AIO] TEST COMPLETE".
 class AIO_Test
 {
@@ -39,6 +40,9 @@ class AIO_Test
 	protected static vector s_vForward;
 	protected static bool s_bVehicleTest;
 	protected static bool s_bRecoveryTest;
+	protected static bool s_bFormationTest;
+	protected static int s_iLeg;
+	protected static vector s_vLegFrom;
 	static const ResourceName RIFLE_SQUAD = "{DDF3799FA1387848}Prefabs/Groups/BLUFOR/Group_US_RifleSquad.et";
 	protected static IEntity s_Vehicle;
 	protected static IEntity s_Gunner;
@@ -75,7 +79,10 @@ class AIO_Test
 		string recoveryValue;
 		System.GetCLIParam("aioRecoveryTest", recoveryValue);
 		s_bRecoveryTest = recoveryValue == "1";
-		if (!s_bRecoveryTest && !s_bVehicleTest && !s_bMoveTest && !s_bInfantryTest && !s_bSupplyTest && !s_bAttackTest && !s_bDefenseTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
+		string formationValue;
+		System.GetCLIParam("aioFormationTest", formationValue);
+		s_bFormationTest = formationValue == "1";
+		if (!s_bFormationTest && !s_bRecoveryTest && !s_bVehicleTest && !s_bMoveTest && !s_bInfantryTest && !s_bSupplyTest && !s_bAttackTest && !s_bDefenseTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
 			return;
 		if (!Replication.IsServer())
 			return;
@@ -183,13 +190,15 @@ class AIO_Test
 		params.TransformMode = ETransformMode.WORLD;
 		params.Transform[3] = s_vStart;
 		ResourceName prefab = GROUP;
-		if (s_bRecoveryTest)
+		if (s_bRecoveryTest || s_bFormationTest)
 			prefab = RIFLE_SQUAD;
 		s_Group = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(Resource.Load(prefab), GetGame().GetWorld(), params));
 		LinkToMaster();
 		Print(string.Format("[AIO] TEST tasks: group spawned at %1", s_vStart));
 		if (s_bRecoveryTest)
 			GetGame().GetCallqueue().CallLater(RecoveryStart, 12000, false);
+		else if (s_bFormationTest)
+			GetGame().GetCallqueue().CallLater(FormStart, 12000, false);
 		else if (s_bVehicleTest)
 			GetGame().GetCallqueue().CallLater(VehStart, 10000, false);
 		else if (s_bAttackTest)
@@ -1247,6 +1256,199 @@ class AIO_Test
 	protected static void VehUnflipped()
 	{
 		Check("unflip", !AIO_Vehicles.IsFlipped(s_Vehicle), string.Format("angles %1", s_Vehicle.GetYawPitchRoll()));
+		Finish();
+	}
+
+	// ---------------------------------------------------------------- formation test
+
+	static const int FORM_LEGS = 4;
+	static const float FORM_LEG_LENGTH = 180;
+
+	protected static int LegOrder(int leg)
+	{
+		switch (leg)
+		{
+			case 0: return AIO_EOrder.FORM_COLUMN;
+			case 1: return AIO_EOrder.FORM_STAGGERED_COLUMN;
+			case 2: return AIO_EOrder.FORM_LINE;
+		}
+		// Wedge after Line: from a column, the wings need longer than a leg to run up beside a
+		// sprinting AI leader (vanilla movement).
+		return AIO_EOrder.FORM_WEDGE;
+	}
+
+	// Average distance of the non-leader men from the nearest slot of a formation laid out on the
+	// leader, facing roughly the direction he walked (best fit within 20 degrees: the tail of the
+	// squad may still be on the path's last bend).
+	protected static float ShapeError(string name, vector forward, bool lateralOnly = false)
+	{
+		float best = 9999;
+		for (int step = -4; step <= 4; step++)
+		{
+			float angle = step * 5 * Math.DEG2RAD;
+			float c = Math.Cos(angle);
+			float sn = Math.Sin(angle);
+			vector turned = Vector(forward[0] * c - forward[2] * sn, 0, forward[0] * sn + forward[2] * c);
+			best = Math.Min(best, ShapeErrorAt(name, turned, lateralOnly));
+		}
+		return best;
+	}
+
+	// lateralOnly: only the sideways placement counts (a 30 m line or wedge can't keep up with a
+	// running leader, but each man keeps his own lane in it).
+	protected static float ShapeErrorAt(string name, vector forward, bool lateralOnly = false)
+	{
+		AIFormationDefinition definition = GetGame().GetAIWorld().GetFormation(name);
+		IEntity leader = Leader();
+		if (!definition || !leader)
+			return 9999;
+		vector right = Vector(forward[2], 0, -forward[0]);
+		array<IEntity> men = {};
+		NonLeaders(men);
+		float total;
+		foreach (IEntity man : men)
+		{
+			vector rel = man.GetOrigin() - leader.GetOrigin();
+			float x = vector.Dot(rel, right);
+			float z = vector.Dot(rel, forward);
+			float best = 9999;
+			for (int i = 1; i < 11; i++)
+			{
+				vector slot = definition.GetOffsetPosition(i);
+				float dz = slot[2] - z;
+				if (lateralOnly)
+					dz = 0;
+				best = Math.Min(best, Math.Sqrt((slot[0] - x) * (slot[0] - x) + dz * dz));
+			}
+			total += best;
+		}
+		if (men.IsEmpty())
+			return 9999;
+		return total / men.Count();
+	}
+
+	protected static void FormStart()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		Check("formation-setup", Leader() && men.Count() >= 6 && s_Group.IsSlave(), string.Format("%1 men besides the leader, slave %2", men.Count(), s_Group.IsSlave()));
+		string missing;
+		for (int order = AIO_EOrder.FORM_COLUMN; order <= AIO_EOrder.FORM_LINE; order++)
+		{
+			if (!AIO_Formations.Exists(AIO_Formations.FormationOf(order)))
+				missing += " " + AIO_Formations.NameOf(AIO_Formations.FormationOf(order));
+		}
+		Check("formation-definitions", missing.IsEmpty(), "missing:" + missing);
+		if (!Leader() || men.IsEmpty())
+		{
+			Finish();
+			return;
+		}
+		vector right;
+		AIO_Tasks.Facing(Leader(), s_vForward, right);
+		s_iLeg = 0;
+		FormLeg();
+	}
+
+	protected static void FormLeg()
+	{
+		int order = LegOrder(s_iLeg);
+		string reply = AIO_Formations.Set(s_Group, order);
+		string name = AIO_Formations.NameOf(AIO_Formations.FormationOf(order));
+		Check("formation-order-" + name, reply.StartsWith("Formation: ") && AIO_Formations.Current(s_Group) == name, string.Format("%1; in use: %2", reply, AIO_Formations.Current(s_Group)));
+		// Walk the next leg, turning right 90 degrees each time (a square, back near the start):
+		// a full about-turn would make the squad wheel through the whole formation.
+		IEntity leader = Leader();
+		if (s_iLeg > 0)
+			s_vForward = Vector(s_vForward[2], 0, -s_vForward[0]);
+		vector target = FindSpot(leader.GetOrigin() + s_vForward * FORM_LEG_LENGTH, 0);
+		if (target == vector.Zero)
+			target = leader.GetOrigin() + s_vForward * FORM_LEG_LENGTH;
+		AIO_Server.ClearWaypoints(s_Group);
+		AIO_Server.AddWaypoint(s_Group, AIO_Server.WP_MOVE, target);
+		Print(string.Format("[AIO] TEST formation leg %1: leader at %2, waypoint %3 (%4 m), %5 waypoints", s_iLeg, leader.GetOrigin(), target, vector.Distance(leader.GetOrigin(), target), FormWaypoints()));
+		s_iFormSample = 0;
+		s_fFormBest = 9999;
+		s_sFormBest = "no sample while the leader was walking";
+		s_bFormBestOk = false;
+		s_vLegFrom = leader.GetOrigin();
+		GetGame().GetCallqueue().CallLater(FormSample, 14000, false);
+	}
+
+	// The shape is measured on the move: every 4 s from 18 s into the leg, framed on the leader's
+	// last 4 s of walking; the best sample counts (corners and obstacles break any formation).
+	protected static int s_iFormSample;
+	protected static float s_fFormBest;
+	protected static string s_sFormBest;
+	protected static bool s_bFormBestOk;
+
+	protected static int FormWaypoints()
+	{
+		array<AIWaypoint> waypoints = {};
+		return s_Group.GetWaypoints(waypoints);
+	}
+
+	protected static void FormSample()
+	{
+		IEntity leader = Leader();
+		vector walked = leader.GetOrigin() - s_vLegFrom;
+		walked[1] = 0;
+		s_vLegFrom = leader.GetOrigin();
+		s_iFormSample++;
+		if (s_iFormSample == 1)
+			Print(string.Format("[AIO] TEST formation leg %1: leader walked %2 m in the first 14 s, %3 waypoints", s_iLeg, walked.Length(), FormWaypoints()));
+		if (s_iFormSample > 1 && walked.Length() > 2)
+		{
+			int order = LegOrder(s_iLeg);
+			string name = AIO_Formations.NameOf(AIO_Formations.FormationOf(order));
+			string other = "Wedge";
+			if (name == "Wedge")
+				other = "Column";
+			vector forward = walked.Normalized();
+			// Line and Wedge: sideways placement, against Column (a column has everyone in the middle).
+			// Their wings trail far behind a sprinting AI leader after a turn (vanilla movement).
+			bool lateral = name == "Line" || name == "Wedge";
+			if (lateral)
+				other = "Column";
+			float error = ShapeError(name, forward, lateral);
+			float otherError = ShapeError(other, forward, lateral);
+			if (error < s_fFormBest)
+			{
+				s_fFormBest = error;
+				s_bFormBestOk = error < 5 && error < otherError * 0.5; // sprinting stretches columns a little
+				s_sFormBest = string.Format("sample %1 (leader %2 m in 4 s): men avg %3 m from %4 slots (%5 m from %6 slots)", s_iFormSample, walked.Length(), error, name, otherError, other);
+				if (lateral)
+					s_sFormBest += " [sideways only]";
+				vector right = Vector(forward[2], 0, -forward[0]);
+				array<IEntity> men = {};
+				NonLeaders(men);
+				foreach (IEntity man : men)
+				{
+					vector rel = man.GetOrigin() - leader.GetOrigin();
+					Print(string.Format("[AIO] TEST formation %1 sample %2 man %3 right %4 ahead %5", name, s_iFormSample, AIO_Server.NameOf(man), vector.Dot(rel, right), vector.Dot(rel, forward)));
+				}
+			}
+		}
+		if (s_iFormSample < 16)
+		{
+			GetGame().GetCallqueue().CallLater(FormSample, 4000, false);
+			return;
+		}
+		FormLegDone();
+	}
+
+	protected static void FormLegDone()
+	{
+		int order = LegOrder(s_iLeg);
+		string name = AIO_Formations.NameOf(AIO_Formations.FormationOf(order));
+		Check("formation-shape-" + name, AIO_Formations.Current(s_Group) == name && s_bFormBestOk, s_sFormBest + "; in use: " + AIO_Formations.Current(s_Group));
+		s_iLeg++;
+		if (s_iLeg < FORM_LEGS)
+		{
+			// Let him arrive first so the next leg starts from a standstill.
+			GetGame().GetCallqueue().CallLater(FormLeg, 12000, false);
+			return;
+		}
 		Finish();
 	}
 }
