@@ -118,6 +118,16 @@ class AIO_Server
 		string tactics = Tactics(slave, player, order, null, point, target, playerId);
 		if (!tactics.IsEmpty())
 			return tactics;
+		if (AIO_Vehicles.IsVehicleOrder(order))
+		{
+			array<IEntity> squad = {};
+			Members(slave, squad);
+			if (player)
+				squad.RemoveItem(player);
+			if (squad.IsEmpty())
+				return "No soldiers under your command";
+			return AIO_Vehicles.Order(squad, slave, order, EntityOf(target), player, point);
+		}
 		// Whole-squad rules of engagement: per-man overrides end.
 		if (order == AIO_EOrder.HOLD_FIRE || order == AIO_EOrder.FIRE_AT_WILL || order == AIO_EOrder.RETURN_FIRE)
 		{
@@ -452,6 +462,8 @@ class AIO_Server
 		string tactics = Tactics(slave, player, order, bodies, point, target, playerId);
 		if (!tactics.IsEmpty())
 			return tactics;
+		if (AIO_Vehicles.IsVehicleOrder(order))
+			return AIO_Vehicles.Order(bodies, slave, order, EntityOf(target), player, point);
 		if (order == AIO_EOrder.MOVE_HERE)
 		{
 			for (int i = 0; i < bodies.Count(); i++)

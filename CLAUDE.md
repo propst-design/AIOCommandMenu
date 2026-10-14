@@ -73,6 +73,21 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
 - Hold behaviour extras: m_aLegs (routes), m_vLook (keeps looking, priority 15). `ActiveHold()` skips
   ended holds that linger in the queue. `Rejoin()` walks far-off men back to the leader (formation
   following alone was sometimes slow to pick them up).
+- `AIO_Vehicles.c` (Vehicles page, 13 Oct): per man through the game's own SCR_AIGetInVehicle /
+  SCR_AIGetOutVehicle behaviours, so driving and formation stay vanilla (a seated man's vehicle joins the
+  group's vehicles on entering). Target vehicle = the one looked at, else the player's own, else the
+  nearest within 15 m of the look point; men > 400 m away refused. Seats are collected recursively
+  (GetCompartments skips turrets on child entities). Get in as Any (driver, gunners, passengers) /
+  Driver / Gunner / Passenger, seat reserved for him. Switch seat: same section = direct
+  GetInVehicle switch, else get out + get in. Get out / Disembark passengers (cargo seats only) /
+  EJECT (teleport out at once). After Get out/Eject the vehicle is dropped from the group's vehicle
+  manager once no squad member is aboard or boarding (else the next move order re-boards them).
+  Controls: engine on/off (needs a driver), lights on/off add a COMMANDING light-interaction setting on
+  the AI driver (his idle behaviour switches Head lights by daylight otherwise); "driver decides"
+  removes it. Unflip: up to 4 nearest men on foot walk there; with 2 (or all) at their spots around it (clear of its upright footprint, which
+  otherwise hit them) for 2.5 s it is
+  set upright (`SetPose`: Teleport + SetWorldTransform + Update + OnTransformReset; Teleport alone was
+  undone by physics). Squad bar shows Driver/Gunner/Passenger/Boarding/Dismounting/Unflipping.
 - `AIO_SquadBar.c`: bottom-centre strip, only while the menu is open (Jacob, 13 Oct; roster every 1 s then):
   key number, name (team colour), health, magazines, task label (`AIO_Tasks.TaskLabel`), plus the key
   number over each man's head in his team colour (within 120 m; every frame, render camera via
@@ -106,8 +121,9 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
 - Extra server tests come from `tools/test-presets.txt` (re-read per request, no launcher restart):
   `tasks` (~100 s), `moves` (~160 s), `infantry` (~110 s; prone can fail next to walls/at cover spots),
   `supply` (~100 s), `attack` (~210 s), `defense` (~190 s; finds a house near the map centre),
-  `tower` (~300 s; defense on Arland's ControlTowerMilitary_E_01 + walk-up fallback).
-- `<test>-aca` presets (tasks, moves, infantry, supply, attack, defense) run the same tests with ACA + BBB
+  `tower` (~300 s; defense on Arland's ControlTowerMilitary_E_01 + walk-up fallback),
+  `vehicles` (~200 s; M1025: board, switch seats, lights/engine, disembark, get out, eject, unflip; 13 checks).
+- `<test>-aca` presets (tasks, moves, infantry, supply, attack, defense, vehicles) run the same tests with ACA + BBB
   on ACR_TestRange (ACA's AI commanders and battle running alongside). The test squad is made the slave
   of a playable "master" group like the player's real squad (`AIO_Test.MakeMaster/LinkToMaster`):
   ACA registers and commands every non-slave AI group, which sent the test men off to its bases.
@@ -142,5 +158,9 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
   infantry 7/7, supply 5/5, attack 7/7, defense 8/8); Arland tasks/moves still pass. No code clashes:
   ACA skips slave groups (the player's squad) and player-led squads; BBB overrides different methods
   on the same classes and steps aside for HOLD_FIRE and player-priority actions.
-- Next: MP check with a second player, then vehicle orders (get in/out, seats, driver/gunner, unflip),
+- 13 Oct: Vehicles page (root slot 3; Take cover moved to the top of Defense): get in as any/driver/
+  gunner/passenger, switch seat, get out, disembark passengers, eject, engine/lights, unflip.
+  `vehicles` 13/13 PASS, `tasks` 6/6. Untested live: player-driven vehicles, AI driving the player around,
+  unflip of a vehicle a client still owns in MP, statics (mortar/MG tripods as "vehicles").
+- Next: MP check with a second player, Jacob's live check of vehicle orders, then
   formations, map-click orders. Workshop prep DONE 13 Oct (release copy, texts, placeholder image).

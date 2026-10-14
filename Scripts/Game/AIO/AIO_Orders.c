@@ -51,7 +51,23 @@ enum AIO_EOrder
 	SPEED_WALK,
 	SPEED_NORMAL,
 	SPEED_FAST,
-	SPEED_AUTO
+	SPEED_AUTO,
+	VEH_GET_IN_ANY,
+	VEH_GET_IN_DRIVER,
+	VEH_GET_IN_GUNNER,
+	VEH_GET_IN_CARGO,
+	VEH_TO_DRIVER,
+	VEH_TO_GUNNER,
+	VEH_TO_CARGO,
+	VEH_GET_OUT,
+	VEH_DISEMBARK,
+	VEH_EJECT,
+	VEH_ENGINE_ON,
+	VEH_ENGINE_OFF,
+	VEH_LIGHTS_ON,
+	VEH_LIGHTS_OFF,
+	VEH_UNFLIP,
+	VEH_LIGHTS_AUTO
 }
 
 // What an order needs from the player's side.
@@ -140,9 +156,29 @@ class AIO_MenuTree
 		attack.Order("Bound forward", AIO_EOrder.BOUND, AIO_ETarget.POINT);
 		attack.Order("Peel back", AIO_EOrder.PEEL);
 
-		root.Order("Take cover", AIO_EOrder.TAKE_COVER);
+		AIO_MenuItem vehicles = root.Page("Vehicles");
+		AIO_MenuItem getIn = vehicles.Page("Get in (that vehicle or mine)");
+		getIn.Order("Any seat", AIO_EOrder.VEH_GET_IN_ANY, AIO_ETarget.POINT);
+		getIn.Order("Driver", AIO_EOrder.VEH_GET_IN_DRIVER, AIO_ETarget.POINT);
+		getIn.Order("Gunner", AIO_EOrder.VEH_GET_IN_GUNNER, AIO_ETarget.POINT);
+		getIn.Order("Passenger", AIO_EOrder.VEH_GET_IN_CARGO, AIO_ETarget.POINT);
+		AIO_MenuItem seats = vehicles.Page("Switch seat");
+		seats.Order("To driver", AIO_EOrder.VEH_TO_DRIVER);
+		seats.Order("To gunner", AIO_EOrder.VEH_TO_GUNNER);
+		seats.Order("To passenger", AIO_EOrder.VEH_TO_CARGO);
+		vehicles.Order("Get out", AIO_EOrder.VEH_GET_OUT);
+		vehicles.Order("Disembark passengers", AIO_EOrder.VEH_DISEMBARK);
+		vehicles.Order("EJECT (out at once)", AIO_EOrder.VEH_EJECT);
+		AIO_MenuItem controls = vehicles.Page("Vehicle controls");
+		controls.Order("Engine on", AIO_EOrder.VEH_ENGINE_ON);
+		controls.Order("Engine off", AIO_EOrder.VEH_ENGINE_OFF);
+		controls.Order("Lights on", AIO_EOrder.VEH_LIGHTS_ON);
+		controls.Order("Lights off", AIO_EOrder.VEH_LIGHTS_OFF);
+		controls.Order("Lights: driver decides", AIO_EOrder.VEH_LIGHTS_AUTO);
+		vehicles.Order("Unflip that vehicle", AIO_EOrder.VEH_UNFLIP, AIO_ETarget.POINT);
 
 		AIO_MenuItem defense = root.Page("Defense");
+		defense.Order("Take cover", AIO_EOrder.TAKE_COVER);
 		defense.Order("Garrison building", AIO_EOrder.DEF_GARRISON, AIO_ETarget.POINT);
 		defense.Order("Clear building", AIO_EOrder.DEF_CLEAR, AIO_ETarget.POINT);
 		defense.Order("360 defense", AIO_EOrder.DEF_360);
