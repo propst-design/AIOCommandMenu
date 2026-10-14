@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- Added squad formations: Move > Formation & speed > Column, Staggered column, Wedge or Line. The squad keeps the formation for later moves (the game's own formation setting). Speed moved into the same page.
+- Added a Formation menu (Move > Formation), after Arma 3's, with the formations Reforger supports: Column, Staggered column, Wedge, Line. The squad keeps the formation for later moves.
+- Moved Speed to the Stance page (now Stance & speed).
 
 ## 0.2.0 — prepared 2026-10-13
 
