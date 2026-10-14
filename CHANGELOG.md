@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added squad formations: Move > Formation & speed > Column, Staggered column, Wedge or Line. The squad keeps the formation for later moves (the game's own formation setting). Speed moved into the same page.
+
 ## 0.2.0 — prepared 2026-10-13
 
 - Added a Vehicles page: board as driver, gunner or passenger; switch seats; get out, disembark passengers or eject.
