@@ -39,4 +39,5 @@ CREDITS AND LICENCE
 Original Arma 3 mod, design and manual: Leopard20 (All-in-One Command Menu). This Reforger version is a new implementation by propst-design, written with Claude (Anthropic). It contains no code from the original, which was used as the behaviour reference.
 Licence: GNU GPL v3. The full script source ships inside the mod; LICENSE.md and COPYING are included.
 
-Early release: bug reports and feedback are welcome in the comments.
+REPORTING BUGS
+Please report bugs on GitHub: https://github.com/propst-design/AIOCommandMenu/issues (New issue > Bug report). Include your mod version, game mode, what you did, and console.log / script.log from Documents\My Games\ArmaReforger\profile\logs. Feedback is welcome in the comments too.
