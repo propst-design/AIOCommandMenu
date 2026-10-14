@@ -183,5 +183,8 @@ Claude project: "Command Enhancements" (its name predates the switch from DCE to
   - GM "take control" of an AI leader: roster now shows his men (first fix worked); orders said "Those men
     are no longer in your squad". e2c13ac sends whole-squad orders straight to the men and logs
     `[AIO] order ...: none of N ids matched` if selected-men orders still fail. Unconfirmed live.
+  - Jacob (13 Oct): the menu must work in the map: open it while the map is open, and orders that need a
+    point use the map cursor's world position instead of the camera ray (covers the planned map-click
+    orders). Check that the input contexts still fire with the map open.
 - Next: MP check with a second player, the vehicle findings above, then
   formations, map-click orders. Workshop prep DONE 13 Oct (release copy, texts, placeholder image).
