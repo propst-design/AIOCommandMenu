@@ -225,9 +225,12 @@ class AIO_Test
 		s_B = others[1];
 		s_C = others[2];
 		s_vTarget = FindSpot(s_vStart, 35);
-		bool a = AIO_Tasks.MoveTo(s_A, s_vTarget);
-		bool b = AIO_Tasks.MoveTo(s_B, AIO_Tasks.SpreadSpot(s_vTarget, 1));
-		Check("order", a && b, string.Format("two men sent %1 m away", vector.Distance(s_vStart, s_vTarget)));
+		array<RplId> ids = {Replication.FindItemId(s_A), Replication.FindItemId(s_B)};
+		array<IEntity> resolved = {};
+		AIO_Tasks.Resolve(s_Group, ids, resolved);
+		Check("roster-id-resolve", resolved.Count() == 2 && resolved.Contains(s_A) && resolved.Contains(s_B) && !resolved.Contains(leader), "selected roster ids match exactly the requested men");
+		string reply = AIO_Server.ExecuteMen(s_Group, AIO_EOrder.MOVE_HERE, ids, s_vTarget, leader, RplId.Invalid(), 0);
+		Check("order", reply == "2 men moving", string.Format("%1; destination %2 m away", reply, vector.Distance(s_vStart, s_vTarget)));
 		GetGame().GetCallqueue().CallLater(Arrived, 35000, false);
 	}
 
