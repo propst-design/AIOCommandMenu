@@ -15,6 +15,7 @@ modded class ArmaReforgerScripted
 	override protected void OnBeforeWorldCleanup()
 	{
 		AIO_Menu.Cleanup();
+		AIO_Routes.Cleanup();
 		AIO_Support.Cleanup();
 		super.OnBeforeWorldCleanup();
 	}
