@@ -182,6 +182,18 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   Feedback uses AIO_Notify and a client FIFO visible with the menu closed, independent of ACA markers.
 
 ## Workshop release
+Release notes (15 Oct): CHANGELOG.md is the single maintained version history. Before a new
+update, add/review the top numeric version section with player-facing bullets; production changes
+after the last changelog review block preparation. The shared console snapshots the history and
+generates a hash-checked WORKSHOP-CHANGELOG.txt beside each addon. Never edit generated notes.
+Manual Open copies that candidate's notes to the clipboard for Ctrl+V into Publish Project.
+Console option 7 is a separate reviewed CLI update upload: it supplies version and changelog file
+through Workbench's documented publishAddonVersion/publishAddonChangeNoteFile flags. It refuses
+versions no newer than the downloaded Workshop copy, requires explicit typed publication intent,
+and never runs from mere preparation/Open. First publication and page edits still use Workbench UI.
+Do not publish tooling-only changes just to refresh notes; gameplay/MP acceptance remains separate.
+The human shortcut now lives in Documents, not Desktop.
+
 - GitHub source publishing: double-click `Publish-AIO-to-GitHub.cmd` in the source root.
   It runs `tools/Publish-GitHub.ps1`, pushes committed `main` to the existing GitHub origin,
   and leaves the window open for the result/sign-in errors. Uncommitted files are not included.
