@@ -49,6 +49,10 @@ class AIO_Menu
 	protected int m_iSelectionClearAt;   // tick count; 0 = keep
 	protected string m_sFeedback;
 	protected int m_iFeedbackUntil;
+	protected ref array<string> m_aFeedbackQueue = {};
+	protected ref array<vector> m_aRoutePoints = {};
+	protected ref array<RplId> m_aRouteMembers = {}; // frozen when the first point is added
+	protected string m_sRouteTarget;
 	protected int m_iNextRosterAsk;
 	protected int m_iSwallowUntil; // tick count until which closed-menu key releases are swallowed
 
@@ -323,6 +327,25 @@ class AIO_Menu
 
 	protected void Give(SCR_PlayerController pc, AIO_MenuItem item)
 	{
+		if (item.m_eOrder == AIO_EOrder.ROUTE_CLEAR)
+		{
+			m_aRoutePoints.Clear();
+			m_aRouteMembers.Clear();
+			m_sRouteTarget = "";
+			ShowFeedback("Draft route cleared");
+			return;
+		}
+		if (item.m_eOrder == AIO_EOrder.ROUTE_START || item.m_eOrder == AIO_EOrder.ROUTE_PATROL)
+		{
+			if (m_aRoutePoints.IsEmpty() || (item.m_eOrder == AIO_EOrder.ROUTE_PATROL && m_aRoutePoints.Count() < 2))
+			{
+				ShowFeedback("Add waypoints first (patrol needs at least two)");
+				return;
+			}
+			pc.AIO_SendRoute(m_aRouteMembers, m_aRoutePoints, item.m_eOrder == AIO_EOrder.ROUTE_PATROL);
+			Close();
+			return; // retain the draft so a rejected start can be corrected
+		}
 		vector point = vector.Zero;
 		RplId target = RplId.Invalid();
 		if (item.m_eTarget == AIO_ETarget.POINT)
@@ -341,6 +364,32 @@ class AIO_Menu
 				RplComponent rpl = RplComponent.Cast(hitEntity.FindComponent(RplComponent));
 				target = rpl.Id();
 			}
+		}
+		if (item.m_eOrder == AIO_EOrder.ROUTE_ADD)
+		{
+			if (m_aRoutePoints.Count() >= AIO_Routes.MAX_POINTS)
+			{
+				ShowFeedback("Route limit: 16 waypoints");
+				return;
+			}
+			if (m_aRoutePoints.IsEmpty())
+			{
+				m_aRouteMembers.Clear();
+				m_sRouteTarget = TargetText();
+				foreach (AIO_Member member : m_aMembers)
+				{
+					if (m_aSelected.IsEmpty() || m_aSelected.Contains(member.m_Id))
+						m_aRouteMembers.Insert(member.m_Id);
+				}
+			}
+			if (m_aRouteMembers.IsEmpty())
+			{
+				ShowFeedback("No soldiers selected for route; wait for the squad roster");
+				return;
+			}
+			m_aRoutePoints.Insert(point);
+			ShowFeedback(string.Format("Waypoint %1 added for %2 men", m_aRoutePoints.Count(), m_aRouteMembers.Count()));
+			return; // keep Routes open while the player moves the map cursor
 		}
 		if (item.m_eOrder == AIO_EOrder.TOGGLE_SQUAD_BAR)
 		{
@@ -508,6 +557,17 @@ class AIO_Menu
 	void ShowFeedback(string text)
 	{
 		text = TranslateWords(text);
+		if (System.GetTickCount() < m_iFeedbackUntil || !m_aFeedbackQueue.IsEmpty())
+		{
+			if (m_aFeedbackQueue.Count() < 16)
+				m_aFeedbackQueue.Insert(text);
+			return;
+		}
+		DisplayFeedback(text);
+	}
+
+	protected void DisplayFeedback(string text)
+	{
 		m_sFeedback = text;
 		m_iFeedbackUntil = System.GetTickCount() + FEEDBACK_MS;
 		if (!m_wFeedback)
@@ -521,7 +581,15 @@ class AIO_Menu
 
 	protected void UpdateFeedback(int now)
 	{
-		if (m_wFeedback && m_wFeedback.IsVisible() && now > m_iFeedbackUntil)
+		if (now <= m_iFeedbackUntil)
+			return;
+		if (!m_aFeedbackQueue.IsEmpty())
+		{
+			string text = m_aFeedbackQueue[0];
+			m_aFeedbackQueue.RemoveOrdered(0);
+			DisplayFeedback(text);
+		}
+		else if (m_wFeedback)
 			m_wFeedback.SetVisible(false);
 	}
 
@@ -651,13 +719,18 @@ class AIO_Menu
 			string title = "Orders";
 			if (m_aStack.Count() > 1)
 				title = page.m_sLabel;
-			texts.Insert(title + "  ->  " + TargetText());
+			string targetText = TargetText();
+			if (!m_aRoutePoints.IsEmpty() && page.m_aChildren.Count() > 0 && page.m_aChildren[0].m_eOrder == AIO_EOrder.ROUTE_ADD)
+				targetText = m_sRouteTarget + " (draft members)";
+			texts.Insert(title + "  ->  " + targetText);
 			colors.Insert(head);
 			array<AIO_MenuItem> items = {};
 			VisibleItems(page, items);
 			for (int i = 0; i < items.Count(); i++)
 			{
 				string label = items[i].m_sLabel;
+				if (items[i].m_eOrder == AIO_EOrder.ROUTE_ADD)
+					label += string.Format(" (%1/16, %2 men)", m_aRoutePoints.Count(), m_aRouteMembers.Count());
 				if (items[i].IsPage())
 					label += "  >";
 				texts.Insert(string.Format("%1   %2", i + 1, label));

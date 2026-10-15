@@ -204,9 +204,13 @@ class AIO_Server
 				return "Following you";
 			case AIO_EOrder.MOVE_HERE:
 				if (Vanilla(playerId, slave, "waypointMove", point))
+				{
+					TrackWholeMove(slave, player, point, playerId);
 					return "";
+				}
 				ClearWaypoints(slave);
 				AddWaypoint(slave, WP_MOVE, point);
+				TrackWholeMove(slave, player, point, playerId);
 				return "Moving";
 			case AIO_EOrder.HOLD_HERE:
 				if (player && Vanilla(playerId, slave, "waypointDefend", player.GetOrigin()))
@@ -230,6 +234,14 @@ class AIO_Server
 				return GroupROE(slave, EAIGroupCombatMode.RETURN_FIRE, "Return fire only");
 		}
 		return "Not built yet: " + typename.EnumToString(AIO_EOrder, order);
+	}
+
+	static void TrackWholeMove(SCR_AIGroup group, IEntity player, vector point, int playerId)
+	{
+		array<IEntity> men = {};
+		Members(group, men);
+		men.RemoveItem(player);
+		AIO_Routes.TrackMove(group, player, men, point, playerId, true);
 	}
 
 	static const float SHIFT_DISTANCE = 50; // Advance / Stay back / Flank, as in Arma 3
@@ -532,11 +544,16 @@ class AIO_Server
 			return AIO_Vehicles.Order(bodies, slave, order, EntityOf(target), player, point);
 		if (order == AIO_EOrder.MOVE_HERE)
 		{
+			array<IEntity> moving = {};
 			for (int i = 0; i < bodies.Count(); i++)
 			{
 				if (AIO_Tasks.MoveTo(bodies[i], AIO_Tasks.SpreadSpot(point, i)))
+				{
 					count++;
+					moving.Insert(bodies[i]);
+				}
 			}
+			AIO_Routes.TrackMove(slave, player, moving, point, playerId, false);
 			return string.Format("%1 men moving", count);
 		}
 		if (order == AIO_EOrder.HALT || order == AIO_EOrder.HOLD_HERE)

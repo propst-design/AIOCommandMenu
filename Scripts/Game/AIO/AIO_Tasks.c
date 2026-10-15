@@ -118,6 +118,7 @@ class AIO_Tasks
 	// Clears our tasks: the man goes back to his formation slot.
 	static void Release(IEntity body)
 	{
+		AIO_Routes.CancelObserver(body);
 		AIAgent agent = AgentOf(body);
 		SCR_AIUtilityComponent utility = UtilityOf(agent);
 		if (!utility)
@@ -725,6 +726,7 @@ class AIO_Tasks
 		AIO_Maneuvers.Tick();
 		AIO_Vehicles.Tick();
 		AIO_Support.Tick();
+		AIO_Routes.Tick();
 		for (int c = s_aCopyAgents.Count() - 1; c >= 0; c--)
 		{
 			AIAgent copier = s_aCopyAgents[c];

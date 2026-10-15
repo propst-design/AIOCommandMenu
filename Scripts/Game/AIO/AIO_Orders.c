@@ -75,7 +75,11 @@ enum AIO_EOrder
 	WATCH_DIRECTION,
 	WATCH_AUTO,
 	TREAT_TARGET,
-	TREAT_ME
+	TREAT_ME,
+	ROUTE_ADD, // client draft controls; never executed as ordinary server orders
+	ROUTE_START,
+	ROUTE_PATROL,
+	ROUTE_CLEAR
 }
 
 // What an order needs from the player's side.
@@ -232,7 +236,11 @@ class AIO_MenuTree
 		admin.Order("Teleport me (where I look)", AIO_EOrder.ADMIN_TELEPORT_ME, AIO_ETarget.POINT);
 		admin.Order("Teleport squad to me", AIO_EOrder.ADMIN_TELEPORT_SQUAD);
 		admin.Order("Kill what I look at", AIO_EOrder.ADMIN_KILL_TARGET, AIO_ETarget.POINT);
-
+		AIO_MenuItem routes = more.Page("Routes (select men, then add points)");
+		routes.Order("Add waypoint here", AIO_EOrder.ROUTE_ADD, AIO_ETarget.POINT);
+		routes.Order("Start route (hold at end)", AIO_EOrder.ROUTE_START);
+		routes.Order("Start patrol (repeat route)", AIO_EOrder.ROUTE_PATROL);
+		routes.Order("Clear draft route", AIO_EOrder.ROUTE_CLEAR);
 
 		root.Order("HALT", AIO_EOrder.HALT);
 		return root;

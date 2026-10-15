@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added Watch that direction and Watch: own choice under Defense, using the map cursor or camera target.
+- Added Treat that soldier and Treat me under Supplies, using a nearby available squad member's real medical supplies and native treatment behavior.
+- Added infantry route planning under More > Routes: up to 16 destinations, hold at the end or repeat as a patrol, with member selection fixed on the first draft point.
+- Added element arrival and stalled-movement reports for routes and ordinary Move here. Reports appear with the menu closed and queue instead of overwriting one another; patrols stay quiet each lap.
 - Added a Formation menu (Move > Formation), after Arma 3's, with the formations Reforger supports: Column, Staggered column, Wedge, Line. The squad keeps the formation for later moves.
 - Moved Speed to the Stance page (now Stance & speed).
 

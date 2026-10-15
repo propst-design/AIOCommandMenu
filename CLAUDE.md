@@ -148,6 +148,24 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   adds the Controls category. `AIO_MapMenuContext` (prio 150, flags 0xe) captures the same menu keys
   while preserving the map cursor; also used to swallow the closing key while the map is open.
 
+- `AIO_Support.c` (14 Oct, Codex): Defense > 6 Watch that direction / 7 Watch: own choice.
+  Existing holders keep their positions; others hold in place. Uses existing hold look priority
+  (combat/danger still win). Supplies > 5 Treat that soldier / 6 Treat me selects the nearest available
+  conscious helper on foot with MEDIC role (medical supplies), within 200 m. Targets own squad/player,
+  on foot and wounded. Own subtype of vanilla SCR_AIMedicHealBehavior uses real items/animations;
+  Release cancels it. Watchdog reports completion/failure, bounds it to 180 s and restores a previous
+  static hold (with interior guard) or rejoins. No admin healing or dependency on another mod.
+- `AIO_Routes.c` (14 Oct, Codex): More > Routes: client draft up to 16 points and roster IDs fixed at
+  first Add; Start route holds at end, Start patrol loops (2+ points), Clear draft leaves active orders
+  alone. Add keeps the menu open for changing the map cursor. Separate owner/server RPC validates
+  membership; infantry only. Server dispatches one spread set of individual holds per leg, waits for
+  all surviving assigned men within 5 m horizontally / 2.5 m vertically of their posts; stale/replaced
+  holds and reassigned men drop out. No progress for 60 s or exceeding a distance-scaled travel budget
+  (at least 300 s; 2 s/m + 120 s for longer legs) stops the route and reports; combat pauses budgets.
+  Owner loss/death cancels. Patrols stay quiet each lap.
+  Ordinary Move here also gets arrival observation (native whole-squad movement stays native).
+  Feedback uses AIO_Notify and a client FIFO visible with the menu closed, independent of ACA markers.
+
 ## Workshop release
 - Windows: `pwsh -File tools/make_release.ps1` (or `powershell -File tools/make_release.ps1`).
   On Unix: `bash tools/make_release.sh`. These refresh `addons/_AIO-release/AIOCommandMenu` (same GUID,
@@ -181,6 +199,10 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
 - `recovery` (~130 s): a nine-man rifle squad without a playable master/slave, leader AI disabled
   to simulate GM possession. Impossible interior posts must release; Follow cancels approach jobs,
   restores formation despite a late waypoint cancel and follows the moved leader without clustering.
+- `support` (~200 s), `support-aca`: Watch selected man / free look; native commanded treatment of a
+  bleeding leader with every other helper's AI disabled; invalid/healthy/duplicate casualty checks;
+  two real route legs waiting for the entire element, patrol repetition, selected cancellation, stalled
+  and inaccessible-height handling, route validation, ordinary arrival and native observer cancellation.
 - `formations` (~330 s): rifle squad (slave of a playable master) walks a 180 m square, one leg per
   formation (Column, Staggered column, Line, Wedge), shape sampled on the move every 4 s, best sample counts.
   Columns are checked fully; Line and Wedge sideways only (vs Column): the AI leader sprints and after a
@@ -303,3 +325,16 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   Arma 3 shapes blocked by the AI world prefab (see code map). Tests: `form-test15` formations 10/10, `form-aca3` formations-aca 10/10, `form-tasks1`
   tasks 7/7, `form-moves1` moves 5/5. Live check for Jacob: pick each formation
   while walking/running and confirm the men take it and keep it after Move here / Follow.
+- 14 Oct, Codex (Jacob: "Work on those 3"): Watch direction, Treat casualty and queued map routes
+  implemented in source (unreleased). Menu paths and behavior are in the code map above and README.
+  Notifications wait for the entire surviving assigned element, include team/count and waypoint progress,
+  and queue with the menu closed. Patrols do not announce every lap. Native Move here movement is
+  preserved and observed for arrival. Existing RPC enum values preserved; eight values appended.
+  Tests: `codex-support-final` 21/21 (vanilla, includes distance-scaled long map leg budget),
+  `codex-support-aca1` 20/20 (ACA + BBB, before the final long-leg check),
+  `codex-support-tasks1` 7/7. Actual native bandaging verified with other helpers' AI disabled;
+  two route legs and repeated 20 m patrol legs walked, cancellation and stall reporting verified.
+  Live checks for Jacob: Watch facing and free look, Treat me / looked-at squadmate and cancel,
+  map route drafting with selected teams / whole squad, arrival popups with the menu closed and
+  simultaneous team arrivals; owner-only feedback and route/treatment RPCs with a second player.
+  No Workshop publication or release-copy refresh in this task.

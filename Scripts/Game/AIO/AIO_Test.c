@@ -11,6 +11,7 @@
 //   -aioTowerTest 1 : the defense test on the airfield control tower.
 //   -aioVehicleTest 1 : get in, switch seats, lights/engine, disembark, get out, eject, unflip.
 //   -aioRecoveryTest 1 : GM-style rifle squad, unreachable interior posts, cancel, formation recovery.
+//   -aioSupportTest 1 : watch direction, commanded medical treatment, routes, patrols and arrival reports.
 //   -aioFormationTest 1 : rifle squad walks legs in Column, Staggered column, Line, Wedge; shapes measured on the move.
 // Prints "[AIO] TEST <name> PASS|FAIL ..." lines and "[AIO] TEST COMPLETE".
 class AIO_Test
@@ -41,6 +42,9 @@ class AIO_Test
 	protected static bool s_bVehicleTest;
 	protected static bool s_bRecoveryTest;
 	protected static bool s_bFormationTest;
+	protected static bool s_bSupportTest;
+	protected static ref AIO_Route s_Route;
+	protected static ref AIO_Route s_Patrol;
 	protected static int s_iLeg;
 	protected static vector s_vLegFrom;
 	static const ResourceName RIFLE_SQUAD = "{DDF3799FA1387848}Prefabs/Groups/BLUFOR/Group_US_RifleSquad.et";
@@ -82,7 +86,10 @@ class AIO_Test
 		string formationValue;
 		System.GetCLIParam("aioFormationTest", formationValue);
 		s_bFormationTest = formationValue == "1";
-		if (!s_bFormationTest && !s_bRecoveryTest && !s_bVehicleTest && !s_bMoveTest && !s_bInfantryTest && !s_bSupplyTest && !s_bAttackTest && !s_bDefenseTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
+		string supportValue;
+		System.GetCLIParam("aioSupportTest", supportValue);
+		s_bSupportTest = supportValue == "1";
+		if (!s_bSupportTest && !s_bFormationTest && !s_bRecoveryTest && !s_bVehicleTest && !s_bMoveTest && !s_bInfantryTest && !s_bSupplyTest && !s_bAttackTest && !s_bDefenseTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
 			return;
 		if (!Replication.IsServer())
 			return;
@@ -195,7 +202,9 @@ class AIO_Test
 		s_Group = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(Resource.Load(prefab), GetGame().GetWorld(), params));
 		LinkToMaster();
 		Print(string.Format("[AIO] TEST tasks: group spawned at %1", s_vStart));
-		if (s_bRecoveryTest)
+		if (s_bSupportTest)
+			GetGame().GetCallqueue().CallLater(SupportStart, 12000, false);
+		else if (s_bRecoveryTest)
 			GetGame().GetCallqueue().CallLater(RecoveryStart, 12000, false);
 		else if (s_bFormationTest)
 			GetGame().GetCallqueue().CallLater(FormStart, 12000, false);
@@ -221,6 +230,145 @@ class AIO_Test
 			GetGame().GetCallqueue().CallLater(Advance, 12000, false);
 		else
 			GetGame().GetCallqueue().CallLater(Order, 12000, false);
+	}
+
+	protected static void SupportStart()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		if (men.Count() < 3 || !Leader())
+		{
+			Check("support-setup", false, "need leader and three AI");
+			Finish();
+			return;
+		}
+		s_A = men[0];
+		s_B = men[1];
+		s_C = men[2];
+		AIO_Tasks.AgentOf(Leader()).DeactivateAI();
+		AIO_Tasks.AgentOf(s_B).DeactivateAI(); // only our assigned medic can treat the test wound
+		AIO_Tasks.AgentOf(s_C).DeactivateAI();
+		array<IEntity> selected = {s_A};
+		vector look = s_A.GetOrigin() + Vector(60, 0, 0);
+		AIO_Support.Order(s_Group, selected, Leader(), AIO_EOrder.WATCH_DIRECTION, look, null, 0);
+		AIO_HoldBehavior hold = AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(s_A)));
+		Check("watch-selected", hold && hold.m_vLook == look + Vector(0, 1.5, 0) && !AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(s_B))), "only selected man holds and watches");
+		AIO_Support.Order(s_Group, selected, Leader(), AIO_EOrder.WATCH_AUTO, vector.Zero, null, 0);
+		Check("watch-auto", hold.m_vLook == vector.Zero && AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(s_A))) == hold, "free look preserves hold");
+		AIO_Tasks.Rejoin(s_A, Leader());
+		string healthy = AIO_Support.Treat(s_Group, selected, Leader(), Leader(), 0);
+		Check("treat-healthy", healthy == "That soldier needs no treatment", healthy);
+		string invalid = AIO_Support.Treat(s_Group, selected, Leader(), s_Group, 0);
+		Check("treat-invalid", invalid == "Look at a soldier in your squad, or use Treat me", invalid);
+		SCR_CharacterDamageManagerComponent damage = SCR_CharacterDamageManagerComponent.Cast(SCR_DamageManagerComponent.GetDamageManager(Leader()));
+		damage.AddParticularBleeding("RForearm");
+		GetGame().GetCallqueue().CallLater(SupportTreat, 2000, false);
+	}
+
+	protected static void SupportTreat()
+	{
+		array<IEntity> selected = {s_A};
+		Check("treat-wounded-setup", AIO_Support.Wounded(Leader()), "leader has a real bleeding wound");
+		string reply = AIO_Support.Order(s_Group, selected, Leader(), AIO_EOrder.TREAT_ME, vector.Zero, null, 0);
+		SCR_AIUtilityComponent utility = AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(s_A));
+		Check("treat-assigned", utility.HasActionOfType(AIO_TreatBehavior), reply);
+		Check("treat-duplicate", AIO_Support.Treat(s_Group, selected, Leader(), Leader(), 0) == "A soldier is already treating that casualty", "duplicate casualty is rejected");
+		GetGame().GetCallqueue().CallLater(SupportTreated, 45000, false);
+	}
+
+	protected static void SupportTreated()
+	{
+		SCR_CharacterDamageManagerComponent damage = SCR_CharacterDamageManagerComponent.Cast(SCR_DamageManagerComponent.GetDamageManager(Leader()));
+		Check("treat-real-bandage", !damage.IsBleeding(), string.Format("patient bleeding %1", damage.IsBleeding()));
+		AIO_Tasks.AgentOf(s_B).ActivateAI();
+		AIO_Tasks.AgentOf(s_C).ActivateAI();
+		AIO_Tasks.Rejoin(s_A, Leader());
+		array<ref AIActionBase> treatments = {};
+		AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(s_A)).FindActionsOfType(AIO_TreatBehavior, treatments);
+		bool active;
+		foreach (AIActionBase action : treatments)
+		{
+			if (!action.GetRemoveAction() && action.GetActionState() != EAIActionState.FAILED && action.GetActionState() != EAIActionState.COMPLETED)
+				active = true;
+		}
+		Check("treat-cancel", !active, "Follow removes commanded treatment");
+		array<IEntity> men = {s_A, s_B};
+		AIO_Maneuvers.SetTeam(s_A, 1);
+		AIO_Maneuvers.SetTeam(s_B, 1);
+		vector first = FindSpot(s_vStart, 20);
+		vector second = FindSpot(first, 20);
+		array<vector> points = {first, second};
+		string reply = AIO_Routes.Start(s_Group, Leader(), men, points, false, 0, s_Route);
+		Check("route-start", s_Route && s_Route.m_aMen.Count() == 2 && s_Route.m_sElement == "Red team (2 men)", reply);
+		AIO_Tasks.AgentOf(s_B).DeactivateAI();
+		GetGame().GetCallqueue().CallLater(SupportWaiting, 18000, false);
+	}
+
+	protected static void SupportWaiting()
+	{
+		Check("route-waits-for-element", s_Route && s_Route.m_iReached == 0, "stationary second man prevents premature arrival");
+		AIO_Tasks.AgentOf(s_B).ActivateAI();
+		GetGame().GetCallqueue().CallLater(SupportRouteDone, 60000, false);
+	}
+
+	protected static void SupportRouteDone()
+	{
+		Check("route-two-waypoints", s_Route && s_Route.m_bFinished && !s_Route.m_bBlocked && s_Route.m_iReached == 2, string.Format("reached %1, blocked %2", s_Route.m_iReached, s_Route.m_bBlocked));
+		array<IEntity> men = {s_A, s_B};
+		vector first = s_A.GetOrigin();
+		vector second = first + Vector(20, 0, 0);
+		second[1] = GetGame().GetWorld().GetSurfaceY(second[0], second[2]);
+		array<vector> shortPatrol = {first, second};
+		AIO_Routes.Start(s_Group, Leader(), men, shortPatrol, true, 0, s_Patrol);
+		GetGame().GetCallqueue().CallLater(SupportPatrolDone, 45000, false);
+	}
+
+	protected static void SupportPatrolDone()
+	{
+		AIO_Route patrol = s_Patrol;
+		Check("patrol-loops", patrol && !patrol.m_bFinished && patrol.m_iReached >= 3, string.Format("reached %1 legs", patrol.m_iReached));
+		AIO_Tasks.Rejoin(s_A, Leader());
+		AIO_Routes.Tick();
+		Check("route-subset-cancel", patrol && patrol.m_aMen.Count() == 1 && patrol.m_aMen[0] == s_B, "Follow cancels only the reassigned man");
+		AIO_Tasks.Rejoin(s_B, Leader());
+		AIO_Routes.Tick();
+		Check("route-cancel-all", patrol.m_bFinished && patrol.m_aMen.IsEmpty(), "no stale route remains");
+		array<IEntity> one = {s_A};
+		array<vector> impossible = {s_A.GetOrigin() + Vector(0, 25, 0)};
+		AIO_Route stalled;
+		AIO_Routes.Start(s_Group, Leader(), one, impossible, false, 0, stalled);
+		AIO_Tasks.AgentOf(s_A).DeactivateAI();
+		AIO_Routes.Tick(); // establish initial distance
+		stalled.m_fProgressAt -= 61000;
+		AIO_Routes.Tick();
+		Check("route-blocked", stalled.m_bBlocked && stalled.m_iReached == 0, "unreachable height never counts as arrival; timeout stops route");
+		AIO_Tasks.AgentOf(s_A).ActivateAI();
+		AIO_Route invalid;
+		array<vector> points = {s_vStart};
+		array<IEntity> outsider = {Leader()};
+		AIO_Routes.Start(s_Group, Leader(), outsider, points, false, 0, invalid);
+		Check("route-reject-leader", !invalid, "player leader cannot be ordered by route");
+		AIO_Routes.Start(s_Group, Leader(), one, points, true, 0, invalid);
+		Check("patrol-reject-single-point", !invalid, "patrol needs two points");
+		AIO_Tasks.HoldHere(s_A);
+		AIO_Route arrival = AIO_Routes.TrackMove(s_Group, Leader(), one, s_A.GetOrigin(), 0, false);
+		AIO_Routes.Tick();
+		Check("single-move-arrival", arrival.m_bFinished && arrival.m_iReached == 1, "ordinary selected Move here arrival is reported once");
+		AIO_Route nativeArrival = AIO_Routes.TrackMove(s_Group, Leader(), one, s_vStart, 0, true);
+		AIO_Tasks.Rejoin(s_A, Leader());
+		AIO_Routes.Tick();
+		Check("native-move-cancel", nativeArrival.m_bFinished && nativeArrival.m_iReached == 0, "Follow invalidates native arrival observer");
+		vector farPoint = s_A.GetOrigin() + Vector(1000, 0, 0);
+		farPoint[1] = GetGame().GetWorld().GetSurfaceY(farPoint[0], farPoint[2]);
+		array<vector> longLeg = {farPoint};
+		AIO_Route longRoute;
+		AIO_Routes.Start(s_Group, Leader(), one, longLeg, false, 0, longRoute);
+		longRoute.m_fStarted -= 360000;
+		AIO_Routes.Tick();
+		Check("long-map-leg", !longRoute.m_bFinished && !longRoute.m_bBlocked, "six minutes with progress does not time out a kilometre-long leg");
+		AIO_Tasks.Rejoin(s_A, Leader());
+		AIO_Routes.Tick();
+		Finish();
 	}
 
 	protected static void Order()

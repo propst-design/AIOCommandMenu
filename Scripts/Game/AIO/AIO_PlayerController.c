@@ -71,6 +71,36 @@ modded class SCR_PlayerController
 		Rpc(AIO_RpcTeam, ids, team);
 	}
 
+	void AIO_SendRoute(array<RplId> ids, array<vector> points, bool patrol)
+	{
+		Rpc(AIO_RpcRoute, ids, points, patrol);
+	}
+
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void AIO_RpcRoute(array<RplId> ids, array<vector> points, bool patrol)
+	{
+		float now = GetGame().GetWorld().GetWorldTime();
+		if (now - m_fAIO_Window > 1000)
+		{
+			m_fAIO_Window = now;
+			m_iAIO_InWindow = 0;
+		}
+		m_iAIO_InWindow++;
+		if (m_iAIO_InWindow > 10)
+			return;
+		SCR_AIGroup group = AIO_Server.Slave(GetPlayerId());
+		array<IEntity> men = {};
+		if (group && ids && ids.Count() <= 64)
+			AIO_Tasks.Resolve(group, ids, men);
+		if (!ids || ids.IsEmpty() || men.Count() != ids.Count())
+		{
+			AIO_Notify("Route members are no longer in your squad; clear the draft and select again");
+			return;
+		}
+		AIO_Route started;
+		AIO_Notify(AIO_Routes.Start(group, GetControlledEntity(), men, points, patrol, GetPlayerId(), started));
+	}
+
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void AIO_RpcTeam(array<RplId> ids, int team)
 	{

@@ -24,6 +24,38 @@ Formations: Move > 9 Formation: Arma 3's formation menu with the formations Refo
 Column, Staggered column, Wedge, Line (always the whole squad, also with men selected).
 Speed: Stance & speed > 6 Speed.
 
+Defense > 6 Watch that direction makes selected men watch the map cursor or the
+spot you look at. Men already holding keep their positions; others hold where
+they are. Enemies and danger can still draw their attention. Defense > 7 Watch:
+own choice removes the facing order; Follow returns them to formation.
+
+Supplies > 5 Treat that soldier / 6 Treat me sends the nearest available selected
+soldier with medical supplies to treat a squadmate or the player. With nobody
+selected, it chooses from the squad. Both must be on foot; the helper must be
+conscious and within 200 m. This uses normal medical items and treatment, not
+admin healing. Follow or a new movement order cancels the helper's assignment.
+
+More > Routes builds a route for infantry:
+
+1. Select the men or colour team first (no selection means the whole squad).
+2. Open the map, then T > More > Routes. Put the cursor on a destination and
+   choose Add waypoint here. The menu stays open; repeat for up to 16 points.
+3. Choose Start route to hold at the last point, or Start patrol to repeat a
+   route with at least two points.
+
+The first added point fixes the draft's members. Clear draft route before
+planning for a different element; clearing a draft does not cancel a running
+route. The draft is retained after Start for retrying. Follow, Halt or a new
+movement assignment cancels the affected men's running route. Routes require
+soldiers on foot; ordinary Move here keeps its existing vehicle support.
+
+Arrival popups identify the element and waypoint, appear with the menu closed,
+and wait for all surviving assigned men. Ordinary Move here also reports arrival.
+Routes stop and report if stalled for 60 seconds or exceeding a travel allowance
+that grows with waypoint distance (at least five minutes); combat pauses these
+budgets. Patrols do not repeat arrival
+popups every lap. Notifications queue so simultaneous reports remain readable.
+
 ## Admin page (More > Admin)
 
 Single player and the host of your own game always; on dedicated servers only
@@ -33,6 +65,8 @@ logged-in admins. Host option: `-aioCheats all|admins|off`.
 
 Infantry orders, vehicle orders, the admin page, and destinations from the map cursor
 are implemented. Formations (column, staggered column, wedge, line) are in; multiplayer and recent fixes need live testing.
+Watch direction, casualty treatment and infantry routes/patrols are in the source
+build; these additions still need live menu/map and multiplayer checks.
 
 ## Reporting bugs
 

@@ -17,3 +17,5 @@ vehicles-aca|-aioVehicleTest 1|360|aca
 recovery|-aioRecoveryTest 1|200
 formations|-aioFormationTest 1|500
 formations-aca|-aioFormationTest 1|560|aca
+support|-aioSupportTest 1|240
+support-aca|-aioSupportTest 1|300|aca
