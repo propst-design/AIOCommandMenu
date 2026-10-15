@@ -437,6 +437,8 @@ class AIO_Tasks
 		}
 		if (utility.HasActionOfType(SCR_AIHealBehavior))
 			label = "Healing";
+		if (hold && hold.m_vLook != vector.Zero)
+			label += ", Watching";
 		if (AIO_Supplies.IsFetching(agent))
 			label = "Rearming";
 		if (AIO_Maneuvers.IsBounding(agent))

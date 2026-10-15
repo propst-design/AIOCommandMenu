@@ -71,7 +71,9 @@ enum AIO_EOrder
 	FORM_COLUMN,
 	FORM_STAGGERED_COLUMN,
 	FORM_WEDGE,
-	FORM_LINE
+	FORM_LINE,
+	WATCH_DIRECTION,
+	WATCH_AUTO
 }
 
 // What an order needs from the player's side.
@@ -189,6 +191,8 @@ class AIO_MenuTree
 		defense.Order("Clear building", AIO_EOrder.DEF_CLEAR, AIO_ETarget.POINT);
 		defense.Order("360 defense", AIO_EOrder.DEF_360);
 		defense.Order("Fortify here", AIO_EOrder.DEF_FORTIFY, AIO_ETarget.POINT);
+		defense.Order("Watch that direction", AIO_EOrder.WATCH_DIRECTION, AIO_ETarget.POINT);
+		defense.Order("Watch: own choice", AIO_EOrder.WATCH_AUTO);
 
 		AIO_MenuItem roe = root.Page("R.O.E.");
 		roe.Order("Fire at will", AIO_EOrder.FIRE_AT_WILL);
@@ -224,6 +228,7 @@ class AIO_MenuTree
 		admin.Order("Teleport me (where I look)", AIO_EOrder.ADMIN_TELEPORT_ME, AIO_ETarget.POINT);
 		admin.Order("Teleport squad to me", AIO_EOrder.ADMIN_TELEPORT_SQUAD);
 		admin.Order("Kill what I look at", AIO_EOrder.ADMIN_KILL_TARGET, AIO_ETarget.POINT);
+
 
 		root.Order("HALT", AIO_EOrder.HALT);
 		return root;
