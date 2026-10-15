@@ -114,6 +114,18 @@ class AIO_Server
 		SCR_AIGroup slave = Slave(playerId);
 		if (!slave)
 			return "No soldiers under your command";
+		if (AIO_Support.IsOrder(order))
+		{
+			array<IEntity> supportMen = {};
+			if (members && !members.IsEmpty())
+				AIO_Tasks.Resolve(slave, members, supportMen);
+			else
+				Members(slave, supportMen);
+			supportMen.RemoveItem(pc.GetControlledEntity());
+			if (supportMen.IsEmpty())
+				return "No soldiers selected under your command";
+			return AIO_Support.Order(slave, supportMen, pc.GetControlledEntity(), order, point, EntityOf(target), playerId);
+		}
 		// Formations belong to the whole squad, also when men are selected.
 		if (AIO_Formations.IsFormationOrder(order))
 			return AIO_Formations.Set(slave, order);
@@ -501,6 +513,8 @@ class AIO_Server
 		bodies.RemoveItem(player);
 		if (bodies.IsEmpty())
 			return "No soldiers under your command";
+		if (AIO_Support.IsOrder(order))
+			return AIO_Support.Order(slave, bodies, player, order, point, EntityOf(target), playerId);
 		int count;
 		string moved = MoveMenu(slave, player, order, bodies);
 		if (!moved.IsEmpty())
