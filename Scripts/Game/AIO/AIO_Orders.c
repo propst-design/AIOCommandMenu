@@ -84,7 +84,8 @@ enum AIO_EOrder
 	DEF_360_10,
 	DEF_360_20,
 	DEF_360_30,
-	DEF_360_50
+	DEF_360_50,
+	RESUME_MANEUVER
 }
 
 // What an order needs from the player's side.
@@ -172,8 +173,9 @@ class AIO_MenuTree
 		attack.Order("Assault", AIO_EOrder.ASSAULT, AIO_ETarget.POINT);
 		attack.Order("Suppress", AIO_EOrder.SUPPRESS, AIO_ETarget.POINT);
 		attack.Order("Fire on my lead", AIO_EOrder.FIRE_ON_MY_LEAD);
-		attack.Order("Bound forward", AIO_EOrder.BOUND, AIO_ETarget.POINT);
+		attack.Order("Bound to position", AIO_EOrder.BOUND, AIO_ETarget.POINT);
 		attack.Order("Peel back", AIO_EOrder.PEEL);
+		attack.Order("Resume bound / peel", AIO_EOrder.RESUME_MANEUVER);
 
 		AIO_MenuItem vehicles = root.Page("Vehicles");
 		AIO_MenuItem getIn = vehicles.Page("Get in (that vehicle or mine)");

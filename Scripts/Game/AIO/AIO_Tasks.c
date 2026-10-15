@@ -4,17 +4,35 @@
 // Orders to single soldiers (selected men, colour teams). Server only.
 //
 // Each man gets his own behaviours, so he stays in the player's squad (voice, formation slot):
-// - AIO_MoveBehavior: walk to a spot (the game's own "move individually", priority 58, so he
-//   still fights when engaged: attack is 70+).
-// - AIO_HoldBehavior: stay there (priority 45, above keeping formation at 30). A watchdog walks
+// - AIO_MoveBehavior: native individual movement at player priority; emergency reactions win.
+// - AIO_HoldBehavior: keep the order queued but yield to native firing at the post. A watchdog walks
 //   him back if he drifts more than HOLD_SLACK metres, e.g. after a fight.
 // Follow me / any whole-squad order removes both, and he rejoins the formation.
 
 class AIO_MoveBehavior : SCR_AIMoveIndividuallyBehavior
 {
+	bool m_bTravel; // native SAFE cause lets optional AI mods distinguish travel from tactics
 	// Same parameters as the game's behaviour (Enforce passes them on to the parent).
-	void AIO_MoveBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector pos, float priority = PRIORITY_BEHAVIOR_MOVE_INDIVIDUALLY, float priorityLevel = PRIORITY_LEVEL_NORMAL, IEntity ent = null, float radius = 1.0)
+	void AIO_MoveBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector pos, float priority = PRIORITY_BEHAVIOR_MOVE_INDIVIDUALLY, float priorityLevel = PRIORITY_LEVEL_PLAYER, IEntity ent = null, float radius = 1.0)
 	{
+		// Mounted movement keeps its native priority; this contact policy is for infantry.
+		if (utility && utility.m_OwnerEntity && CompartmentAccessComponent.GetVehicleIn(utility.m_OwnerEntity))
+			SetPriorityLevel(PRIORITY_LEVEL_NORMAL);
+	}
+
+	override int GetCause()
+	{
+		if (m_bTravel) return SCR_EAIBehaviorCause.SAFE;
+		return SCR_EAIBehaviorCause.GROUP_GOAL;
+	}
+
+	override float CustomEvaluate()
+	{
+		if (AIO_Tasks.SelfAidReady(m_Utility)) return 0;
+		// Keep the destination queued while a native retreat from armour takes precedence.
+		if (m_Utility && m_Utility.m_CombatComponent && m_Utility.m_CombatComponent.GetRetreatTarget())
+			return 0;
+		return super.CustomEvaluate();
 	}
 }
 
@@ -40,6 +58,8 @@ class AIO_HoldBehavior : SCR_AIBehaviorBase
 	bool m_bRouteComplete;
 	vector m_vLastRoom;
 	IEntity m_Building;
+	bool m_bAllowPursuit; // assault's final position allows autonomous attack movement
+	bool m_bTravel;
 
 	// Current spot (for anchored holds: follows the anchor, on the ground).
 	vector Spot()
@@ -56,10 +76,32 @@ class AIO_HoldBehavior : SCR_AIBehaviorBase
 		m_vSpot = spot;
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/Wait.bt";
 		SetPriority(AIO_Tasks.PRIORITY_HOLD);
+		if (!utility || !utility.m_OwnerEntity || !CompartmentAccessComponent.GetVehicleIn(utility.m_OwnerEntity))
+			SetPriorityLevel(PRIORITY_LEVEL_PLAYER);
+		if (utility)
+			utility.AIO_SetOrderHold(this);
+	}
+
+	override float CustomEvaluate()
+	{
+		if (!m_Utility || !m_Utility.m_OwnerEntity)
+			return 0;
+		if (AIO_Tasks.SelfAidReady(m_Utility)) return 0;
+		if (m_Utility.m_CombatComponent && m_Utility.m_CombatComponent.GetRetreatTarget())
+			return 0;
+		// Yield to the native shooting behavior at the post. A high-priority Wait.bt
+		// would otherwise stop the soldier firing. The order itself remains queued.
+		if (m_Utility.m_CombatComponent && m_Utility.m_CombatComponent.GetCurrentTarget() && m_Utility.m_CombatComponent.GetCombatMode() != EAIGroupCombatMode.HOLD_FIRE)
+		{
+			if (m_bAllowPursuit || vector.Distance(m_Utility.m_OwnerEntity.GetOrigin(), Spot()) <= AIO_Tasks.HOLD_SLACK)
+				return 0;
+		}
+		return GetPriority();
 	}
 
 	override int GetCause()
 	{
+		if (m_bTravel) return SCR_EAIBehaviorCause.SAFE;
 		return SCR_EAIBehaviorCause.GROUP_GOAL;
 	}
 }
@@ -79,6 +121,21 @@ class AIO_Tasks
 	protected static IEntity s_DoorBody;
 	protected static IEntity s_DoorBuilding;
 	protected static bool s_bDoorOpened;
+
+	// Native self aid (including Heal up) may temporarily interrupt a post or move.
+	// Keep the destination rather than cancelling the order to permit treatment.
+	static bool SelfAidReady(SCR_AIUtilityComponent utility)
+	{
+		if (!utility || !utility.HasActionOfType(SCR_AIHealBehavior)) return false;
+		array<ref AIActionBase> actions = {};
+		utility.FindActionsOfType(SCR_AIHealBehavior, actions);
+		foreach (AIActionBase action : actions)
+		{
+			SCR_AIHealBehavior heal = SCR_AIHealBehavior.Cast(action);
+			if (heal && !heal.GetRemoveAction() && heal.m_EntityToHeal == utility.m_OwnerEntity && heal.GetActionState() != EAIActionState.FAILED && heal.GetActionState() != EAIActionState.COMPLETED && heal.Evaluate() > 0) return true;
+		}
+		return false;
+	}
 
 	// ---------------------------------------------------------------- lookups
 
@@ -123,6 +180,7 @@ class AIO_Tasks
 		SCR_AIUtilityComponent utility = UtilityOf(agent);
 		if (!utility)
 			return;
+		utility.AIO_SetOrderHold(null);
 		AIO_Supplies.Cancel(agent); // any new order ends an errand
 		AIO_Support.Cancel(body);
 		AIO_Maneuvers.Leave(agent); // ...and takes him out of a bound / peel
@@ -186,14 +244,18 @@ class AIO_Tasks
 	}
 
 	// Walk to the spot and stay there.
-	static bool MoveTo(IEntity body, vector spot)
+	static bool MoveTo(IEntity body, vector spot, bool travel = false)
 	{
 		SCR_AIUtilityComponent utility = UtilityOf(AgentOf(body));
 		if (!utility)
 			return false;
 		Release(body);
-		utility.AddAction(new AIO_MoveBehavior(utility, null, spot, radius: 2.0));
-		utility.AddAction(new AIO_HoldBehavior(utility, null, spot));
+		AIO_MoveBehavior orderedMove = new AIO_MoveBehavior(utility, null, spot, radius: 2.0);
+		orderedMove.m_bTravel = travel;
+		AIO_HoldBehavior orderedHold = new AIO_HoldBehavior(utility, null, spot);
+		orderedHold.m_bTravel = travel;
+		utility.AddAction(orderedMove);
+		utility.AddAction(orderedHold);
 		Watch();
 		return true;
 	}
@@ -221,6 +283,9 @@ class AIO_Tasks
 	{
 		if (!utility)
 			return null;
+		AIO_HoldBehavior cached = utility.AIO_GetOrderHold();
+		if (cached)
+			return cached;
 		array<ref AIActionBase> holds = {};
 		utility.FindActionsOfType(AIO_HoldBehavior, holds);
 		foreach (AIActionBase action : holds)
@@ -446,7 +511,7 @@ class AIO_Tasks
 		if (AIO_Supplies.IsFetching(agent))
 			label = "Rearming";
 		if (AIO_Maneuvers.IsBounding(agent))
-			label = "Bounding";
+			label = AIO_Bounding.Label(agent);
 		if (AIO_Vehicles.IsPushing(body))
 			label = "Unflipping";
 		string seat = AIO_Vehicles.Label(body);
@@ -661,8 +726,11 @@ class AIO_Tasks
 			return 0;
 		if (!utility.m_AIInfo || !utility.m_AIInfo.HasRole(EUnitRole.MEDIC))
 			return -1;
-		if (!utility.HasActionOfType(SCR_AIHealBehavior))
-			utility.AddAction(new SCR_AIHealBehavior(utility, null, body, true));
+		SCR_AIHealBehavior heal = SCR_AIHealBehavior.Cast(utility.FindActionOfType(SCR_AIHealBehavior));
+		if (!heal || heal.GetRemoveAction() || heal.GetActionState() == EAIActionState.FAILED || heal.GetActionState() == EAIActionState.COMPLETED)
+			utility.AddAction(new SCR_AIHealBehavior(utility, null, body, true, priorityLevel: SCR_AIActionBase.PRIORITY_LEVEL_PLAYER));
+		else
+			heal.SetPriorityLevel(SCR_AIActionBase.PRIORITY_LEVEL_PLAYER);
 		return 1;
 	}
 
@@ -799,7 +867,9 @@ class AIO_Tasks
 				StopMoves(utility);
 			}
 			hold.m_vSpot = spot;
-			utility.AddAction(new AIO_MoveBehavior(utility, null, spot, radius: radius));
+			AIO_MoveBehavior retry = new AIO_MoveBehavior(utility, null, spot, radius: radius);
+			retry.m_bTravel = hold.m_bTravel;
+			utility.AddAction(retry);
 		}
 	}
 }

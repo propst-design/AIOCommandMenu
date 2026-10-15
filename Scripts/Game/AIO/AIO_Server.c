@@ -547,7 +547,7 @@ class AIO_Server
 			array<IEntity> moving = {};
 			for (int i = 0; i < bodies.Count(); i++)
 			{
-				if (AIO_Tasks.MoveTo(bodies[i], AIO_Tasks.SpreadSpot(point, i)))
+				if (AIO_Tasks.MoveTo(bodies[i], AIO_Tasks.SpreadSpot(point, i), true))
 				{
 					count++;
 					moving.Insert(bodies[i]);
