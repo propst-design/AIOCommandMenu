@@ -2,7 +2,7 @@
 
 A GPLv3 port of Leopard20's All-In-One Command Menu (Arma 3) to Arma Reforger: a numbered
 command menu for the player's AI squad plus a cheats/admin page. Owner: Jacob (propst-design).
-Claude writes the code and docs; Jacob designs and play-tests. Keep this file current.
+Claude and Codex write the code and docs; Jacob designs and play-tests. Keep this file current.
 Claude project: "Command Enhancements" (its name predates the switch from DCE to AIO).
 
 ## Ground rules
@@ -38,7 +38,8 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   the menu layout. Rearranging the menu = editing Build().
 - `AIO_Menu.c`: client menu. Modes ORDERS / SELECT / TEAMS. Keys 1-9 lines, 0 = Select members
   (root) or Back, Backspace = back (on Select: clear selection), menu key closes. Selection is kept
-  8 s after an order. Teams are client-side for now (Red/Green/Blue/Yellow, White = none).
+  about 8 s with the menu closed. Team colours are kept by the client and sent to the server
+  for maneuvers/reports (Red/Green/Blue/Yellow, White = none); not saved across missions.
   Look point = camera ray (1.5 km, excluding own vehicle) or the map cursor's terrain position when
   the map is open. Widgets built in script from vanilla Text_BodySmall layouts;
   removed in `OnBeforeWorldCleanup` (`AIO_Game.c`).
@@ -239,6 +240,17 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
 - Manual checks are Jacob's (menu feel, number keys not switching weapons, orders, MP).
 
 ## Status / next
+
+- 14 Oct, Codex: public-documentation accuracy audit completed against the current menu/server,
+  maneuver, route, treatment, vehicle, supply and UI code. README is the full Reforger guide;
+  Workshop copy, changelogs, credit notices and issue form aligned with it. Public 0.2.1 versus
+  prepared/unpublished 0.3.0 is explicit in README/CHANGELOG. Corrected scope/voice/admin promises,
+  formation override caveats, selection expiry, building-clear limits, recipient cancellation and
+  optional BBB responsibility. GPL grant unchanged. No gameplay changes or new live-test claims.
+  Live pages could not be fetched by the web tool, so published copy was not independently verified.
+  Validation: relative links, menu/limit coverage, issue-form field structure and unchanged GPL grant
+  checked; release docs/sidecars synchronized with all other release files hash-preserved. No publish
+  or push. Existing live checks and the mounted selected-driver test discrepancy remain open.
 - Built (12-13 Oct): menu shell, input capture, select-members and teams pages, whole-squad orders
   through vanilla commands (Halt, Follow, Move here, Hold here, Suppress, ROE), admin page (heal me,
   heal squad, teleport me, bring squad, kill target).

@@ -15,6 +15,26 @@ body:
     validations:
       required: true
   - type: dropdown
+    id: game_version
+    attributes:
+      label: Game build
+      description: Include the exact game version in Steps if you know it.
+      options:
+        - Stable
+        - Experimental
+        - Workbench / local development build
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: scenario
+    attributes:
+      label: Scenario or mission
+      description: Scenario name and map; for a Workshop scenario, include its link if possible.
+      placeholder: "Game Master - Arland"
+    validations:
+      required: true
+  - type: dropdown
     id: mode
     attributes:
       label: Game mode
@@ -43,6 +63,8 @@ body:
       options:
         - Whole squad
         - Selected men (or a colour team)
+        - Formation / squad admin command (always whole squad)
+        - Treatment helper chosen from selection / squad
         - Both / not sure
     validations:
       required: true
@@ -82,6 +104,6 @@ body:
     attributes:
       label: Logs
       description: |
-        Attach console.log and script.log from the session's folder in `Documents\My Games\ArmaReforger\profile\logs` (newest folder; drag the files in here, zip them if they're too big). On a dedicated server, the server's logs folder.
+        Attach console.log and script.log from the affected session's folder in `Documents\My Games\ArmaReforger\profile\logs` (default profile; use the newest session folder). A custom -profile location changes this path. Drag the files in here; zip them if needed. For multiplayer, include the server and affected client's logs when available.
     validations:
       required: false

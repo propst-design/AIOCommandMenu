@@ -20,8 +20,8 @@ textures, icons, sounds) are included.
 
 ## Who made this port
 
-Written by **Claude** (Anthropic's AI model, in Claude Cowork), directed, designed
-and play-tested by **Jacob** (propst-design). It is an unofficial fan project, not
+Directed, designed and play-tested by **Jacob** (propst-design), developed with
+**Claude** (Anthropic) and **Codex** (OpenAI). It is an unofficial fan project, not
 affiliated with or endorsed by Bohemia Interactive or Leopard20.
 
 ## License of this work
@@ -36,7 +36,8 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
-The full license text is in `COPYING`.
+The full license text is in [COPYING](COPYING). Script source is included with
+the mod and available at https://github.com/propst-design/AIOCommandMenu.
 
 Arma Reforger content used at runtime belongs to Bohemia Interactive and is not
 redistributed here.

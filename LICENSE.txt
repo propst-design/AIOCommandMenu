@@ -20,8 +20,8 @@ textures, icons, sounds) are included.
 
 Who made this port
 
-Written by Claude (Anthropic's AI model, in Claude Cowork), directed, designed
-and play-tested by Jacob (propst-design). It is an unofficial fan project, not
+Directed, designed and play-tested by Jacob (propst-design), developed with
+Claude (Anthropic) and Codex (OpenAI). It is an unofficial fan project, not
 affiliated with or endorsed by Bohemia Interactive or Leopard20.
 
 License of this work
@@ -48,4 +48,3 @@ Working with Jacob's other mods
 This mod shares no code with Arma Commander Actual (Arma Public License
 Share-Alike, which is not GPL-compatible). The two mods only talk to each other
 while the game runs, and each works without the other.
-
