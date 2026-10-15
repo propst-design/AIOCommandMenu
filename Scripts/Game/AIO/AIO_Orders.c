@@ -73,7 +73,9 @@ enum AIO_EOrder
 	FORM_WEDGE,
 	FORM_LINE,
 	WATCH_DIRECTION,
-	WATCH_AUTO
+	WATCH_AUTO,
+	TREAT_TARGET,
+	TREAT_ME
 }
 
 // What an order needs from the player's side.
@@ -218,6 +220,8 @@ class AIO_MenuTree
 		supplies.Order("Rearm (nearest bodies, crates, vehicles)", AIO_EOrder.REARM);
 		supplies.Order("Rearm from that", AIO_EOrder.REARM_FROM, AIO_ETarget.POINT);
 		supplies.Order("Take that weapon", AIO_EOrder.TAKE_WEAPON, AIO_ETarget.POINT);
+		supplies.Order("Treat that soldier", AIO_EOrder.TREAT_TARGET, AIO_ETarget.POINT);
+		supplies.Order("Treat me", AIO_EOrder.TREAT_ME);
 
 		AIO_MenuItem more = root.Page("More");
 		more.Order("Squad bar on/off", AIO_EOrder.TOGGLE_SQUAD_BAR);

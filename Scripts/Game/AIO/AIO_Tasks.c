@@ -123,6 +123,7 @@ class AIO_Tasks
 		if (!utility)
 			return;
 		AIO_Supplies.Cancel(agent); // any new order ends an errand
+		AIO_Support.Cancel(body);
 		AIO_Maneuvers.Leave(agent); // ...and takes him out of a bound / peel
 		array<ref AIActionBase> holds = {};
 		utility.FindActionsOfType(AIO_HoldBehavior, holds);
@@ -437,6 +438,8 @@ class AIO_Tasks
 		}
 		if (utility.HasActionOfType(SCR_AIHealBehavior))
 			label = "Healing";
+		if (utility.HasActionOfType(AIO_TreatBehavior))
+			label = "Treating casualty";
 		if (hold && hold.m_vLook != vector.Zero)
 			label += ", Watching";
 		if (AIO_Supplies.IsFetching(agent))
@@ -721,6 +724,7 @@ class AIO_Tasks
 		AIO_Supplies.Tick();
 		AIO_Maneuvers.Tick();
 		AIO_Vehicles.Tick();
+		AIO_Support.Tick();
 		for (int c = s_aCopyAgents.Count() - 1; c >= 0; c--)
 		{
 			AIAgent copier = s_aCopyAgents[c];
