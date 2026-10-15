@@ -197,15 +197,17 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
 - Jacob publishes from Workbench under his Bohemia login: open the release gproj, Publish, Unlisted first.
   PUBLISHED 13 Oct as "AiO Command Menu (Reforger)" 0.1.0, Unlisted: https://reforger.armaplatform.com/workshop/629405AEFC950C12
   (custom licence = LICENSE.txt). 0.2.0 PUBLISHED 14 Oct by Claude, Unlisted; 0.2.1 = same content,
-  PUBLIC (Jacob, 14 Oct: go public before the MP check). Current public version is 0.2.1.
-- 0.3.0 prepared 14 Oct: native formations, watch orders, casualty treatment, routes/patrols,
+  PUBLIC (Jacob, 14 Oct: go public before the MP check). Superseded by 0.3.0.
+- Current public Workshop version: **0.3.0**, confirmed live by Jacob on 15 Oct.
+  Prepared 14 Oct: native formations, watch orders, casualty treatment, routes/patrols,
   queued arrival reports, defense radii and contact-order/bounding improvements. Release notes and
-  description are in `tools/workshop/`; paste `WORKSHOP-CHANGELOG.txt` into Change Notes and enter
-  `0.3.0` as Version in Workbench's publish dialog. This prep does not publish the item.
+  description are in `tools/workshop/`. For future updates, bump the version in Workbench's
+  publish dialog and update the change notes; do not reuse 0.3.0 for changed content.
   The gproj has no version field; keep its GUID unchanged to update the existing Workshop item.
   Release copy refreshed and verified: 27 source files match, GUID/title and Workshop sidecars
   match, existing thumbnail unchanged, no development directories shipped. Fresh standalone
-  compile `codex-release03-compile` PASS. Not published; current public version remains 0.2.1.
+  compile `codex-release03-compile` PASS. Publication is now confirmed; earlier unpublished
+  status entries below and in the append-only handoff log are historical.
   Live menu/map/contact and second-player MP checks remain outstanding. Next fixes can be 0.3.1;
   use 1.0.0 once the stable release is ready.
 
@@ -246,6 +248,9 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
 
 ## Status / next
 
+- 15 Oct, Jacob confirms 0.3.0 is live on Workshop. README/CHANGELOG now mark it released;
+  this supersedes earlier prepared/unpublished status. Publication alone does not close the
+  outstanding live menu/map/contact and second-player MP acceptance checks.
 - 14 Oct, Codex: public-documentation accuracy audit completed against the current menu/server,
   maneuver, route, treatment, vehicle, supply and UI code. README is the full Reforger guide;
   Workshop copy, changelogs, credit notices and issue form aligned with it. Public 0.2.1 versus

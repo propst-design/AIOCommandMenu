@@ -13,9 +13,9 @@ create a squad, or command arbitrary groups from the Game Master camera.
 
 ## Version and installation
 
-As of 14 October 2026, the recorded public Workshop version is **0.2.1**.
-**0.3.0 is prepared but has not been published.** This README describes the
-prepared 0.3.0 source; formations, watch orders, casualty treatment, routes,
+The current public Workshop version is **0.3.0** (release status updated
+15 October 2026). This README describes that version; formations, watch orders,
+casualty treatment, routes,
 arrival popups, selectable defense radii and the revised bounding behavior are
 new in that version. See [CHANGELOG.md](CHANGELOG.md) for the version history.
 
@@ -232,7 +232,7 @@ The host/server startup option controls access:
 
 Automated server checks have passed standalone and alongside ACA and Better
 Battle Buddies (BBB); earlier infantry and vehicle features also have live
-single-player testing. The prepared 0.3.0 changes still need live menu/map/contact
+single-player testing. The 0.3.0 changes still need live menu/map/contact
 checks and a second-player multiplayer check. Automated checks do not establish
 compatibility with every scenario or mod combination.
 
