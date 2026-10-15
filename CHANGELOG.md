@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Retain individual destinations and posts during contact, allow native firing from posts and temporary danger/self-aid reactions, and release posts on Engage at will.
+- Replaced timed Bound forward with arrival-driven Bound to position. Two elements alternate until the ray/map destination is reached; cover readiness, pinning, casualties and blocked movement can pause or stop it, with status reports and a Resume bound / peel command.
+- Marked ordinary Move here and route travel for optional BBB relaxed marching, while tactical orders remain ready.
 - Added a radius selector to 360 defense: Auto (original squad-size-based radius), 5, 10, 20, 30 and 50 m. Feedback includes the chosen radius.
 - Added Watch that direction and Watch: own choice under Defense, using the map cursor or camera target.
 - Added Treat that soldier and Treat me under Supplies, using a nearby available squad member's real medical supplies and native treatment behavior.

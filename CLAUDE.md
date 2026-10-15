@@ -45,8 +45,12 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
 - `AIO_PlayerController.c`: modded SCR_PlayerController. OnUpdate drives the menu on the local
   controller. RPCs: roster (server -> owner every 1 s while open), orders, feedback.
 - `AIO_Tasks.c`: orders to single soldiers (selected men/teams). Per-agent behaviours on the man's
-  SCR_AIUtilityComponent: AIO_MoveBehavior (vanilla MoveIndividually, prio 58, combat 70+ still wins) +
-  AIO_HoldBehavior (Wait.bt, prio 45 > formation 30). Release = fail both -> back to formation.
+  SCR_AIUtilityComponent: AIO_MoveBehavior (vanilla MoveIndividually, player priority 1000 + 58) +
+  AIO_HoldBehavior (1000 + 45, yields to native firing at the post). Native immediate danger and
+  available self aid may interrupt; the destination remains queued. AIO_CombatOrders.c prevents
+  ordinary Attack movement from abandoning an active post; retreat/danger stays native.
+  Release = fail both -> back to formation. A weak hold reference survives temporary behavior changes.
+  Mounted moves/holds retain their original normal priority; the new priority policy is for infantry.
   Watchdog (1 s) walks holders back if >6 m off their spot. Whole-squad Halt/Follow/Move release all.
   Anchored holds (m_Anchor + m_vOffset): the spot moves with the player (Move menu).
   Interior holds use a 0.7 m move radius, a 1.5 m arrival tolerance, floor-height and building-bounds
@@ -67,7 +71,8 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   setting (origin COMMANDING, cause COMBAT) + immediate SetStanceChange; watchdog re-applies it (idle
   men never re-read settings); Auto removes it (prone men get up to crouch). Copy my stance = watchdog
   copies the player's stance each second. Heal up = vanilla SCR_AIHealBehavior on self for hurt men
-  with a healing item (EUnitRole.MEDIC).
+  with a healing item (EUnitRole.MEDIC), at player priority (also promotes a pending self-heal).
+  Existing posts survive treatment; available native self aid can temporarily interrupt movement.
 - `AIO_Supplies.c`: Rearm (nearest useful source within 50 m: dead bodies, loose items, vehicle/crate
   storages, arsenals), Rearm from that, Take that weapon. Needs per man: magazines per muzzle up to 6
   (launcher/handgun 2), 2 frag grenades if none, 2 bandages if none. Items move with
@@ -81,8 +86,14 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   Attack: Advance/Assault = line abreast at the point (whole-squad Assault = vanilla
   waypointSearchAndDestroy), Flank L/R = route (hold legs) wide out then beside the target,
   Suppress = per-man SCR_AISuppressBehavior on a 4 m sphere (whole squad: vanilla waypointSuppress),
-  Fire on my lead = per-man hold fire until the player's loaded rounds drop, Bound/Peel = two elements
-  (by colour team if the men are in 2+ teams, else alternating) moving 30/25 m in turns.
+  Fire on my lead = per-man hold fire until the player's loaded rounds drop. AIO_Bounding.c owns
+  Bound to position / Peel: two elements (first colour team vs others, else alternating), 20/25 m
+  legs driven by physical arrival, no step cap. Bound ends at the ray/map point; Peel at 50 m.
+  Conscious armed cover is required; in native contact it needs visible target/fire permission.
+  Pinning/unconscious men/unready cover pause automatically; 45 s blocked movement or losses >40%
+  require Attack > 9 Resume bound / peel. Original leg persists across pauses. New movement cancels
+  affected men; loss of either entire element/leader/authority stops the job with honest feedback.
+  All surviving assigned men must reach their final posts before arrival is reported.
   Defense: 360 = ring around the player, crouched, looking out; Defense > 4 now selects Auto
   (original clamp of count * 1.5 to 5-12 m), 5, 10, 20, 30 or 50 m radius. New fixed-radius
   orders appended to the RPC enum; original DEF_360 still means Auto. Fixed at the player's
@@ -359,3 +370,27 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   selected. `codex-radius1` 8/8 and `codex-radius-aca1` 8/8 (ACA + BBB), including real 20 m ring
   movement (worst slot errors 1.58 m / 1.61 m) and isolated selected-member changes. Source only,
   unreleased; Jacob's live submenu/radius check remains.
+- 14 Oct, Codex: contact-order lifecycle and arrival-driven bounding built. Infantry moves/posts use
+  native player priority; holders yield to native firing, danger/retreat and available self aid while
+  retaining their destination. Native attack repositioning cannot abandon a post; Engage at will
+  releases it, Assault permits pursuit. Explicit Heal up promotes pending native healing. Mounted
+  moves/holds retain normal priority. Move here/routes use native SAFE cause to identify ordinary
+  travel for optional BBB; tactical movement remains GROUP_GOAL, with no BBB dependency.
+  Bound to position uses the ray/map endpoint, alternating 20 m arrival-driven legs (Peel: 25 m legs
+  over 50 m). Conscious armed cover, native visibility and fire permission gate movement; pinning,
+  aid needs and unavailable cover pause automatically. Blocked movement (45 s) and >40% losses need
+  Attack > 9 Resume bound / peel. Heavy losses also escalate an existing automatic pause; integer
+  percentage comparison avoids truncation. Stable member records preserve destinations after losses.
+  Follow/new movement cancels; losing an element, leader or authority stops honestly. No step cap,
+  no blind fire or invented enemy. Resume appended after all 80 existing RPC order values.
+  Tests: codex-contact-final2 18/18 standalone; codex-contact-aca-final3 18/18 ACA+BBB; movement
+  codex-order-tasks2 7/7. Real native targets/gunfire, held posts, retained emergency/self-aid orders,
+  physical bound arrival, 39 simulated long-distance legs, stall/retry, casualty stability, heavy
+  losses during an automatic pause and Follow cancellation verified. Final mounted-priority guard
+  compile recorded in the handoff log. Earlier fixtures were corrected for spawn offsets, detail,
+  posture/ROE and deferred deletion; one earlier ACA run aborted in native
+  SCR_AIProcessFailedMovementResult:59. Retired fixture groups are now deactivated before removal.
+  BBB changes live in the sibling project (queued native-priority intent guard and relaxed-travel
+  compatibility); AiO remains standalone. Live menu/map/MP contact acceptance remains for Jacob,
+  especially Resume, status popups, team selection and long clicked bounds. Source only; no publish
+  or release-copy refresh.

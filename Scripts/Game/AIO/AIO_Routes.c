@@ -153,7 +153,7 @@ class AIO_Routes
 		{
 			IEntity man = route.m_aMen[i];
 			route.m_fTravelBudget = Math.Max(route.m_fTravelBudget, vector.Distance(man.GetOrigin(), route.m_aPoints[route.m_iWaypoint]) * 2000 + 120000);
-			AIO_Tasks.MoveTo(man, AIO_Tasks.SpreadSpot(route.m_aPoints[route.m_iWaypoint], i));
+			AIO_Tasks.MoveTo(man, AIO_Tasks.SpreadSpot(route.m_aPoints[route.m_iWaypoint], i), true);
 			route.m_aHolds.Insert(AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(man))));
 		}
 		route.m_fProgressAt = GetGame().GetWorld().GetWorldTime();

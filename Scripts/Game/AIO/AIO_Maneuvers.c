@@ -34,6 +34,19 @@ modded class SCR_AICombatComponent
 modded class SCR_AIUtilityComponent
 {
 	protected int m_iAIO_KeepFormation = -1; // -1 = game decides, 1 = disengage (keep formation), 0 = engage at will
+	protected AIO_HoldBehavior m_AIO_OrderHold;
+
+	void AIO_SetOrderHold(AIO_HoldBehavior hold)
+	{
+		m_AIO_OrderHold = hold;
+	}
+
+	AIO_HoldBehavior AIO_GetOrderHold()
+	{
+		if (!m_AIO_OrderHold || m_AIO_OrderHold.GetRemoveAction() || m_AIO_OrderHold.GetActionState() == EAIActionState.FAILED || m_AIO_OrderHold.GetActionState() == EAIActionState.COMPLETED)
+			return null;
+		return m_AIO_OrderHold;
+	}
 
 	void AIO_SetKeepFormation(int value)
 	{
@@ -47,28 +60,15 @@ modded class SCR_AIUtilityComponent
 
 	override bool ShouldKeepFormation()
 	{
+		AIO_HoldBehavior hold = AIO_GetOrderHold();
+		if (hold && !hold.m_bAllowPursuit)
+			return true;
 		if (m_iAIO_KeepFormation == 1)
 			return true;
 		if (m_iAIO_KeepFormation == 0)
 			return false;
 		return super.ShouldKeepFormation();
 	}
-}
-
-// Bounding (Bound forward) and peeling (Peel back): two elements move in turns, one covers.
-class AIO_Bound
-{
-	ref array<AIAgent> m_aA = {};
-	ref array<AIAgent> m_aB = {};
-	vector m_vDir;        // direction of travel (flat, normalised)
-	vector m_vTarget;     // Bound forward: where to end up; Peel back: unused
-	bool m_bPeel;
-	float m_fStep;
-	int m_iStepsLeft;
-	bool m_bAMoving;
-	int m_iStepStarted;   // tick count
-	ref array<vector> m_aSpots = {}; // spots of the moving element
-	int m_iPlayerId;
 }
 
 // Garrison / Clear on a building whose inside could not be found from afar: the men walk up
@@ -85,14 +85,9 @@ class AIO_Approach
 
 class AIO_Maneuvers
 {
-	static const float BOUND_STEP = 30;
-	static const float PEEL_STEP = 25;
-	static const int STEP_TIMEOUT_MS = 35000;
 	static const float FLANK_WIDTH = 45;
 	static const vector PROBE_EXTENT = "1.2 1.5 1.2";
 
-	protected static ref array<ref AIO_Bound> s_aBounds = {};
-	protected static bool s_bIssuing; // our own orders must not end our own maneuvers
 
 	// ---------------------------------------------------------------- teams
 
@@ -306,12 +301,14 @@ class AIO_Maneuvers
 		return order == AIO_EOrder.ATK_ADVANCE || order == AIO_EOrder.ATK_FLANK_LEFT || order == AIO_EOrder.ATK_FLANK_RIGHT
 			|| order == AIO_EOrder.ASSAULT || order == AIO_EOrder.SUPPRESS || order == AIO_EOrder.FIRE_ON_MY_LEAD
 			|| order == AIO_EOrder.BOUND || order == AIO_EOrder.PEEL || order == AIO_EOrder.ENGAGE_AT_WILL
-			|| order == AIO_EOrder.DISENGAGE;
+			|| order == AIO_EOrder.DISENGAGE || order == AIO_EOrder.RESUME_MANEUVER;
 	}
 
 	// bodies: the men (never empty). point: where the player looked (zero if none).
 	static string Attack(array<IEntity> bodies, IEntity player, int order, vector point, int playerId)
 	{
+		if (order == AIO_EOrder.RESUME_MANEUVER)
+			return AIO_Bounding.Resume(bodies, playerId);
 		vector center = Centroid(bodies);
 		if (order == AIO_EOrder.ENGAGE_AT_WILL || order == AIO_EOrder.DISENGAGE)
 		{
@@ -319,7 +316,11 @@ class AIO_Maneuvers
 			if (order == AIO_EOrder.DISENGAGE)
 				keep = 1;
 			foreach (IEntity engaged : bodies)
+			{
+				if (keep == 0)
+					AIO_Tasks.Release(engaged); // explicit permission to leave the assigned post
 				SetEngage(engaged, keep);
+			}
 			if (keep == 1)
 				return string.Format("%1 men disengaging: they stay with the formation", bodies.Count());
 			return string.Format("%1 men engaging at will", bodies.Count());
@@ -338,14 +339,14 @@ class AIO_Maneuvers
 				return "You need to be on foot in the world to give that order";
 			vector forward, right;
 			AIO_Tasks.Facing(player, forward, right);
-			return StartBound(bodies, forward * -1, vector.Zero, true, playerId);
+			return StartBound(bodies, forward * -1, vector.Zero, true, playerId, player);
 		}
 		if (point == vector.Zero)
 			return "Look at a spot first";
 		vector dir = Flat(point - center);
 		vector side = Vector(dir[2], 0, -dir[0]); // right of the direction of travel
 		if (order == AIO_EOrder.BOUND)
-			return StartBound(bodies, dir, point, false, playerId);
+			return StartBound(bodies, dir, point, false, playerId, player);
 		if (order == AIO_EOrder.SUPPRESS)
 		{
 			int suppressing;
@@ -365,7 +366,15 @@ class AIO_Maneuvers
 				if (order == AIO_EOrder.ASSAULT)
 					SetEngage(bodies[i], 0); // free to fight their way in
 				if (AIO_Tasks.MoveTo(bodies[i], LineSpot(point, side, i, count)))
+				{
 					sent++;
+					if (order == AIO_EOrder.ASSAULT)
+					{
+						AIO_HoldBehavior assaultHold = AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(bodies[i])));
+						if (assaultHold)
+							assaultHold.m_bAllowPursuit = true;
+					}
+				}
 			}
 			if (order == AIO_EOrder.ASSAULT)
 				return string.Format("%1 men assaulting", sent);
@@ -407,79 +416,10 @@ class AIO_Maneuvers
 
 	// ---------------------------------------------------------------- bound / peel
 
-	static string StartBound(array<IEntity> bodies, vector dir, vector target, bool peel, int playerId)
+	static string StartBound(array<IEntity> bodies, vector dir, vector target, bool peel, int playerId, IEntity leader = null)
 	{
-		if (bodies.Count() < 2)
-			return "Bounding needs at least two men";
-		AIO_Bound bound = new AIO_Bound();
-		// Split by colour team when the men are in two or more teams, else alternate.
-		int firstTeam = -1;
-		foreach (IEntity body : bodies)
-		{
-			int team = TeamOf(body);
-			if (team > 0 && (firstTeam < 0 || team < firstTeam))
-				firstTeam = team;
-		}
-		bool byTeam = false;
-		if (firstTeam > 0)
-		{
-			foreach (IEntity other : bodies)
-			{
-				if (TeamOf(other) != firstTeam)
-					byTeam = true;
-			}
-		}
-		for (int i = 0; i < bodies.Count(); i++)
-		{
-			AIAgent agent = AIO_Tasks.AgentOf(bodies[i]);
-			if (!agent)
-				continue;
-			bool inA;
-			if (byTeam)
-				inA = TeamOf(bodies[i]) == firstTeam;
-			else
-				inA = i % 2 == 0;
-			if (inA)
-				bound.m_aA.Insert(agent);
-			else
-				bound.m_aB.Insert(agent);
-		}
-		if (bound.m_aA.IsEmpty() || bound.m_aB.IsEmpty())
-			return "Bounding needs two groups of men";
-		bound.m_vDir = dir;
-		bound.m_vTarget = target;
-		bound.m_bPeel = peel;
-		bound.m_iPlayerId = playerId;
-		if (peel)
-		{
-			bound.m_fStep = PEEL_STEP;
-			bound.m_iStepsLeft = 4;
-		}
-		else
-		{
-			bound.m_fStep = BOUND_STEP;
-			bound.m_iStepsLeft = 12;
-		}
-		// Everyone stops and covers; the first element moves.
-		foreach (IEntity holder : bodies)
-		{
-			Leave(AIO_Tasks.AgentOf(holder));
-		}
-		s_bIssuing = true;
-		foreach (IEntity coverer : bodies)
-			AIO_Tasks.HoldHere(coverer);
-		s_bIssuing = false;
-		s_aBounds.Insert(bound);
-		bound.m_bAMoving = false; // NextStep flips it to A
-		NextStep(bound);
-		AIO_Tasks.Watch();
-		string kind = "bounding";
-		if (peel)
-			kind = "peeling back";
-		string how = "alternating men";
-		if (byTeam)
-			how = "by team";
-		return string.Format("%1 men %2 in two groups (%3)", bodies.Count(), kind, how);
+		AIO_Bound started;
+		return AIO_Bounding.Start(bodies, dir, target, peel, playerId, leader, started);
 	}
 
 	static void Bodies(array<AIAgent> agents, notnull array<IEntity> bodies)
@@ -491,119 +431,27 @@ class AIO_Maneuvers
 		}
 	}
 
-	// The other element moves now. Returns false when the maneuver is over.
-	protected static bool NextStep(AIO_Bound bound)
-	{
-		bound.m_bAMoving = !bound.m_bAMoving;
-		array<IEntity> movers = {};
-		if (bound.m_bAMoving)
-			Bodies(bound.m_aA, movers);
-		else
-			Bodies(bound.m_aB, movers);
-		if (movers.IsEmpty() || bound.m_iStepsLeft <= 0)
-			return false;
-		vector center = Centroid(movers);
-		float step = bound.m_fStep;
-		bool last = false;
-		if (!bound.m_bPeel)
-		{
-			float left = vector.DistanceXZ(center, bound.m_vTarget);
-			if (left <= step + 5)
-			{
-				step = left;
-				last = true;
-			}
-		}
-		vector goal = center + bound.m_vDir * step;
-		vector across = Vector(bound.m_vDir[2], 0, -bound.m_vDir[0]);
-		bound.m_aSpots.Clear();
-		s_bIssuing = true;
-		for (int i = 0; i < movers.Count(); i++)
-		{
-			vector spot = LineSpot(goal, across, i, movers.Count());
-			bound.m_aSpots.Insert(spot);
-			AIO_Tasks.MoveTo(movers[i], spot);
-		}
-		s_bIssuing = false;
-		bound.m_iStepsLeft--;
-		if (last)
-		{
-			if (bound.m_iStepsLeft > 1)
-				bound.m_iStepsLeft = 1; // the other element closes up once more
-		}
-		bound.m_iStepStarted = System.GetTickCount();
-		return true;
-	}
-
-	protected static bool StepDone(AIO_Bound bound)
-	{
-		if (System.GetTickCount() - bound.m_iStepStarted > STEP_TIMEOUT_MS)
-			return true;
-		array<IEntity> movers = {};
-		if (bound.m_bAMoving)
-			Bodies(bound.m_aA, movers);
-		else
-			Bodies(bound.m_aB, movers);
-		for (int i = 0; i < movers.Count() && i < bound.m_aSpots.Count(); i++)
-		{
-			if (vector.DistanceXZ(movers[i].GetOrigin(), bound.m_aSpots[i]) > 4)
-				return false;
-		}
-		return true;
-	}
-
 	// A new order for this man takes him out of any bound.
 	static void Leave(AIAgent agent)
 	{
-		if (s_bIssuing || !agent)
+		if (AIO_Bounding.IsIssuing() || !agent)
 			return;
 		StopLead(agent);
 		foreach (AIO_Approach approach : s_aApproaches)
 			approach.m_aMen.RemoveItem(agent);
-		foreach (AIO_Bound bound : s_aBounds)
-		{
-			bound.m_aA.RemoveItem(agent);
-			bound.m_aB.RemoveItem(agent);
-		}
+		AIO_Bounding.Leave(agent);
 	}
 
 	static bool IsBounding(AIAgent agent)
 	{
-		foreach (AIO_Bound bound : s_aBounds)
-		{
-			if (bound.m_aA.Contains(agent) || bound.m_aB.Contains(agent))
-				return true;
-		}
-		return false;
+		return AIO_Bounding.ActiveFor(agent) != null;
 	}
 
 	static void Tick()
 	{
 		TickLead();
 		TickApproaches();
-		for (int i = s_aBounds.Count() - 1; i >= 0; i--)
-		{
-			AIO_Bound bound = s_aBounds[i];
-			array<IEntity> all = {};
-			Bodies(bound.m_aA, all);
-			Bodies(bound.m_aB, all);
-			if (all.IsEmpty())
-			{
-				s_aBounds.Remove(i);
-				continue;
-			}
-			if (!StepDone(bound))
-				continue;
-			if (!NextStep(bound))
-			{
-				string kind = "Bound";
-				if (bound.m_bPeel)
-					kind = "Peel back";
-				AIO_Supplies.Report(bound.m_iPlayerId, kind + " complete");
-				Print("[AIO] " + kind + " complete");
-				s_aBounds.Remove(i);
-			}
-		}
+		AIO_Bounding.Tick();
 	}
 
 	// ---------------------------------------------------------------- defense

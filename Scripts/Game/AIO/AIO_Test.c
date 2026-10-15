@@ -13,6 +13,7 @@
 //   -aioRecoveryTest 1 : GM-style rifle squad, unreachable interior posts, cancel, formation recovery.
 //   -aioSupportTest 1 : watch direction, commanded medical treatment, routes, patrols and arrival reports.
 //   -aioRadiusTest 1 : all-round defense radius selection, outward/crouched posts and actual movement.
+//   -aioContactTest 1 : native firefight, retained orders, danger interruption and arrival-driven bounding.
 //   -aioFormationTest 1 : rifle squad walks legs in Column, Staggered column, Line, Wedge; shapes measured on the move.
 // Prints "[AIO] TEST <name> PASS|FAIL ..." lines and "[AIO] TEST COMPLETE".
 class AIO_Test
@@ -45,6 +46,7 @@ class AIO_Test
 	protected static bool s_bFormationTest;
 	protected static bool s_bSupportTest;
 	protected static bool s_bRadiusTest;
+	protected static bool s_bContactTest;
 	protected static ref AIO_Route s_Route;
 	protected static ref AIO_Route s_Patrol;
 	protected static int s_iLeg;
@@ -94,7 +96,10 @@ class AIO_Test
 		string radiusValue;
 		System.GetCLIParam("aioRadiusTest", radiusValue);
 		s_bRadiusTest = radiusValue == "1";
-		if (!s_bRadiusTest && !s_bSupportTest && !s_bFormationTest && !s_bRecoveryTest && !s_bVehicleTest && !s_bMoveTest && !s_bInfantryTest && !s_bSupplyTest && !s_bAttackTest && !s_bDefenseTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
+		string contactValue;
+		System.GetCLIParam("aioContactTest", contactValue);
+		s_bContactTest = contactValue == "1";
+		if (!s_bContactTest && !s_bRadiusTest && !s_bSupportTest && !s_bFormationTest && !s_bRecoveryTest && !s_bVehicleTest && !s_bMoveTest && !s_bInfantryTest && !s_bSupplyTest && !s_bAttackTest && !s_bDefenseTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
 			return;
 		if (!Replication.IsServer())
 			return;
@@ -178,6 +183,8 @@ class AIO_Test
 		GetGame().GetWorldEntity().GetTerrain(0, 0).GetTerrainBoundBox(mins, maxs);
 		vector middle = (mins + maxs) * 0.5;
 		s_vStart = FindSpot(middle, 0);
+		if (s_bContactTest)
+			s_vStart = AIO_ContactTest.Lane(s_vStart);
 		if (s_bDefenseTest)
 		{
 			s_Building = FindBuilding(middle);
@@ -202,12 +209,14 @@ class AIO_Test
 		params.TransformMode = ETransformMode.WORLD;
 		params.Transform[3] = s_vStart;
 		ResourceName prefab = GROUP;
-		if (s_bRecoveryTest || s_bFormationTest)
+		if (s_bRecoveryTest || s_bFormationTest || s_bContactTest)
 			prefab = RIFLE_SQUAD;
 		s_Group = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(Resource.Load(prefab), GetGame().GetWorld(), params));
 		LinkToMaster();
 		Print(string.Format("[AIO] TEST tasks: group spawned at %1", s_vStart));
-		if (s_bRadiusTest)
+		if (s_bContactTest)
+			GetGame().GetCallqueue().CallLater(ContactStart, 12000, false);
+		else if (s_bRadiusTest)
 			GetGame().GetCallqueue().CallLater(RadiusStart, 12000, false);
 		else if (s_bSupportTest)
 			GetGame().GetCallqueue().CallLater(SupportStart, 12000, false);
@@ -237,6 +246,11 @@ class AIO_Test
 			GetGame().GetCallqueue().CallLater(Advance, 12000, false);
 		else
 			GetGame().GetCallqueue().CallLater(Order, 12000, false);
+	}
+
+	protected static void ContactStart()
+	{
+		AIO_ContactTest.Start(s_Group);
 	}
 
 	protected static void RadiusStart()

@@ -34,6 +34,21 @@ spot you look at. Men already holding keep their positions; others hold where
 they are. Enemies and danger can still draw their attention. Defense > 7 Watch:
 own choice removes the facing order; Follow returns them to formation.
 
+Attack > Bound to position uses the map cursor or the spot you look at. Two
+elements alternate 20 m moves until the surviving assigned men reach that
+destination. Peel back uses alternating 25 m moves over 50 m. A covering
+element must be conscious, armed and ready; during known contact it also needs
+a visible native target and permission to fire. Pinning, aid needs or unavailable
+cover pause the maneuver. Blocked movement and heavy losses require Attack > 9
+Resume bound / peel. Follow, Halt or another movement order cancels it.
+Status popups report pauses, stops and arrival; timers never count as arrival.
+
+Infantry movement and posts take precedence over ordinary combat repositioning.
+Men can fire from their posts and react to immediate danger or self-treatment,
+then resume the retained order. Engage at will releases a commanded post.
+With BBB installed, quiet Move here and route travel can lower held weapons;
+tactical movement and defense keep their combat readiness. AiO remains standalone.
+
 Supplies > 5 Treat that soldier / 6 Treat me sends the nearest available selected
 soldier with medical supplies to treat a squadmate or the player. With nobody
 selected, it chooses from the squad. Both must be on foot; the helper must be

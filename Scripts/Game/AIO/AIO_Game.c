@@ -16,6 +16,7 @@ modded class ArmaReforgerScripted
 	{
 		AIO_Menu.Cleanup();
 		AIO_Routes.Cleanup();
+		AIO_Bounding.Cleanup();
 		AIO_Support.Cleanup();
 		super.OnBeforeWorldCleanup();
 	}
