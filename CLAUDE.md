@@ -187,14 +187,26 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   and leaves the window open for the result/sign-in errors. Uncommitted files are not included.
   No automatic commits, tags, force pushes or Workshop publication. Requires Git for Windows
   and GitHub write access. CLI options: `-DryRun` (contacts GitHub without uploading), `-NoPause`.
-- Windows: `pwsh -File tools/make_release.ps1` (or `powershell -File tools/make_release.ps1`).
-  On Unix: `bash tools/make_release.sh`. These refresh `addons/_AIO-release/AIOCommandMenu` (same GUID,
-  title "AiO Command Menu (Reforger)"; only Scripts, Configs, rdb, README, CHANGELOG, licence files) and put
-  `tools/workshop/` (summary, description, placeholder preview image) beside it. Re-run before every
-  publish. One level down so the game/Workbench never see two copies in addons/.
-  Existing thumbnail and publisher metadata are preserved; Scripts and Configs are replaced to avoid
-  stale assets. The Windows builder validates its target paths before replacing managed directories.
-- Jacob publishes from Workbench under his Bohemia login: open the release gproj, Publish, Unlisted first.
+- Shared release workflow (Jacob, 15 Oct): use the desktop shortcut MOD RELEASES - ACA BBB AiO,
+  or `../ArmaCommanderReforger/Mod-Release-Console.cmd`. Agent CLI:
+  `python ../ArmaCommanderReforger/tools/release_console.py prepare AIO`.
+  This shared utility is development tooling only; AiO remains standalone with no ACA/BBB game dependency.
+  It stages unique snapshots in Workbench/_ModReleases/AIO/<commit>-<time>-<nonce>, outside addons,
+  verifies clean/current source and exact payload hashes/file set, and boots the staged mod alone.
+  Work only in this source checkout. Never edit candidates, publish development directly, or ask
+  Jacob to choose a staging folder from memory. Commit and prepare again after source changes.
+- Close Workbench, then use the console's Open checked AiO action; it selects the exact checked
+  gproj with isolated addon search paths. Review the version, page text, preview and licence in
+  Publish Project. Preparation is not upload authorization. After an authorized upload, download
+  the Workshop update and use the console's installed-content verification. Startup/content
+  checks do not certify gameplay or multiplayer; live acceptance remains separate.
+- The former addons/_AIO-release copy was archived outside addons in
+  Workbench/_ModReleaseArchive/20261015-171032/old-addons-AIO; old recent-project paths no longer
+  resolve. tools/make_release.ps1 and tools/make_release.sh still implement the old convention:
+  they are legacy bypasses and must not be used for routine releases or silently substituted
+  when the console is missing. Report missing tooling instead. Current shared layout/guardrails
+  are documented in ACA CLAUDE.md, Releasing. Claude: refresh the web project instructions too.
+- Historical publication record (not staging instructions):
   PUBLISHED 13 Oct as "AiO Command Menu (Reforger)" 0.1.0, Unlisted: https://reforger.armaplatform.com/workshop/629405AEFC950C12
   (custom licence = LICENSE.txt). 0.2.0 PUBLISHED 14 Oct by Claude, Unlisted; 0.2.1 = same content,
   PUBLIC (Jacob, 14 Oct: go public before the MP check). Superseded by 0.3.0.
