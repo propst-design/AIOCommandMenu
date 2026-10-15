@@ -2,6 +2,7 @@
 
 ## 0.3.0 — prepared 2026-10-14
 
+- Report issues at the [GitHub repository](https://github.com/propst-design/AIOCommandMenu/issues) (New issue > Bug report).
 - Retain individual destinations and posts during contact, allow native firing from posts and temporary danger/self-aid reactions, and release posts on Engage at will.
 - Replaced timed Bound forward with arrival-driven Bound to position. Two elements alternate until the ray/map destination is reached; cover readiness, pinning, casualties and blocked movement can pause or stop it, with status reports and a Resume bound / peel command.
 - Marked ordinary Move here and route travel for optional BBB relaxed marching, while tactical orders remain ready.
