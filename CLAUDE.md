@@ -394,3 +394,4 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   compatibility); AiO remains standalone. Live menu/map/MP contact acceptance remains for Jacob,
   especially Resume, status popups, team selection and long clicked bounds. Source only; no publish
   or release-copy refresh.
+  Cross-project follow-through complete: BBB 4023fa2 (queued player intent) and 76e20bb (SAFE travel beyond host rosters, mission-cache cleanup). Six native order guards pass across 8 firing rounds; marching 11/11; final regression 80 passed/1 expected skip; legacy perf completed, 58 soldiers, 0.27-0.43 ms average relaxed-march tick / 1 ms max. Final AiO mounted-priority guard compile PASS (codex-contact-final-compile).
