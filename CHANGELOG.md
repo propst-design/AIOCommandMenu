@@ -1,9 +1,9 @@
 # Changelog
 
-## 0.3.0 — prepared 2026-10-14
+## 0.3.0 — released
 
-Not yet published. The recorded public Workshop version is 0.2.1. The changes
-below have automated server coverage; live checks of the new menu/map/contact
+Published on the Arma Reforger Workshop; release status updated 2026-10-15.
+The changes below have automated server coverage; live checks of the new menu/map/contact
 behavior and a second-player multiplayer check remain outstanding.
 
 - Report issues at the [GitHub repository](https://github.com/propst-design/AIOCommandMenu/issues) (New issue > Bug report).
