@@ -11,4 +11,4 @@
 - Replaced timed Bound forward with Bound to position: two elements alternate moves until they reach the map/camera destination. Peel back also advances by actual arrivals.
 - Bounding checks covering readiness, pauses for pinning or aid needs, and reports blocked movement or heavy losses. Use Attack > Resume bound / peel when a manual resume is required.
 - Ordinary Move here and route travel support optional BBB relaxed marching. AiO remains standalone; BBB is not required.
-- Added a GitHub bug-report link to the Workshop description.
+- Report issues at the GitHub repository: https://github.com/propst-design/AIOCommandMenu/issues (New issue > Bug report).
