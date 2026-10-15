@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added a radius selector to 360 defense: Auto (original squad-size-based radius), 5, 10, 20, 30 and 50 m. Feedback includes the chosen radius.
 - Added Watch that direction and Watch: own choice under Defense, using the map cursor or camera target.
 - Added Treat that soldier and Treat me under Supplies, using a nearby available squad member's real medical supplies and native treatment behavior.
 - Added infantry route planning under More > Routes: up to 16 destinations, hold at the end or repeat as a patrol, with member selection fixed on the first draft point.
