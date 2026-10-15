@@ -1,51 +1,80 @@
 AiO Command Menu (Reforger)
 
-A fast, numbered command menu for the AI soldiers you lead, in the spirit of Leopard20's All-in-One Command Menu for Arma 3. Press T, then a number or two, and your squad moves, flanks, takes cover or clears a building. No mouse, no wheel.
+A numbered command menu for your AI squad, based on Leopard20's All-In-One Command Menu for Arma 3. Press T and use the number keys to move, flank, take cover, manage vehicles or resupply. Select individual soldiers or colour teams when the whole squad is too much.
 
-Works anywhere you lead AI: Conflict, Game Master and Arma Commander Actual. Standalone, no other mods needed. Server side and client side: everyone on the server needs it (the Workshop downloads it for them).
+Standalone: requires Arma Reforger, with no other mod dependencies. Uses the game's player-led AI squad setup in Conflict and compatible scenarios, including Arma Commander Actual (ACA). In Game Master, take control of a soldier to command the other AI in that group. AiO does not recruit soldiers or command arbitrary groups from the GM camera.
+
+Load the mod on the server and joining clients. It is not client-only. Automated server checks have passed standalone and with ACA + Better Battle Buddies (BBB); live checks of the new 0.3.0 features and a second-player multiplayer check remain outstanding.
 
 CONTROLS
-- T opens and closes the menu (rebind: Settings > Controls > All-in-One Command Menu).
-- 1-9 pick a line. 0 = Select members on the top page, Back on the others. Backspace = back.
-- While the menu is open the number keys only drive the menu, so you never switch weapons by accident.
-- Orders go to the whole squad, or only to the men you pick on Select members (toggle men 1-7, 8 next page, 9 Teams).
-- Colour teams: Red, Green, Blue, Yellow. Select a team, or put the selected men in one.
-- Orders that need a place use the spot you are looking at, or the map cursor while the map is open. The menu works with the map open.
-- While the menu is open a squad bar shows each man's number, health, magazines and current task, and his number floats over his head in his team colour.
+- T opens/closes the menu. Rebind under Settings > Controls > All-in-One Command Menu.
+- 1-9 choose a line. 0 opens Select members on the top page and goes back on subpages. Backspace goes back; on Select members it clears selection.
+- Number keys operate the menu while it is open instead of switching weapons or quick slots. Most orders close the menu.
+- No selection means the whole squad. Select members: 1-7 toggle men, 8 cycles pages, 9 opens Teams, 0 returns to orders. Selection clears after about eight seconds with the menu closed; check the recipients in the menu heading.
+- Teams: Red, Green, Blue, Yellow; White means unassigned. On Teams, 1-4 select a team, 5-8 assign selected men, 9 unassigns them. Teams last for the current mission.
+- Destination orders use camera aim or, with the map open, the current map cursor position when you choose the order. There is no extra map click to confirm. Map destinations use terrain height; object orders identify the object under the cursor from above.
+- Squad bar and nearby overhead numbers appear while the menu is open. The bar shows names/team colours, health, magazines and tasks. More > Squad bar on/off toggles these indicators.
 
 THE MENU
-1 Move: Move here, Follow me, Advance, Stay back, Flank left, Flank right (they keep station about 50 m from you and move with you), Fall back, Hold here, Formation (Column, Staggered column, Wedge, Line; always the whole squad)
-2 Attack: Advance, Flank left, Flank right, Assault, Suppress, Fire on my lead, Bound to position, Peel back, Resume bound / peel
-3 Vehicles: Get in as driver/gunner/passenger, Switch seat, Get out, Disembark passengers, Eject, Engine and light controls, Unflip
-4 Defense: Take cover (each man finds cover facing the threat ahead of you), Garrison building, Clear building, 360 defense (Auto, 5, 10, 20, 30 or 50 m radius), Fortify here, Watch that direction, Watch: own choice
-5 R.O.E.: Fire at will, Return fire only, Hold fire, Engage at will, Disengage
-6 Stance & speed: Stand, Crouch, Prone, Auto, Copy my stance, Speed (walk, run, sprint, auto)
-7 Supplies: Heal up, Rearm (from bodies, loose gear, vehicles, crates and arsenals nearby), Rearm from that, Take that weapon, Treat that soldier, Treat me
-8 More: squad bar on/off, Routes, Admin page
+1 Move: Move here; Follow me / Return to formation; Advance; Stay back; Flank left; Flank right; Fall back; Hold here; Formation
+2 Attack: Advance; Flank left; Flank right; Assault; Suppress; Fire on my lead; Bound to position; Peel back; Resume bound / peel
+3 Vehicles: Get in (Any seat, Driver, Gunner, Passenger); Switch seat; Get out; Disembark passengers; EJECT; Vehicle controls; Unflip that vehicle
+4 Defense: Take cover; Garrison building; Clear building; 360 defense (radius); Fortify here; Watch that direction; Watch: own choice
+5 R.O.E.: Fire at will; Return fire only; Hold fire; Engage at will; Disengage
+6 Stance & speed: Stand; Crouch; Prone; Auto; Copy my stance; Speed (Walk, Run, Sprint, Auto)
+7 Supplies: Heal up!; Rearm; Rearm from that; Take that weapon; Treat that soldier; Treat me
+8 More: Squad bar on/off; Admin (when allowed); Routes
 9 HALT
 0 Select members
 
-SQUAD COORDINATION
-- Routes: select men or a colour team, then More > Routes > Add waypoint here at each map/camera destination (up to 16). The first point fixes the draft's members. Start route holds at the end; Start patrol loops two or more points. Clear draft leaves active orders alone. Infantry only.
-- Arrival/status popups work with the menu closed and queue so simultaneous reports remain readable. Arrival waits for the surviving assigned men. Routes report stalls; patrols stay quiet each lap.
-- Bound to position alternates two elements until they reach your map/camera destination. Peel back alternates over 50 m. Cover readiness, pinning and aid needs can pause movement; blocked movement or heavy losses require Resume bound / peel. Follow, Halt or a new movement order cancels it.
-- Infantry keep their destinations and posts during contact, fire from posts, and resume after immediate danger or available self-treatment. Engage at will releases a commanded post.
-- Watch that direction keeps existing posts and faces your map/camera target; Watch: own choice removes the facing order. Native combat and danger can still draw attention.
-- Treat that soldier / Treat me uses a nearby available selected helper, or the squad if nobody is selected. Helper and patient must be on foot; the helper must be conscious, have medical supplies and be within 200 m. Uses real items and native treatment. Follow or new movement cancels it.
+Admin is hidden without permission, so the Routes line number under More depends on admin access.
+
+MOVEMENT AND COMBAT
+- Move > Advance / Stay back / Flank left / Flank right keep station about 50 m from you, on a bearing fixed by your facing when ordered. The posts move with you but do not rotate when you turn. Fall back holds about 40 m behind your order-time position. Attack > Advance / Flank instead use the camera/map target.
+- Follow releases individual assignments and restores formation movement. HALT cancels current movement; selected men hold where they are. Whole-squad Hold here uses the game's defend command at your position; selected men and GM-controlled groups hold at their own positions.
+- Move > Formation: Column, Staggered column, Wedge, Line. Always affects the whole squad, even with men selected. Applies to native formation movement; individual posts keep their own spacing, and scenario/waypoint settings can override it.
+- Individual infantry orders retain destinations and posts during contact, fire from posts and resume after immediate danger or available self-treatment. Engage at will releases a commanded post and permits pursuit. Disengage asks men to keep formation; it does not mean Hold fire.
+- Fire on my lead holds fire until your loaded ammunition count drops, then switches recipients to Fire at will.
+- Bound to position needs at least two men on foot. Two elements alternate moves of up to 20 m toward the camera/map destination. Peel back uses up to 25 m legs over 50 m opposite your order-time facing. Elements use the first assigned colour team versus the rest, or alternating soldiers if that does not make two elements.
+- Cover requires conscious soldiers in position with ammunition; during known contact it also requires a visible target and fire permission. Pinning, aid needs or unavailable cover pause automatically. Blocked movement or losses above 40% require Attack > Resume bound / peel; cover must still be ready. Follow, Halt or new movement removes affected men. Losing an element, leader or command authority stops the maneuver.
+
+DEFENSE
+- Take cover searches within 25 m of each man, facing ahead of you; no suitable cover means crouching in place. Fortify here finds cover within 20 m of the target point, facing away from you; it does not build fortifications.
+- Garrison assigns distinct detected posts; extra men stay in formation. Clear visits up to six sampled interior positions and holds at the last reachable one. It does not guarantee every room is visited or every enemy eliminated. Navigation, locked doors and building geometry can prevent completion. Men try normal door actions, abandon blocked garrison posts and skip stalled clearing positions with feedback. Follow cancels and regroups.
+- 360 defense: Auto or 5, 10, 20, 30, 50 m radius. Auto scales with recipient count from 5 to 12 m. The crouched, outward-facing ring stays at your order-time position. Selection limits recipients.
+- Watch that direction retains existing posts and faces the camera/map target; other men hold in place. Combat/danger can still draw attention. Watch: own choice removes the facing override but keeps the hold.
+
+VEHICLES AND SUPPLIES
+- Get in targets the aimed-at vehicle/static weapon, then your own vehicle, then one within 15 m of the target point. Boarding requires a free seat and recipients within 400 m. Driving and boarding use the game's AI pathfinding.
+- Disembark passengers only empties cargo seats; Get out includes crew; EJECT puts recipients outside immediately. Vehicle controls act on vehicles occupied by recipients. Engine controls require a driver; Lights: driver decides restores AI headlight control. Unflip sends up to four men on foot to right the target vehicle.
+- Heal up! uses recipients' own medical supplies. Rearm searches within 50 m of each man for compatible ammunition and basic grenades/bandages from bodies, loose gear, vehicle/crate storage and arsenals. Stock and inventory space matter; arsenal items follow the arsenal's supply costs. Rearm from that uses the targeted source. Take that weapon sends one nearest eligible recipient.
+- Treat that soldier / Treat me chooses the nearest available helper among selected men, or the squad with no selection. The wounded patient must be a squadmate or you. Both must be on foot; the helper must be conscious, have medical supplies and be within 200 m of the patient. Uses real items and native treatment, which can fail. The helper then returns to a previous static post or formation. Follow/new movement for the helper cancels treatment.
+
+ROUTES AND FEEDBACK
+- Select recipients, then More > Routes > Add waypoint here at each map/camera destination (up to 16). Adding points keeps the menu open. The first point fixes the draft's members. Clear the draft before planning for another element.
+- Start route holds at the end. Start patrol loops two or more points, returning from the last to the first. Clear draft leaves active orders alone; Start retains the draft for reuse. Routes are infantry only. Ordinary Move here retains its existing vehicle movement path.
+- Follow, Halt or new movement cancels affected men's route assignments; remaining members can continue. Leader death or loss of command authority cancels the route.
+- Arrival/status popups queue and work with the menu closed. Arrival waits for all remaining assigned men; ordinary Move here also reports arrival, using a wider area for native squad movement. Patrols do not announce each lap.
+- Routes stop and hold after 60 seconds without progress or a distance-based travel allowance of at least five minutes per leg; combat pauses these budgets. A stalled ordinary Move here report does not cancel the game's movement order.
 
 ADMIN PAGE (More > Admin)
-Heal me, Heal my squad, Teleport me, Teleport squad to me, Kill what I look at.
-Always available in single player and to the host of a hosted game. On dedicated servers only logged-in admins get it. Server owners can change this with the start parameter -aioCheats all|admins|off.
+Heal me; Heal my squad (also heals you); Teleport me to the target point; Teleport squad to me (skips mounted soldiers); Kill what I look at. Squad admin commands ignore individual selection.
+Host/server startup option:
+- -aioCheats admins (default): single player, listen-server host and logged-in admins.
+- -aioCheats all: every player.
+- -aioCheats off: nobody, including the host.
 
 COMPATIBILITY
-- Your squad's voice replies come from the game's own commanding system.
-- Tested alongside Arma Commander Actual and its AI mod Better Battle Buddies. Ordinary Move here and route travel support optional BBB relaxed marching; AiO works without it.
-- Key bindings are added on top of the game's, so it stacks with other mods that add controls.
-- Not meant to be combined with other squad-command menu mods.
+- Vehicle Move here has worked in live map/camera tests, but an automated selected-driver movement regression remains unresolved. Multiplayer vehicle ownership/unflip and the full-squad church garrison retry still need live checks.
+- Supported whole-squad commands use the game's commanding system for voice replies. Individual and GM-possession orders use AiO text feedback.
+- AiO does not itself lower weapons for relaxed marching. Compatible BBB builds can do so during quiet Move here and route travel; tactical orders keep their readiness. BBB is optional and its version matters.
+- Rebind conflicting controls if needed. Combining with other squad-command menu mods, including Enhanced AI Squad Commands, is unsupported.
+- No soldiers listed? Lead a player squad with linked AI, or take control of a soldier in a GM AI group. Allow about a second for the roster to update. Nearby friendly AI are not automatically under your command.
 
 CREDITS AND LICENCE
-Original Arma 3 mod, design and manual: Leopard20 (All-in-One Command Menu). This Reforger version is a new implementation by propst-design, written with Claude (Anthropic). It contains no code from the original, which was used as the behaviour reference.
-Licence: GNU GPL v3. The full script source ships inside the mod; LICENSE.md and COPYING are included.
+Original Arma 3 mod and design reference: Leopard20's All-In-One Command Menu. Unofficial Reforger rebuild by Jacob (propst-design), developed with Claude (Anthropic) and Codex (OpenAI). The Arma 3 manual describes that mod, not the controls or full feature set of this rebuild.
+GNU GPL version 3 or later. Script source, LICENSE.md and COPYING ship with the mod. Source and full Reforger guide: https://github.com/propst-design/AIOCommandMenu
 
 REPORTING BUGS
-Please report bugs on GitHub: https://github.com/propst-design/AIOCommandMenu/issues (New issue > Bug report). Include your mod version, game mode, what you did, and console.log / script.log from Documents\My Games\ArmaReforger\profile\logs. Feedback is welcome in the comments too.
+Use GitHub Issues: https://github.com/propst-design/AIOCommandMenu/issues (New issue > Bug report). Include mod/game versions, scenario, session type, other mods, exact menu path, recipients, camera/map targeting, what happened and what you expected.
+Attach the affected session's console.log and script.log. Default location: Documents\My Games\ArmaReforger\profile\logs (newest session folder); a custom -profile changes this path. In multiplayer, include server and affected client logs when available. Feedback is welcome in the comments too.
