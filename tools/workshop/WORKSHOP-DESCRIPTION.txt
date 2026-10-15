@@ -14,16 +14,24 @@ CONTROLS
 - While the menu is open a squad bar shows each man's number, health, magazines and current task, and his number floats over his head in his team colour.
 
 THE MENU
-1 Move: Move here, Follow me, Advance, Stay back, Flank left, Flank right (they keep station about 50 m from you and move with you), Fall back, Hold here, Speed (walk, run, sprint, auto)
-2 Attack: Advance, Flank left, Flank right, Assault, Suppress, Fire on my lead, Bound forward, Peel back
+1 Move: Move here, Follow me, Advance, Stay back, Flank left, Flank right (they keep station about 50 m from you and move with you), Fall back, Hold here, Formation (Column, Staggered column, Wedge, Line; always the whole squad)
+2 Attack: Advance, Flank left, Flank right, Assault, Suppress, Fire on my lead, Bound to position, Peel back, Resume bound / peel
 3 Vehicles: Get in as driver/gunner/passenger, Switch seat, Get out, Disembark passengers, Eject, Engine and light controls, Unflip
-4 Defense: Take cover (each man finds cover facing the threat ahead of you), Garrison building, Clear building, 360 defense, Fortify here
+4 Defense: Take cover (each man finds cover facing the threat ahead of you), Garrison building, Clear building, 360 defense (Auto, 5, 10, 20, 30 or 50 m radius), Fortify here, Watch that direction, Watch: own choice
 5 R.O.E.: Fire at will, Return fire only, Hold fire, Engage at will, Disengage
-6 Stance: Stand, Crouch, Prone, Auto, Copy my stance
-7 Supplies: Heal up, Rearm (from bodies, loose gear, vehicles, crates and arsenals nearby), Rearm from that, Take that weapon
-8 More: squad bar on/off, Admin page
+6 Stance & speed: Stand, Crouch, Prone, Auto, Copy my stance, Speed (walk, run, sprint, auto)
+7 Supplies: Heal up, Rearm (from bodies, loose gear, vehicles, crates and arsenals nearby), Rearm from that, Take that weapon, Treat that soldier, Treat me
+8 More: squad bar on/off, Routes, Admin page
 9 HALT
 0 Select members
+
+SQUAD COORDINATION
+- Routes: select men or a colour team, then More > Routes > Add waypoint here at each map/camera destination (up to 16). The first point fixes the draft's members. Start route holds at the end; Start patrol loops two or more points. Clear draft leaves active orders alone. Infantry only.
+- Arrival/status popups work with the menu closed and queue so simultaneous reports remain readable. Arrival waits for the surviving assigned men. Routes report stalls; patrols stay quiet each lap.
+- Bound to position alternates two elements until they reach your map/camera destination. Peel back alternates over 50 m. Cover readiness, pinning and aid needs can pause movement; blocked movement or heavy losses require Resume bound / peel. Follow, Halt or a new movement order cancels it.
+- Infantry keep their destinations and posts during contact, fire from posts, and resume after immediate danger or available self-treatment. Engage at will releases a commanded post.
+- Watch that direction keeps existing posts and faces your map/camera target; Watch: own choice removes the facing order. Native combat and danger can still draw attention.
+- Treat that soldier / Treat me uses a nearby available selected helper, or the squad if nobody is selected. Helper and patient must be on foot; the helper must be conscious, have medical supplies and be within 200 m. Uses real items and native treatment. Follow or new movement cancels it.
 
 ADMIN PAGE (More > Admin)
 Heal me, Heal my squad, Teleport me, Teleport squad to me, Kill what I look at.
@@ -31,7 +39,7 @@ Always available in single player and to the host of a hosted game. On dedicated
 
 COMPATIBILITY
 - Your squad's voice replies come from the game's own commanding system.
-- Tested alongside Arma Commander Actual and its AI mod Better Battle Buddies.
+- Tested alongside Arma Commander Actual and its AI mod Better Battle Buddies. Ordinary Move here and route travel support optional BBB relaxed marching; AiO works without it.
 - Key bindings are added on top of the game's, so it stacks with other mods that add controls.
 - Not meant to be combined with other squad-command menu mods.
 

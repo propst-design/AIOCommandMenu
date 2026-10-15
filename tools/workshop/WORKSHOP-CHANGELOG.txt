@@ -1,14 +1,14 @@
-0.2.0 - Vehicles and map commands
+0.3.0 - Formations, routes and squad coordination
 
-- Added vehicle boarding by seat role, seat switching, get out, passenger disembark and eject.
-- Added engine/light controls and squad-assisted vehicle unflip.
-- Added vehicle seat and boarding/dismounting status to the squad bar.
-- The command menu now works with the map open; destination orders use the map cursor.
-- Improved mortar and tripod machine gun targeting.
-- Fixed camera targeting from inside vehicles so orders ignore your own vehicle's hull and attached parts.
-- Added squad command support when taking control of an AI soldier in Game Master.
-- Vehicles is now menu slot 3; Take cover is under Defense.
-- Fixed soldiers remaining stuck on inaccessible building positions; garrison releases blocked posts and clear routes skip unreachable rooms with feedback.
-- Fixed Return to formation clustering soldiers on the leader and leaving old building orders active.
-- Improved interior-position checks and avoided duplicate garrison post assignments.
-- Soldiers can open nearby closed building doors and retry a stalled interior route.
+- Added Move > Formation: Column, Staggered column, Wedge and Line using Reforger's native formations. Applies to the whole squad and persists for later moves.
+- Moved Speed to Stance & speed > Speed.
+- Added More > Routes: plan up to 16 infantry waypoints from the map cursor or camera target, then hold at the end or repeat as a patrol. Select members or a colour team before adding the first point.
+- Added queued arrival and stalled-movement popups for routes and ordinary Move here, visible with the menu closed. Arrival waits for the surviving assigned men; patrols stay quiet each lap.
+- Added Defense > Watch that direction and Watch: own choice. Men already holding keep their posts.
+- Added Supplies > Treat that soldier and Treat me: an available squad member uses real medical supplies and native treatment.
+- Added 360 defense radii: Auto, 5, 10, 20, 30 and 50 m.
+- Infantry retain movement destinations and posts during contact, fire from posts, and resume after immediate danger or available self-treatment. Engage at will releases a commanded post.
+- Replaced timed Bound forward with Bound to position: two elements alternate moves until they reach the map/camera destination. Peel back also advances by actual arrivals.
+- Bounding checks covering readiness, pauses for pinning or aid needs, and reports blocked movement or heavy losses. Use Attack > Resume bound / peel when a manual resume is required.
+- Ordinary Move here and route travel support optional BBB relaxed marching. AiO remains standalone; BBB is not required.
+- Added a GitHub bug-report link to the Workshop description.

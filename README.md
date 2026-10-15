@@ -18,7 +18,7 @@ Game Master, Arma Commander Actual...).
 - Orders that need a place use where you are looking, or the map cursor while the map is open.
 
 Top page: 1 Move, 2 Attack, 3 Vehicles, 4 Defense (including Take cover), 5 R.O.E., 6 Stance & speed, 7 Supplies,
-8 More (squad bar on/off, Admin), 9 HALT, 0 Select members.
+8 More (squad bar on/off, Routes, Admin), 9 HALT, 0 Select members.
 
 Formations: Move > 9 Formation: Arma 3's formation menu with the formations Reforger has itself:
 Column, Staggered column, Wedge, Line (always the whole squad, also with men selected).
@@ -85,8 +85,9 @@ logged-in admins. Host option: `-aioCheats all|admins|off`.
 
 Infantry orders, vehicle orders, the admin page, and destinations from the map cursor
 are implemented. Formations (column, staggered column, wedge, line) are in; multiplayer and recent fixes need live testing.
-Watch direction, casualty treatment and infantry routes/patrols are in the source
-build; these additions still need live menu/map and multiplayer checks.
+Version 0.3.0 is prepared for Workshop publication, including watch direction,
+casualty treatment, infantry routes/patrols and arrival-driven bounding.
+Live menu/map and multiplayer checks remain outstanding.
 
 ## Reporting bugs
 
