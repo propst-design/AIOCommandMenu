@@ -182,6 +182,11 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   Feedback uses AIO_Notify and a client FIFO visible with the menu closed, independent of ACA markers.
 
 ## Workshop release
+- GitHub source publishing: double-click `Publish-AIO-to-GitHub.cmd` in the source root.
+  It runs `tools/Publish-GitHub.ps1`, pushes committed `main` to the existing GitHub origin,
+  and leaves the window open for the result/sign-in errors. Uncommitted files are not included.
+  No automatic commits, tags, force pushes or Workshop publication. Requires Git for Windows
+  and GitHub write access. CLI options: `-DryRun` (contacts GitHub without uploading), `-NoPause`.
 - Windows: `pwsh -File tools/make_release.ps1` (or `powershell -File tools/make_release.ps1`).
   On Unix: `bash tools/make_release.sh`. These refresh `addons/_AIO-release/AIOCommandMenu` (same GUID,
   title "AiO Command Menu (Reforger)"; only Scripts, Configs, rdb, README, CHANGELOG, licence files) and put
