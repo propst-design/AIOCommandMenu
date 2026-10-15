@@ -12,6 +12,7 @@
 //   -aioVehicleTest 1 : get in, switch seats, lights/engine, disembark, get out, eject, unflip.
 //   -aioRecoveryTest 1 : GM-style rifle squad, unreachable interior posts, cancel, formation recovery.
 //   -aioSupportTest 1 : watch direction, commanded medical treatment, routes, patrols and arrival reports.
+//   -aioRadiusTest 1 : all-round defense radius selection, outward/crouched posts and actual movement.
 //   -aioFormationTest 1 : rifle squad walks legs in Column, Staggered column, Line, Wedge; shapes measured on the move.
 // Prints "[AIO] TEST <name> PASS|FAIL ..." lines and "[AIO] TEST COMPLETE".
 class AIO_Test
@@ -43,6 +44,7 @@ class AIO_Test
 	protected static bool s_bRecoveryTest;
 	protected static bool s_bFormationTest;
 	protected static bool s_bSupportTest;
+	protected static bool s_bRadiusTest;
 	protected static ref AIO_Route s_Route;
 	protected static ref AIO_Route s_Patrol;
 	protected static int s_iLeg;
@@ -89,7 +91,10 @@ class AIO_Test
 		string supportValue;
 		System.GetCLIParam("aioSupportTest", supportValue);
 		s_bSupportTest = supportValue == "1";
-		if (!s_bSupportTest && !s_bFormationTest && !s_bRecoveryTest && !s_bVehicleTest && !s_bMoveTest && !s_bInfantryTest && !s_bSupplyTest && !s_bAttackTest && !s_bDefenseTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
+		string radiusValue;
+		System.GetCLIParam("aioRadiusTest", radiusValue);
+		s_bRadiusTest = radiusValue == "1";
+		if (!s_bRadiusTest && !s_bSupportTest && !s_bFormationTest && !s_bRecoveryTest && !s_bVehicleTest && !s_bMoveTest && !s_bInfantryTest && !s_bSupplyTest && !s_bAttackTest && !s_bDefenseTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
 			return;
 		if (!Replication.IsServer())
 			return;
@@ -202,7 +207,9 @@ class AIO_Test
 		s_Group = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(Resource.Load(prefab), GetGame().GetWorld(), params));
 		LinkToMaster();
 		Print(string.Format("[AIO] TEST tasks: group spawned at %1", s_vStart));
-		if (s_bSupportTest)
+		if (s_bRadiusTest)
+			GetGame().GetCallqueue().CallLater(RadiusStart, 12000, false);
+		else if (s_bSupportTest)
 			GetGame().GetCallqueue().CallLater(SupportStart, 12000, false);
 		else if (s_bRecoveryTest)
 			GetGame().GetCallqueue().CallLater(RecoveryStart, 12000, false);
@@ -230,6 +237,56 @@ class AIO_Test
 			GetGame().GetCallqueue().CallLater(Advance, 12000, false);
 		else
 			GetGame().GetCallqueue().CallLater(Order, 12000, false);
+	}
+
+	protected static void RadiusStart()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		if (men.Count() < 2 || !Leader())
+		{
+			Check("radius-setup", false, "need a leader and two soldiers");
+			Finish();
+			return;
+		}
+		AIO_Tasks.AgentOf(Leader()).DeactivateAI();
+		array<int> orders = {AIO_EOrder.DEF_360, AIO_EOrder.DEF_360_5, AIO_EOrder.DEF_360_10, AIO_EOrder.DEF_360_20, AIO_EOrder.DEF_360_30, AIO_EOrder.DEF_360_50};
+		array<float> expected = {5, 5, 10, 20, 30, 50}; // three non-leaders: original Auto is 5 m
+		array<RplId> ids = {};
+		foreach (IEntity man : men)
+			ids.Insert(Replication.FindItemId(man));
+		for (int i = 0; i < orders.Count(); i++)
+		{
+			string reply = AIO_Server.ExecuteMen(s_Group, orders[i], ids, vector.Zero, Leader(), RplId.Invalid(), 0);
+			bool correct = reply.Contains("all-round");
+			foreach (IEntity soldier : men)
+			{
+				AIO_HoldBehavior hold = AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(soldier)));
+				if (!hold || Math.AbsFloat(vector.DistanceXZ(hold.m_vSpot, Leader().GetOrigin()) - expected[i]) > 0.1)
+					correct = false;
+				if (hold && (!hold.m_bCrouched || vector.DistanceXZ(hold.m_vLook, Leader().GetOrigin()) < expected[i]))
+					correct = false;
+			}
+			Check(string.Format("radius-%1", i), correct, reply);
+		}
+		AIO_Server.ExecuteMen(s_Group, AIO_EOrder.DEF_360_20, ids, vector.Zero, Leader(), RplId.Invalid(), 0);
+		GetGame().GetCallqueue().CallLater(RadiusArrived, 35000, false);
+	}
+
+	protected static void RadiusArrived()
+	{
+		int total;
+		int crouched = CountStance(ECharacterStance.CROUCH, total);
+		float worst = SlotError();
+		Check("radius-walk-20", crouched == total && worst < 3, string.Format("%1 of %2 crouched, worst %3 m off ring slots", crouched, total, worst));
+		array<IEntity> men = {};
+		NonLeaders(men);
+		AIO_HoldBehavior untouched = AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(men[1])));
+		array<RplId> one = {Replication.FindItemId(men[0])};
+		AIO_Server.ExecuteMen(s_Group, AIO_EOrder.DEF_360_10, one, vector.Zero, Leader(), RplId.Invalid(), 0);
+		AIO_HoldBehavior selected = AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(men[0])));
+		Check("radius-selected-only", selected && Math.AbsFloat(vector.DistanceXZ(selected.m_vSpot, Leader().GetOrigin()) - 10) < 0.1 && untouched == AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(men[1]))), "changing one man's radius leaves the others' orders intact");
+		Finish();
 	}
 
 	protected static void SupportStart()

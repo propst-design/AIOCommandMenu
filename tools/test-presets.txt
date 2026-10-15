@@ -19,3 +19,5 @@ formations|-aioFormationTest 1|500
 formations-aca|-aioFormationTest 1|560|aca
 support|-aioSupportTest 1|240
 support-aca|-aioSupportTest 1|300|aca
+radius|-aioRadiusTest 1|120
+radius-aca|-aioRadiusTest 1|180|aca

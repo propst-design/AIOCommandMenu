@@ -608,20 +608,38 @@ class AIO_Maneuvers
 
 	// ---------------------------------------------------------------- defense
 
+	static bool Is360Order(int order)
+	{
+		return order == AIO_EOrder.DEF_360 || (order >= AIO_EOrder.DEF_360_5 && order <= AIO_EOrder.DEF_360_50);
+	}
+
+	static float DefenseRadius(int order, int count)
+	{
+		switch (order)
+		{
+			case AIO_EOrder.DEF_360_5: return 5;
+			case AIO_EOrder.DEF_360_10: return 10;
+			case AIO_EOrder.DEF_360_20: return 20;
+			case AIO_EOrder.DEF_360_30: return 30;
+			case AIO_EOrder.DEF_360_50: return 50;
+		}
+		return Math.Clamp(count * 1.5, 5, 12);
+	}
+
 	static bool IsDefenseOrder(int order)
 	{
-		return order == AIO_EOrder.DEF_GARRISON || order == AIO_EOrder.DEF_CLEAR || order == AIO_EOrder.DEF_360 || order == AIO_EOrder.DEF_FORTIFY;
+		return order == AIO_EOrder.DEF_GARRISON || order == AIO_EOrder.DEF_CLEAR || Is360Order(order) || order == AIO_EOrder.DEF_FORTIFY;
 	}
 
 	static string Defense(array<IEntity> bodies, IEntity player, int order, vector point, IEntity looked)
 	{
-		if (order == AIO_EOrder.DEF_360)
+		if (Is360Order(order))
 		{
 			if (!player)
 				return "You need to be on foot in the world to give that order";
 			vector center = player.GetOrigin();
 			int count = bodies.Count();
-			float radius = Math.Clamp(count * 1.5, 5, 12);
+			float radius = DefenseRadius(order, count);
 			for (int i = 0; i < count; i++)
 			{
 				float angle = Math.PI2 * i / count;
@@ -629,7 +647,7 @@ class AIO_Maneuvers
 				vector spot = Ground(center + outDir * radius);
 				HoldFacing(bodies[i], spot, center + outDir * 80, true);
 			}
-			return string.Format("%1 men in all-round defense", count);
+			return string.Format("%1 men in all-round defense (%2 m radius)", count, radius);
 		}
 		if (order == AIO_EOrder.DEF_FORTIFY)
 		{

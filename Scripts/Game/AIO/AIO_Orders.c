@@ -79,7 +79,12 @@ enum AIO_EOrder
 	ROUTE_ADD, // client draft controls; never executed as ordinary server orders
 	ROUTE_START,
 	ROUTE_PATROL,
-	ROUTE_CLEAR
+	ROUTE_CLEAR,
+	DEF_360_5,
+	DEF_360_10,
+	DEF_360_20,
+	DEF_360_30,
+	DEF_360_50
 }
 
 // What an order needs from the player's side.
@@ -195,7 +200,13 @@ class AIO_MenuTree
 		defense.Order("Take cover", AIO_EOrder.TAKE_COVER);
 		defense.Order("Garrison building", AIO_EOrder.DEF_GARRISON, AIO_ETarget.POINT);
 		defense.Order("Clear building", AIO_EOrder.DEF_CLEAR, AIO_ETarget.POINT);
-		defense.Order("360 defense", AIO_EOrder.DEF_360);
+		AIO_MenuItem perimeter = defense.Page("360 defense (radius)");
+		perimeter.Order("Auto (squad size)", AIO_EOrder.DEF_360);
+		perimeter.Order("5 m", AIO_EOrder.DEF_360_5);
+		perimeter.Order("10 m", AIO_EOrder.DEF_360_10);
+		perimeter.Order("20 m", AIO_EOrder.DEF_360_20);
+		perimeter.Order("30 m", AIO_EOrder.DEF_360_30);
+		perimeter.Order("50 m", AIO_EOrder.DEF_360_50);
 		defense.Order("Fortify here", AIO_EOrder.DEF_FORTIFY, AIO_ETarget.POINT);
 		defense.Order("Watch that direction", AIO_EOrder.WATCH_DIRECTION, AIO_ETarget.POINT);
 		defense.Order("Watch: own choice", AIO_EOrder.WATCH_AUTO);

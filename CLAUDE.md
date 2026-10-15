@@ -83,7 +83,10 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   Suppress = per-man SCR_AISuppressBehavior on a 4 m sphere (whole squad: vanilla waypointSuppress),
   Fire on my lead = per-man hold fire until the player's loaded rounds drop, Bound/Peel = two elements
   (by colour team if the men are in 2+ teams, else alternating) moving 30/25 m in turns.
-  Defense: 360 = ring around the player, crouched, looking out; Fortify = cover within 20 m of the point
+  Defense: 360 = ring around the player, crouched, looking out; Defense > 4 now selects Auto
+  (original clamp of count * 1.5 to 5-12 m), 5, 10, 20, 30 or 50 m radius. New fixed-radius
+  orders appended to the RPC enum; original DEF_360 still means Auto. Fixed at the player's
+  position when ordered; selection limits recipients. Fortify = cover within 20 m of the point
   facing away from the player; Garrison/Clear = interior points (navmesh grid 2 m x 2.5 m floors inside
   the bounds, under a roof; else open points high up, e.g. a tower deck), garrison spreads over them
   looking out, clear walks the rooms nearest-first. BuildingOf = topmost ancestor with a model that is
@@ -203,6 +206,8 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   bleeding leader with every other helper's AI disabled; invalid/healthy/duplicate casualty checks;
   two real route legs waiting for the entire element, patrol repetition, selected cancellation, stalled
   and inaccessible-height handling, route validation, ordinary arrival and native observer cancellation.
+- `radius` (~65 s), `radius-aca`: all six 360 radius choices via selected roster IDs, radius/facing/
+  crouch slots, walking onto the 20 m ring and changing one man's radius without replacing others' holds.
 - `formations` (~330 s): rifle squad (slave of a playable master) walks a 180 m square, one leg per
   formation (Column, Staggered column, Line, Wedge), shape sampled on the move every 4 s, best sample counts.
   Columns are checked fully; Line and Wedge sideways only (vs Column): the AI leader sprints and after a
@@ -338,3 +343,19 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   map route drafting with selected teams / whole squad, arrival popups with the menu closed and
   simultaneous team arrivals; owner-only feedback and route/treatment RPCs with a second player.
   No Workshop publication or release-copy refresh in this task.
+- 14 Oct, Codex, weapon posture research (Jacob asked about SAFE/AWARE/COMBAT and relaxed marching):
+  Installed vanilla SCR_AIThreatSystem defines SAFE / VIGILANT / ALERTED / THREATENED and computes
+  state from threat; its transitions are private. EAIGroupCombatMode is separately FIRE_AT_WILL /
+  HOLD_FIRE / RETURN_FIRE, not a travel-posture selector. SCR_AISetWeaponRaised calls the character
+  controller's SetWeaponRaised and defaults true. Vanilla MoveIndividually.bt invokes that node without
+  overriding its true default; AiO's AIO_MoveBehavior uses this tree, so calm selected movement/routes
+  can still start with weapons raised. No posture fix implemented here. Automatic relaxed travel is a
+  sensible BBB candidate: gate on travel intent and quiet/no contact, recover readiness promptly on
+  danger/contact, preserve assault/clear/suppress/watch readiness. A blanket forced SAFE or repeated
+  lowering every tick would conflict with real threat and combat tasks. BBB only inspected, not edited.
+- 14 Oct, Codex: 360 defense radius selector built (Defense > 4): Auto / 5 / 10 / 20 / 30 / 50 m.
+  Original DEF_360 remains Auto, five new order values appended. Crouched outward-facing ring remains
+  centred at the player's order-time position; feedback includes radius; selected men/team only when
+  selected. `codex-radius1` 8/8 and `codex-radius-aca1` 8/8 (ACA + BBB), including real 20 m ring
+  movement (worst slot errors 1.58 m / 1.61 m) and isolated selected-member changes. Source only,
+  unreleased; Jacob's live submenu/radius check remains.

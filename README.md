@@ -24,6 +24,11 @@ Formations: Move > 9 Formation: Arma 3's formation menu with the formations Refo
 Column, Staggered column, Wedge, Line (always the whole squad, also with men selected).
 Speed: Stance & speed > 6 Speed.
 
+Defense > 4 360 defense offers radii of 5, 10, 20, 30 or 50 m, plus Auto
+(the original squad-size-based 5-12 m radius). The ring is centred on the player's
+position when ordered. Men crouch and face outward; selection limits which men
+receive the order. Distances are radii, not diameters.
+
 Defense > 6 Watch that direction makes selected men watch the map cursor or the
 spot you look at. Men already holding keep their positions; others hold where
 they are. Enemies and danger can still draw their attention. Defense > 7 Watch:
