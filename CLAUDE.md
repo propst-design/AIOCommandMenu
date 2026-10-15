@@ -190,14 +190,18 @@ Codex works on this mod too under Jacob's direction and reads this same handbook
   stale assets. The Windows builder validates its target paths before replacing managed directories.
 - Jacob publishes from Workbench under his Bohemia login: open the release gproj, Publish, Unlisted first.
   PUBLISHED 13 Oct as "AiO Command Menu (Reforger)" 0.1.0, Unlisted: https://reforger.armaplatform.com/workshop/629405AEFC950C12
-  (custom licence = LICENSE.txt). 0.2.0 PUBLISHED 14 Oct by Claude (computer use, Jacob's request), still
-  Unlisted, change notes = tools/workshop/WORKSHOP-CHANGELOG.txt, description refreshed. 0.2.1 = same content, PUBLIC
-  (Jacob, 14 Oct: go public before the MP check). Next: MP check from the Workshop copy.
-- 0.2.0 prepared 13 Oct: vehicles, map commands, targeting and GM possession improvements since
-  published 0.1.0. Release refreshed; NOT yet published. Paste `tools/workshop/WORKSHOP-CHANGELOG.txt`
-  into Change Notes and enter `0.2.0` as Version in Workbench's publish dialog. The gproj has no version
-  field; keep its GUID unchanged to update the existing Workshop item. Recommended numbering:
-  0.2.1 for subsequent fixes, 0.3.0 for the next feature update; 1.0.0 once the stable release is ready.
+  (custom licence = LICENSE.txt). 0.2.0 PUBLISHED 14 Oct by Claude, Unlisted; 0.2.1 = same content,
+  PUBLIC (Jacob, 14 Oct: go public before the MP check). Current public version is 0.2.1.
+- 0.3.0 prepared 14 Oct: native formations, watch orders, casualty treatment, routes/patrols,
+  queued arrival reports, defense radii and contact-order/bounding improvements. Release notes and
+  description are in `tools/workshop/`; paste `WORKSHOP-CHANGELOG.txt` into Change Notes and enter
+  `0.3.0` as Version in Workbench's publish dialog. This prep does not publish the item.
+  The gproj has no version field; keep its GUID unchanged to update the existing Workshop item.
+  Release copy refreshed and verified: 27 source files match, GUID/title and Workshop sidecars
+  match, existing thumbnail unchanged, no development directories shipped. Fresh standalone
+  compile `codex-release03-compile` PASS. Not published; current public version remains 0.2.1.
+  Live menu/map/contact and second-player MP checks remain outstanding. Next fixes can be 0.3.1;
+  use 1.0.0 once the stable release is ready.
 
 ## Testing
 - Jacob runs `Start-AIO-Test-Launcher.cmd` (tools/AIO-Watcher.ps1). Claude: `bash tools/runtest.sh

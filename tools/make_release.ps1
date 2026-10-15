@@ -42,4 +42,4 @@ foreach ($file in Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'workshop'
     Copy-Item -LiteralPath $file.FullName -Destination (Join-Path $releaseParent $file.Name) -Force
 }
 Write-Output "Release copy refreshed: $releaseRoot"
-Write-Output 'Existing thumbnail and publisher files preserved. Set version 0.2.0 in the Workbench publish dialog.'
+Write-Output 'Existing thumbnail and publisher files preserved. Set version 0.3.0 in the Workbench publish dialog.'

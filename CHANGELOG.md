@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 — prepared 2026-10-14
 
 - Retain individual destinations and posts during contact, allow native firing from posts and temporary danger/self-aid reactions, and release posts on Engage at will.
 - Replaced timed Bound forward with arrival-driven Bound to position. Two elements alternate until the ray/map destination is reached; cover readiness, pinning, casualties and blocked movement can pause or stop it, with status reports and a Resume bound / peel command.
@@ -13,7 +13,11 @@
 - Added a Formation menu (Move > Formation), after Arma 3's, with the formations Reforger supports: Column, Staggered column, Wedge, Line. The squad keeps the formation for later moves.
 - Moved Speed to the Stance page (now Stance & speed).
 
-## 0.2.0 — prepared 2026-10-13
+## 0.2.1 — 2026-10-14
+
+- Made the Workshop item public; same content as 0.2.0.
+
+## 0.2.0 — 2026-10-14
 
 - Added a Vehicles page: board as driver, gunner or passenger; switch seats; get out, disembark passengers or eject.
 - Added engine and light controls, automatic driver light control, and squad-assisted vehicle unflip.
