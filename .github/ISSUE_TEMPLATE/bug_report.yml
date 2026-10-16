@@ -10,8 +10,8 @@ body:
     id: version
     attributes:
       label: Mod version
-      description: Shown on the Workshop page and in the game's mod list (e.g. 0.2.1).
-      placeholder: "0.2.1"
+      description: Shown on the Workshop page and in the game's mod list.
+      placeholder: "0.3.0"
     validations:
       required: true
   - type: dropdown
@@ -59,7 +59,7 @@ body:
   - type: dropdown
     id: who
     attributes:
-      label: Who got the order
+      label: Who got the order (if applicable)
       options:
         - Whole squad
         - Selected men (or a colour team)
@@ -67,11 +67,11 @@ body:
         - Treatment helper chosen from selection / squad
         - Both / not sure
     validations:
-      required: true
+      required: false
   - type: dropdown
     id: target
     attributes:
-      label: Where the order pointed
+      label: Where the order pointed (if applicable)
       description: Orders that need a place use where you look (camera) or the map cursor.
       options:
         - Camera (where I was looking)
@@ -79,7 +79,7 @@ body:
         - The order needs no place
         - Not sure
     validations:
-      required: true
+      required: false
   - type: textarea
     id: steps
     attributes:
@@ -104,6 +104,6 @@ body:
     attributes:
       label: Logs
       description: |
-        Attach console.log and script.log from the affected session's folder in `Documents\My Games\ArmaReforger\profile\logs` (default profile; use the newest session folder). A custom -profile location changes this path. Drag the files in here; zip them if needed. For multiplayer, include the server and affected client's logs when available.
+        Attach console.log and script.log from the newest affected session under `Documents\My Games\ArmaReforger\logs`. Custom profiles and dedicated servers may use another location. Drag the files in here; zip them if needed. For multiplayer, include the server and affected client's logs when available.
     validations:
       required: false
