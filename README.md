@@ -1,5 +1,10 @@
 # AiO Command Menu (Reforger)
 
+[![Game: Arma Reforger](https://img.shields.io/badge/Arma-Reforger-556b2f?style=flat-square)](https://reforger.armaplatform.com/)
+[![Workshop release: 0.3.0](https://img.shields.io/badge/Workshop-0.3.0-blue?style=flat-square)](https://reforger.armaplatform.com/workshop/629405AEFC950C12)
+[![Standalone addon](https://img.shields.io/badge/Addon-Standalone-teal?style=flat-square)](#version-and-installation)
+[![License: GPL v3 or later](https://img.shields.io/badge/License-GPL--3.0--or--later-orange?style=flat-square)](LICENSE.md)
+
 A numbered command menu for your AI squad, based on the design of
 [Leopard20's All-In-One Command Menu for Arma 3](https://github.com/leopard20/All-In-One-Command-Menu).
 Move the squad, give individual soldiers orders, assign colour teams, control
@@ -15,14 +20,23 @@ create a squad, or command arbitrary groups from the Game Master camera.
 
 The current public Workshop version is **0.3.0** (release status updated
 15 October 2026). This README describes that version; formations, watch orders,
-casualty treatment, routes,
-arrival popups, selectable defense radii and the revised bounding behavior are
+casualty treatment, routes, arrival popups, selectable defense radii and revised bounding are
 new in that version. See [CHANGELOG.md](CHANGELOG.md) for the version history.
 
 Get the mod from the [Arma Reforger Workshop](https://reforger.armaplatform.com/workshop/629405AEFC950C12)
 and enable it for your scenario. Multiplayer requires the mod on the server and
 joining clients; it is not a client-only menu. A second-player multiplayer
 acceptance check is still outstanding.
+
+## Quick start
+
+1. Lead a squad with linked AI, or take control of a soldier in a Game Master AI group.
+2. Press **T**, then choose an order with the number keys. No selected members means the whole squad.
+3. For destination orders, aim at the location or put the map cursor there before choosing the order.
+4. Use **Move > Follow me / Return to formation** to regroup.
+
+The sections below are the full command reference. Start with [Controls and selection](#controls-and-selection)
+and [Menu reference](#menu-reference), then consult movement, defense, vehicles/supplies or routes as needed.
 
 ## Controls and selection
 
@@ -261,8 +275,8 @@ Describe what happened and what you expected.
 
 Attach `console.log` and `script.log` from the affected session. With the
 default profile they are under
-`Documents\My Games\ArmaReforger\profile\logs` (use the newest session folder).
-A custom `-profile` location changes that path. For multiplayer, include the
+`Documents\My Games\ArmaReforger\logs` (use the newest affected session folder).
+Custom profiles and dedicated servers may use another location. For multiplayer, include the
 server logs and the affected client's logs when available.
 
 ## Credits and license

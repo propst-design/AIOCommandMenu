@@ -1,1 +1,1 @@
-A numbered command menu for your AI squad in Arma Reforger: movement, combat, vehicles, cover, supplies and colour teams. Standalone rebuild based on Leopard20's Arma 3 mod.
+Your squad. Your orders. Press T to command AI soldiers and colour teams: movement, combat, vehicles, cover, supplies and patrol routes. Standalone Reforger rebuild based on Leopard20's Arma 3 mod.
