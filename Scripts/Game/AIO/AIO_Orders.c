@@ -85,7 +85,9 @@ enum AIO_EOrder
 	DEF_360_20,
 	DEF_360_30,
 	DEF_360_50,
-	RESUME_MANEUVER
+	RESUME_MANEUVER,
+	ROUTE_RESUME,
+	ROUTE_SKIP
 }
 
 // What an order needs from the player's side.
@@ -254,6 +256,8 @@ class AIO_MenuTree
 		routes.Order("Start route (hold at end)", AIO_EOrder.ROUTE_START);
 		routes.Order("Start patrol (repeat route)", AIO_EOrder.ROUTE_PATROL);
 		routes.Order("Clear draft route", AIO_EOrder.ROUTE_CLEAR);
+		routes.Order("Resume paused routes (selected men)", AIO_EOrder.ROUTE_RESUME);
+		routes.Order("Skip blocked waypoint (selected routes)", AIO_EOrder.ROUTE_SKIP);
 
 		root.Order("HALT", AIO_EOrder.HALT);
 		return root;

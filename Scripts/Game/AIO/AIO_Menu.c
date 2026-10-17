@@ -86,6 +86,10 @@ class AIO_Menu
 	protected ImageWidget m_wBack;
 	protected ref array<TextWidget> m_aLines = {};
 	protected TextWidget m_wFeedback;
+	protected TextWidget m_wStatus;
+	protected string m_sOrderStatus;
+	protected int m_iRosterReceivedAt;
+	protected int m_iNextStatusDraw;
 	protected ref array<Widget> m_aWidgets = {};
 
 	static AIO_Menu Get()
@@ -131,8 +135,16 @@ class AIO_Menu
 				Close();
 			UpdateFeedback(now);
 			AIO_SquadBar.Get().Hide();
+			if (m_wStatus) m_wStatus.SetVisible(false);
 			return;
 		}
+		// Keep owner feedback current even while the command menu is closed.
+		if (now >= m_iNextRosterAsk)
+		{
+			m_iNextRosterAsk = now + 1000;
+			pc.AIO_AskRoster();
+		}
+		UpdateStatus(now);
 		// The squad bar and the markers over the men show only while the menu is open.
 		if (m_bOpen)
 			AIO_SquadBar.Get().Update(now, m_aMembers, m_aSelected);
@@ -158,12 +170,6 @@ class AIO_Menu
 
 		// Open: our context outranks the character's, so 0-9 and Backspace reach only the menu.
 		ActivateMenuContext(input);
-		if (now >= m_iNextRosterAsk)
-		{
-			m_iNextRosterAsk = now + 1000;
-			pc.AIO_AskRoster();
-		}
-
 		if (input.GetActionTriggered("AIO_Menu"))
 		{
 			Close();
@@ -793,6 +799,43 @@ class AIO_Menu
 		Draw(texts, colors);
 	}
 
+	void SetOrderStatus(string status)
+	{
+		m_sOrderStatus = status;
+		m_iRosterReceivedAt = System.GetTickCount();
+	}
+
+	// The full squad bar stays menu-only; this small summary persists during play.
+	protected void UpdateStatus(int now)
+	{
+		if (!m_wStatus) CreateWidgets();
+		if (!m_wStatus || now < m_iNextStatusDraw) return;
+		m_iNextStatusDraw = now + 250;
+		if (m_aMembers.IsEmpty())
+		{
+			m_wStatus.SetVisible(false);
+			return;
+		}
+		string text = "Orders to: " + TargetText();
+		if (!m_aSelected.IsEmpty() && !m_bOpen) text += " (selection expires after 8s closed)";
+		if (now - m_iRosterReceivedAt < 3500)
+		{
+			if (!m_sOrderStatus.IsEmpty())
+			{
+				if (!text.IsEmpty()) text += "\n";
+				text += m_sOrderStatus;
+			}
+		}
+		array<string> rows = {};
+		text.Split("\n", rows, false);
+		int height = rows.Count() * 24 + 8;
+		WorkspaceWidget ws = GetGame().GetWorkspace();
+		FrameSlot.SetPos(m_wStatus, 40, -150 - height);
+		FrameSlot.SetSize(m_wStatus, Math.Min(1100, ws.DPIUnscale(ws.GetWidth()) - 80), height);
+		m_wStatus.SetText(text);
+		m_wStatus.SetVisible(!text.IsEmpty());
+	}
+
 	protected void CreateWidgets()
 	{
 		WorkspaceWidget ws = GetGame().GetWorkspace();
@@ -816,6 +859,19 @@ class AIO_Menu
 			m_wFeedback.SetColorInt(ARGB(255, 255, 210, 127));
 			m_wFeedback.SetVisible(false);
 			m_aWidgets.Insert(m_wFeedback);
+		}
+		m_wStatus = TextWidget.Cast(ws.CreateWidgets("{B537936D5B7E2BA1}UI/layouts/WidgetLibrary/TextWidgets/Text_BodySmall.layout", ws));
+		if (m_wStatus)
+		{
+			m_wStatus.SetFlags(WidgetFlags.IGNORE_CURSOR);
+			FrameSlot.SetAnchorMin(m_wStatus, 0, 1);
+			FrameSlot.SetAnchorMax(m_wStatus, 0, 1);
+			FrameSlot.SetPos(m_wStatus, 40, -460);
+			FrameSlot.SetSize(m_wStatus, 1100, 310);
+			m_wStatus.SetZOrder(890);
+			m_wStatus.SetColorInt(ARGB(255, 255, 210, 127));
+			m_wStatus.SetVisible(false);
+			m_aWidgets.Insert(m_wStatus);
 		}
 		SetVisible(false);
 	}

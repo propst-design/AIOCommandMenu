@@ -218,15 +218,29 @@ arrival, with a wider arrival area for native whole-squad movement. Dead,
 reassigned or departed members no longer count toward completion. Notifications
 queue and remain visible with the menu closed. Patrols do not announce each lap.
 
-Routes stop and hold if there is no progress for 60 seconds or a leg exceeds a
+Routes pause and hold if there is no progress for 60 seconds or a leg exceeds a
 distance-based travel allowance of at least five minutes; combat pauses these
-budgets. Ordinary Move here uses the same reporting budgets, but a stalled
+budgets. The persistent status identifies the blocked soldiers and waypoint.
+Under **More > Routes**, **Resume paused routes** retries the same waypoint;
+**Skip blocked waypoint** advances to the next (or wraps a patrol). Skipping the
+final point of a one-way route ends it holding, without reporting arrival.
+Select any member to recover his whole remaining route element; with no selection,
+recovery applies to all your paused routes. Follow, Halt and new movement still cancel
+the affected assignments, including while paused.
+
+Ordinary Move here uses the same reporting budgets, but a stalled
 report does not cancel the game's movement order. Ordinary Move here retains
 its existing vehicle movement path; multi-point routes are infantry only.
 
 The squad bar shows names/team colours, health, magazines and current tasks
 while the menu is open. Number markers appear over nearby men (within 120 m).
 **More > Squad bar on/off** toggles these indicators.
+
+A compact status remains visible with the menu closed: current recipients (selection
+still expires after eight seconds), route/patrol waypoint and blocked men, bound/peel
+pause reason and whether it resumes automatically, and commanded treatment
+(helper and patient). It refreshes once a second and hides stale server status.
+The full squad bar and head markers remain menu-only.
 
 ## Admin page (More > Admin)
 

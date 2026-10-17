@@ -28,6 +28,23 @@ class AIO_Support
 		s_aTreatments.Clear();
 	}
 
+	static string Status(int playerId)
+	{
+		string text;
+		int count;
+		foreach (AIO_Treatment job : s_aTreatments)
+		{
+			if (job.m_iPlayerId != playerId || !job.m_Medic || !job.m_Patient || AIO_Server.Slave(playerId) != job.m_Group) continue;
+			count++;
+			if (count > 2) continue;
+			if (text.IsEmpty()) text = "Treatment: ";
+			else text += ", ";
+			text += AIO_Server.NameOf(job.m_Medic) + " -> " + AIO_Server.NameOf(job.m_Patient);
+		}
+		if (count > 2) text += string.Format(" +%1", count - 2);
+		return text;
+	}
+
 	static bool IsOrder(int order)
 	{
 		return order == AIO_EOrder.WATCH_DIRECTION || order == AIO_EOrder.WATCH_AUTO || order == AIO_EOrder.TREAT_TARGET || order == AIO_EOrder.TREAT_ME;

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Stalled routes now pause with the remaining plan intact, identify blocked soldiers and waypoint, and offer Resume or Skip waypoint under More > Routes. Recovery follows selected route members; skipping never counts as arrival.
+- Added compact persistent feedback for current recipients, route/patrol progress, paused bound/peel reasons and commanded treatment. The full squad bar remains menu-only.
+
 ## 0.3.0 — released
 
 Published on the Arma Reforger Workshop; release status updated 2026-10-15.

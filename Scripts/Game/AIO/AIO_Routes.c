@@ -22,6 +22,8 @@ class AIO_Route
 	int m_iReached; // also used by server integration tests
 	bool m_bFinished;
 	bool m_bBlocked;
+	string m_sBlockedMen;
+	ref array<IEntity> m_aBlockedMen = {};
 }
 
 class AIO_Routes
@@ -173,6 +175,89 @@ class AIO_Routes
 		AIO_Supplies.Report(route.m_iPlayerId, message);
 	}
 
+	static string Label(IEntity man)
+	{
+		foreach (AIO_Route route : s_aRoutes)
+		{
+			if (route.m_bNotifyOnly || !route.m_aMen.Contains(man)) continue;
+			string mode = "Route";
+			if (route.m_bPatrol) mode = "Patrol";
+			if (route.m_bBlocked) mode += " paused";
+			return string.Format("%1 %2/%3", mode, route.m_iWaypoint + 1, route.m_aPoints.Count());
+		}
+		return "";
+	}
+
+	protected static string BlockedMen(AIO_Route route)
+	{
+		string names;
+		int count;
+		foreach (IEntity man : route.m_aBlockedMen)
+		{
+			if (!man || !route.m_aMen.Contains(man)) continue;
+			count++;
+			if (count > 3) continue;
+			if (!names.IsEmpty()) names += ", ";
+			names += AIO_Server.NameOf(man);
+		}
+		if (count > 3) names += string.Format(" +%1", count - 3);
+		if (count == 0) names = "blocked men departed; resume when ready";
+		return names;
+	}
+
+	static string Status(int playerId)
+	{
+		string text;
+		foreach (AIO_Route route : s_aRoutes)
+		{
+			if (route.m_iPlayerId != playerId || route.m_bNotifyOnly || AIO_Server.Slave(playerId) != route.m_Group) continue;
+			if (!text.IsEmpty()) text += "\n";
+			text += route.m_sElement + ": " + Label(route.m_aMen[0]);
+			if (route.m_bBlocked) text += " | blocked: " + BlockedMen(route) + " | More > Routes: Resume / Skip";
+		}
+		return text;
+	}
+
+	// A selected member identifies his whole route. No selection means all owned paused routes.
+	static string Recover(array<IEntity> bodies, int playerId, bool skip)
+	{
+		Tick(); // discard stale holds, casualties and lost command authority before issuing anything
+		int count;
+		for (int r = s_aRoutes.Count() - 1; r >= 0; r--)
+		{
+			AIO_Route route = s_aRoutes[r];
+			if (route.m_iPlayerId != playerId || route.m_bNotifyOnly || !route.m_bBlocked) continue;
+			bool selected;
+			foreach (IEntity man : route.m_aMen)
+				if (bodies.Contains(man)) selected = true;
+			if (!selected) continue;
+			count++;
+			if (skip)
+			{
+				Report(route, string.Format("Waypoint %1/%2 skipped", route.m_iWaypoint + 1, route.m_aPoints.Count()));
+				route.m_iWaypoint++;
+				if (route.m_iWaypoint >= route.m_aPoints.Count())
+				{
+					if (route.m_bPatrol) route.m_iWaypoint = 0;
+					else
+					{
+						Report(route, "Route ended after skipping final waypoint. Holding.");
+						route.m_bFinished = true;
+						s_aRoutes.RemoveOrdered(r);
+						continue;
+					}
+				}
+			}
+			route.m_bBlocked = false;
+			route.m_sBlockedMen = "";
+			route.m_aBlockedMen.Clear();
+			Dispatch(route);
+			Report(route, string.Format("Resuming waypoint %1/%2", route.m_iWaypoint + 1, route.m_aPoints.Count()));
+		}
+		if (count == 0) return "No paused routes for those soldiers";
+		return string.Format("%1 paused routes recovered", count);
+	}
+
 	static void Tick()
 	{
 		float now = GetGame().GetWorld().GetWorldTime();
@@ -204,6 +289,7 @@ class AIO_Routes
 				continue;
 			}
 			route.m_sElement = Element(route.m_aMen);
+			if (route.m_bBlocked) continue; // still prune replaced members while paused
 			bool arrived = true;
 			bool combat;
 			float distance;
@@ -270,14 +356,27 @@ class AIO_Routes
 			if (route.m_bNotifyOnly)
 				Report(route, "Destination not reached; movement blocked or stalled.");
 			else
-				Report(route, string.Format("Waypoint %1 stalled. Route stopped; holding here.", route.m_iWaypoint + 1));
-			route.m_bBlocked = true;
-			route.m_bFinished = true;
-			s_aRoutes.RemoveOrdered(r);
-			if (!route.m_bNotifyOnly)
 			{
+				route.m_aBlockedMen.Clear();
+				for (int b = 0; b < route.m_aMen.Count(); b++)
+					if (!Arrived(route.m_aMen[b], route.m_aHolds[b])) route.m_aBlockedMen.Insert(route.m_aMen[b]);
+				route.m_sBlockedMen = BlockedMen(route);
+				Report(route, string.Format("Waypoint %1/%2 blocked: %3. Paused; More > Routes: Resume or Skip waypoint.", route.m_iWaypoint + 1, route.m_aPoints.Count(), route.m_sBlockedMen));
+			}
+			route.m_bBlocked = true;
+			if (route.m_bNotifyOnly)
+			{
+				route.m_bFinished = true;
+				s_aRoutes.RemoveOrdered(r);
+			}
+			else
+			{
+				route.m_aHolds.Clear();
 				foreach (IEntity stalled : route.m_aMen)
+				{
 					AIO_Tasks.HoldHere(stalled);
+					route.m_aHolds.Insert(AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(stalled))));
+				}
 			}
 		}
 	}

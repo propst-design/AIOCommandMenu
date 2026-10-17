@@ -88,6 +88,24 @@ class AIO_Server
 		}
 	}
 
+	static string OrderStatus(int playerId)
+	{
+		string text = AIO_Routes.Status(playerId);
+		string bound = AIO_Bounding.Status(playerId);
+		string treatment = AIO_Support.Status(playerId);
+		if (!bound.IsEmpty())
+		{
+			if (!text.IsEmpty()) text += "\n";
+			text += bound;
+		}
+		if (!treatment.IsEmpty())
+		{
+			if (!text.IsEmpty()) text += "\n";
+			text += treatment;
+		}
+		return text;
+	}
+
 	static string NameOf(IEntity body)
 	{
 		CharacterIdentityComponent identity = CharacterIdentityComponent.Cast(body.FindComponent(CharacterIdentityComponent));
@@ -114,6 +132,14 @@ class AIO_Server
 		SCR_AIGroup slave = Slave(playerId);
 		if (!slave)
 			return "No soldiers under your command";
+		if (order == AIO_EOrder.ROUTE_RESUME || order == AIO_EOrder.ROUTE_SKIP)
+		{
+			array<IEntity> routeMen = {};
+			if (members && !members.IsEmpty()) AIO_Tasks.Resolve(slave, members, routeMen);
+			else Members(slave, routeMen);
+			routeMen.RemoveItem(pc.GetControlledEntity());
+			return AIO_Routes.Recover(routeMen, playerId, order == AIO_EOrder.ROUTE_SKIP);
+		}
 		if (AIO_Support.IsOrder(order))
 		{
 			array<IEntity> supportMen = {};

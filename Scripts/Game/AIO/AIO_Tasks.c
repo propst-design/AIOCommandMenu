@@ -502,6 +502,8 @@ class AIO_Tasks
 			if (ActiveMove(utility))
 				label = "Moving";
 		}
+		string routeLabel = AIO_Routes.Label(body);
+		if (!routeLabel.IsEmpty()) label = routeLabel;
 		if (utility.HasActionOfType(SCR_AIHealBehavior))
 			label = "Healing";
 		if (utility.HasActionOfType(AIO_TreatBehavior))

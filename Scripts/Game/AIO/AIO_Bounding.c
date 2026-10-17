@@ -85,6 +85,25 @@ class AIO_Bounding
 		return "Bounding";
 	}
 
+	static string Status(int playerId)
+	{
+		int count;
+		string first;
+		foreach (AIO_Bound job : s_aJobs)
+		{
+			if (job.m_iPlayerId != playerId || !job.m_bPaused || job.m_bFinished || AIO_Server.Slave(playerId) != job.m_Group) continue;
+			count++;
+			if (count != 1) continue;
+			string mode = "Bound";
+			if (job.m_bPeel) mode = "Peel";
+			first = mode + " paused: " + job.m_sPauseReason;
+			if (job.m_bManualPause) first += " | Attack > Resume bound / peel";
+			else first += " | resumes when ready";
+		}
+		if (count > 1) first += string.Format(" (+%1 paused maneuvers)", count - 1);
+		return first;
+	}
+
 	static void Report(AIO_Bound job, string text, bool urgent = false)
 	{
 		string kind = "Bound";
