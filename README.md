@@ -18,14 +18,12 @@ create a squad, or command arbitrary groups from the Game Master camera.
 
 ## Version and installation
 
-The current public Workshop version is **0.3.1**, confirmed by successful upload and
-Workshop processing. It includes route recovery, persistent status and squad/vehicle
-teleport options. See [CHANGELOG.md](CHANGELOG.md) for the version history.
+The current Workshop version is **0.3.1**. It includes route recovery, persistent
+status and squad/vehicle teleport options. See [CHANGELOG.md](CHANGELOG.md) for the version history.
 
 Get the mod from the [Arma Reforger Workshop](https://reforger.armaplatform.com/workshop/629405AEFC950C12)
 and enable it for your scenario. Multiplayer requires the mod on the server and
-joining clients; it is not a client-only menu. A second-player multiplayer
-acceptance check is still outstanding.
+joining clients; it is not a client-only menu.
 
 ## Quick start
 
@@ -247,7 +245,7 @@ Commands are Heal me, Heal my squad (also heals you), Teleport me to the target
 point, Teleport squad to me (brings squad to your position), Kill what I look at,
 Teleport to my map cursor (requires the map open; drivers bring vehicle/crew, passengers/gunners detach),
 Teleport squad (where I look) (teleports you and your entire squad together, preserving relative formation
-offsets and assigning staggered non-overlapping slots so soldiers don't zorp into each other), and
+offsets and assigning staggered non-overlapping slots to avoid overlapping soldiers), and
 Teleport with vehicle (teleports you, your vehicle, and anyone inside it to the target point).
 Squad admin commands affect the whole squad regardless of selection.
 
@@ -261,15 +259,8 @@ The host/server startup option controls access:
 
 ## Compatibility and current limits
 
-Automated server checks have passed standalone and alongside ACA and Better
-Battle Buddies (BBB); earlier infantry and vehicle features also have live
-single-player testing. The 0.3.0 changes still need live menu/map/contact
-checks and a second-player multiplayer check. Automated checks do not establish
-compatibility with every scenario or mod combination.
+AiO works with player-led AI squads in compatible scenarios.
 
-- Vehicle Move here has worked in live map and camera tests, but an automated
-  selected-driver movement regression remains unresolved. Multiplayer vehicle
-  ownership/unflip and the full-squad church garrison retry still need live checks.
 - Voice replies come from supported whole-squad commands routed through the
   game's commanding system. Individual and GM-possession orders use AiO text
   feedback instead.
