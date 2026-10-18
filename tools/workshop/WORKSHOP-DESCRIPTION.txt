@@ -11,7 +11,7 @@ PUT YOUR SQUAD TO WORK
 - Garrison a building, clear reachable interior positions, watch a direction or form an outward-facing defensive ring.
 - Board vehicles and static weapons, choose seats, control engines/lights, dismount passengers or send soldiers to unflip a vehicle.
 - Rearm, collect a weapon, heal up or send an available squadmate to treat a casualty using real medical supplies.
-- Plan infantry routes and looping patrols. In 0.3.1, stalled routes retain their plan for Resume or Skip waypoint; progress and blocked soldiers appear in a compact persistent HUD.
+- Plan infantry routes and looping patrols. Stalled routes keep their plan: use More > Routes to resume or skip a waypoint. A compact HUD shows progress and blocked soldiers.
 
 GET STARTED
 
@@ -24,13 +24,13 @@ Rebind T under Settings > Controls > All-in-One Command Menu. While the menu is 
 
 Selection expires after about eight seconds with the menu closed; check the recipients in the heading before giving another order. Formations and squad admin commands always affect the whole squad. Colour-team assignments last for the current mission.
 
-The squad bar shows names, team colours, health, magazines and tasks. More > Squad bar on/off toggles it and nearby soldier numbers. Admin commands appear only when the server permits them. In 0.3.1 they include teleporting your squad with relative spacing or your vehicle with everyone aboard. Teleport to my map cursor brings the vehicle only when you are its driver; passengers and gunners leave it alone.
+The full squad bar shows names, team colours, health, magazines and tasks while the menu is open. More > Squad bar on/off toggles it and nearby soldier numbers. Compact status remains visible with the menu closed, showing recipients, route progress, paused bound/peel reasons and commanded treatment.
 
-REQUIREMENTS AND CURRENT RELEASE
+Admin commands appear only when the server permits them. Teleport your squad to a target with relative spacing, or teleport your vehicle with everyone aboard. Teleport to my map cursor requires the map open: drivers bring their vehicle and occupants; passengers and gunners teleport out alone.
+
+REQUIREMENTS
 
 Requires Arma Reforger, with no other mod dependencies. Load AiO on the server and joining clients; it is not client-only.
-
-Current public release: 0.3.0, confirmed 15 October 2026. Automated checks have passed standalone and with AC: Actual + Better Battle Buddies. The next prepared update is 0.3.1, adding route recovery, persistent status and the teleport options above. Publication and gameplay acceptance are separate.
 
 KNOW YOUR SQUAD'S LIMITS
 
@@ -39,8 +39,6 @@ AiO commands your existing squad: it does not recruit soldiers or command arbitr
 Buildings, doors and vehicle routes still depend on Reforger's navigation. Clear building visits sampled reachable positions; it does not promise every room or enemy is cleared. Fortify here finds cover; it does not construct fortifications.
 
 Bounding needs ready covering soldiers and can pause under suppression, casualties or blocked movement. Use Attack > Resume bound / peel when requested. Follow or a new movement order lets you regroup.
-
-Vehicle Move here has worked in live camera/map tests; navigation and vehicle ownership can still limit individual orders.
 
 BBB is optional. Compatible BBB builds can lower weapons during quiet ordinary travel; tactical orders retain readiness. Combining AiO with another squad-command menu mod, including Enhanced AI Squad Commands, is unsupported.
 
