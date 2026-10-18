@@ -4,7 +4,7 @@
 
 // Squad formations: the game's own four (SCR_AIWorld's formation list: Wedge, Line, Column,
 // StaggeredColumn). Arma 3's echelons, vee and diamond would need new entries in that list,
-// which is native prefab data (see documentation, Formations).
+// which is native prefab data.
 
 class AIO_Formations
 {
