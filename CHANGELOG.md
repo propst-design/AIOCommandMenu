@@ -2,6 +2,8 @@
 
 ## 0.3.1 — unreleased
 
+- Added Admin > Teleport squad (where I look) to teleport the player and whole squad together to a target point/map cursor, maintaining relative formation spacing and non-colliding slots so units do not overlap.
+- Added Admin > Teleport with vehicle to teleport the player's vehicle and all occupants inside it to the target point/map cursor.
 - Added Admin > Teleport to my map cursor. Drivers bring their vehicle and its occupants; passengers and gunners teleport out alone. Requires the map open.
 - Stalled routes now pause with the remaining plan intact, identify blocked soldiers and waypoint, and offer Resume or Skip waypoint under More > Routes. Recovery follows selected route members; skipping never counts as arrival.
 - Added compact persistent feedback for current recipients, route/patrol progress, paused bound/peel reasons and commanded treatment. The full squad bar remains menu-only.

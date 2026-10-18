@@ -124,7 +124,10 @@ class AIO_Server
 	static string Execute(SCR_PlayerController pc, int order, array<RplId> members, vector point, RplId target)
 	{
 		int playerId = pc.GetPlayerId();
-		if ((order >= AIO_EOrder.ADMIN_HEAL_ME && order <= AIO_EOrder.ADMIN_KILL_TARGET) || order == AIO_EOrder.ADMIN_TELEPORT_MAP)
+		if ((order >= AIO_EOrder.ADMIN_HEAL_ME && order <= AIO_EOrder.ADMIN_KILL_TARGET)
+			|| order == AIO_EOrder.ADMIN_TELEPORT_MAP
+			|| order == AIO_EOrder.ADMIN_TELEPORT_GROUP
+			|| order == AIO_EOrder.ADMIN_TELEPORT_VEHICLE)
 			return Admin(pc, order, point, target);
 		if (order == AIO_EOrder.TOGGLE_SQUAD_BAR)
 			return "";
@@ -708,6 +711,10 @@ class AIO_Server
 				return "Can't teleport there";
 			case AIO_EOrder.ADMIN_TELEPORT_MAP:
 				return TeleportToMapCursor(player, point);
+			case AIO_EOrder.ADMIN_TELEPORT_GROUP:
+				return TeleportSquad(player, members, point);
+			case AIO_EOrder.ADMIN_TELEPORT_VEHICLE:
+				return TeleportWithVehicle(player, point);
 			case AIO_EOrder.ADMIN_TELEPORT_SQUAD:
 				if (!player)
 					return "No body to teleport to";
@@ -743,6 +750,71 @@ class AIO_Server
 		return "";
 	}
 
+	static bool TeleportVehicleEntity(IEntity vehicle, vector point)
+	{
+		if (!vehicle)
+			return false;
+		vector transform[4];
+		vehicle.GetWorldTransform(transform);
+		transform[3] = point;
+		SCR_TerrainHelper.OrientToTerrain(transform);
+		vector mins, maxs;
+		vehicle.GetBounds(mins, maxs);
+		transform[3][1] = transform[3][1] - mins[1] + 0.4;
+		vector previous = vehicle.GetOrigin();
+		SCR_EditableEntityComponent editableVehicle = SCR_EditableEntityComponent.Cast(vehicle.FindComponent(SCR_EditableEntityComponent));
+		if (editableVehicle && !editableVehicle.SetTransform(transform))
+			return false;
+		AIO_Vehicles.SetPose(vehicle, transform);
+		RplComponent rpl = RplComponent.Cast(vehicle.FindComponent(RplComponent));
+		if (rpl)
+			rpl.ForceNodeMovement(previous);
+		return true;
+	}
+
+	static bool TeleportCharacterEntity(IEntity entity, vector point, vector facing = vector.Zero)
+	{
+		if (!entity)
+			return false;
+		vector transform[4];
+		entity.GetWorldTransform(transform);
+		transform[3] = point;
+		if (facing != vector.Zero)
+		{
+			facing[1] = 0;
+			facing.Normalize();
+			transform[2] = facing;
+			transform[0] = Vector(facing[2], 0, -facing[0]);
+			transform[1] = Vector(0, 1, 0);
+		}
+		SCR_EditableCharacterComponent editable = SCR_EditableCharacterComponent.Cast(entity.FindComponent(SCR_EditableCharacterComponent));
+		if (editable)
+		{
+			if (editable.SetTransform(transform))
+				return true;
+		}
+		IEntity vehicle = AIO_Vehicles.VehicleOf(entity);
+		if (vehicle)
+		{
+			CompartmentAccessComponent access = CompartmentAccessComponent.Cast(entity.FindComponent(CompartmentAccessComponent));
+			if (access && access.GetOutVehicle_NoDoor(transform, false, true))
+				return true;
+		}
+		BaseGameEntity body = BaseGameEntity.Cast(entity);
+		if (body)
+		{
+			body.Teleport(transform);
+			Physics physics = entity.GetPhysics();
+			if (physics)
+			{
+				physics.SetVelocity(vector.Zero);
+				physics.SetAngularVelocity(vector.Zero);
+			}
+			return true;
+		}
+		return false;
+	}
+
 	// Called only after AdminAllowed in Admin. Seat authority comes from the server.
 	static string TeleportToMapCursor(IEntity player, vector point)
 	{
@@ -753,55 +825,165 @@ class AIO_Server
 			return "Can't teleport outside the map";
 		IEntity vehicle = AIO_Vehicles.VehicleOf(player);
 		BaseCompartmentSlot seat = AIO_Vehicles.SeatOf(player);
-		vector transform[4];
 		if (vehicle && seat && seat.GetType() == ECompartmentType.PILOT)
 		{
-			vehicle.GetWorldTransform(transform);
-			transform[3] = point;
-			SCR_TerrainHelper.OrientToTerrain(transform);
-			vector mins, maxs;
-			vehicle.GetBounds(mins, maxs);
-			transform[3][1] = transform[3][1] - mins[1] + 0.4;
-			vector previous = vehicle.GetOrigin();
-			SCR_EditableEntityComponent editableVehicle = SCR_EditableEntityComponent.Cast(vehicle.FindComponent(SCR_EditableEntityComponent));
-			if (editableVehicle && !editableVehicle.SetTransform(transform))
+			if (!TeleportVehicleEntity(vehicle, point))
 				return "Can't teleport this vehicle";
-			AIO_Vehicles.SetPose(vehicle, transform);
-			RplComponent rpl = RplComponent.Cast(vehicle.FindComponent(RplComponent));
-			if (rpl)
-				rpl.ForceNodeMovement(previous);
 			return "Teleported you and your vehicle";
 		}
-		player.GetWorldTransform(transform);
-		transform[3] = point;
-		// The GM character transform path detaches seated characters on their owner,
-		// including remote players, rather than moving the vehicle like TeleportPlayer.
-		SCR_EditableCharacterComponent editable = SCR_EditableCharacterComponent.Cast(player.FindComponent(SCR_EditableCharacterComponent));
-		if (editable)
+		if (!TeleportCharacterEntity(player, point))
+			return "Can't teleport this body";
+		return "Teleported to your map cursor";
+	}
+
+	static string TeleportWithVehicle(IEntity player, vector point)
+	{
+		if (!player)
+			return "No body to teleport";
+		point[1] = GetGame().GetWorld().GetSurfaceY(point[0], point[2]);
+		if (!SCR_Global.IsPositionWithinTerrainBounds(point))
+			return "Can't teleport outside the map";
+		IEntity vehicle = AIO_Vehicles.VehicleOf(player);
+		if (!vehicle)
+			return "You are not in a vehicle";
+		if (!TeleportVehicleEntity(vehicle, point))
+			return "Can't teleport this vehicle";
+		array<BaseCompartmentSlot> seats = {};
+		AIO_Vehicles.Seats(vehicle, seats);
+		int occupants = 0;
+		foreach (BaseCompartmentSlot slot : seats)
 		{
-			if (!editable.SetTransform(transform))
-				return "Can't teleport this body";
+			if (slot && slot.GetOccupant())
+				occupants++;
 		}
-		else if (vehicle)
+		if (occupants > 1)
+			return string.Format("Teleported vehicle and %1 occupants", occupants);
+		return "Teleported you and your vehicle";
+	}
+
+	static string TeleportSquad(IEntity player, array<IEntity> members, vector point)
+	{
+		if (!player)
+			return "No body to teleport";
+		point[1] = GetGame().GetWorld().GetSurfaceY(point[0], point[2]);
+		if (!SCR_Global.IsPositionWithinTerrainBounds(point))
+			return "Can't teleport outside the map";
+		vector playerOrigin = player.GetOrigin();
+		vector forward, right;
+		AIO_Tasks.Facing(player, forward, right);
+
+		IEntity playerVeh = AIO_Vehicles.VehicleOf(player);
+		BaseCompartmentSlot playerSeat = AIO_Vehicles.SeatOf(player);
+		vector pDest = point;
+		bool driverMovedVeh = false;
+		if (playerVeh && playerSeat && playerSeat.GetType() == ECompartmentType.PILOT)
 		{
-			CompartmentAccessComponent access = CompartmentAccessComponent.Cast(player.FindComponent(CompartmentAccessComponent));
-			if (!access || !access.GetOutVehicle_NoDoor(transform, false, true))
-				return "Can't leave this seat to teleport";
+			if (!TeleportVehicleEntity(playerVeh, point))
+				return "Can't teleport this vehicle";
+			driverMovedVeh = true;
+			pDest = playerVeh.GetOrigin();
 		}
 		else
 		{
-			BaseGameEntity body = BaseGameEntity.Cast(player);
-			if (!body)
-				return "Can't teleport this body";
-			body.Teleport(transform);
-			Physics physics = player.GetPhysics();
-			if (physics)
+			if (!TeleportCharacterEntity(player, point, forward))
+				return "Can't teleport your body";
+			pDest = point;
+		}
+
+		array<vector> placedPositions = {};
+		placedPositions.Insert(pDest);
+		int movedSquad = 0;
+		int fallbackSlot = 0;
+
+		if (members)
+		{
+			foreach (IEntity soldier : members)
 			{
-				physics.SetVelocity(vector.Zero);
-				physics.SetAngularVelocity(vector.Zero);
+				if (!soldier || soldier == player)
+					continue;
+
+				// If driver moved vehicle and soldier was already inside it, they traveled with the vehicle.
+				if (driverMovedVeh && AIO_Vehicles.VehicleOf(soldier) == playerVeh)
+				{
+					movedSquad++;
+					continue;
+				}
+
+				vector sOrigin = soldier.GetOrigin();
+				vector diff = sOrigin - playerOrigin;
+				float dist = vector.DistanceXZ(sOrigin, playerOrigin);
+
+				vector dest = vector.Zero;
+				bool hasCandidate = false;
+
+				// Preserve relative position if reasonably close, on foot, and not colliding
+				if (dist >= 2.0 && dist <= 35.0 && !AIO_Vehicles.VehicleOf(soldier))
+				{
+					float localForward = diff[0] * forward[0] + diff[2] * forward[2];
+					float localRight = diff[0] * right[0] + diff[2] * right[2];
+					vector candidate = pDest + forward * localForward + right * localRight;
+					candidate[1] = GetGame().GetWorld().GetSurfaceY(candidate[0], candidate[2]);
+
+					bool collides = false;
+					foreach (vector placed : placedPositions)
+					{
+						if (vector.DistanceXZ(candidate, placed) < 1.8)
+						{
+							collides = true;
+							break;
+						}
+					}
+					if (!collides)
+					{
+						dest = candidate;
+						hasCandidate = true;
+					}
+				}
+
+				// Fallback to orderly formation slot behind player if too close, stray, in vehicle or colliding
+				if (!hasCandidate)
+				{
+					while (fallbackSlot < 100)
+					{
+						int row = 1 + (fallbackSlot / 2);
+						float side = 1.0;
+						if (fallbackSlot % 2 == 1)
+							side = -1.0;
+						float lateral = 2.5;
+						if (row % 2 == 0)
+							lateral = 3.5;
+						vector slot = pDest - forward * (row * 3.5) + right * (side * lateral);
+						slot[1] = GetGame().GetWorld().GetSurfaceY(slot[0], slot[2]);
+						fallbackSlot++;
+
+						bool collides = false;
+						foreach (vector placed : placedPositions)
+						{
+							if (vector.DistanceXZ(slot, placed) < 1.8)
+							{
+								collides = true;
+								break;
+							}
+						}
+						if (!collides)
+						{
+							dest = slot;
+							break;
+						}
+					}
+				}
+
+				if (TeleportCharacterEntity(soldier, dest, forward))
+				{
+					placedPositions.Insert(dest);
+					movedSquad++;
+				}
 			}
 		}
-		return "Teleported to your map cursor";
+
+		if (movedSquad > 0)
+			return string.Format("Teleported you and %1 squad members", movedSquad);
+		return "Teleported you";
 	}
 
 	static void Heal(IEntity entity)

@@ -48,6 +48,7 @@ class AIO_Test
 	protected static IEntity s_TeleportDriver;
 	protected static vector s_vTeleportVehicle;
 	protected static vector s_vTeleportFoot;
+	protected static vector s_vTeleportSquad;
 	protected static bool s_bRecoveryTest;
 	protected static bool s_bFormationTest;
 	protected static bool s_bSupportTest;
@@ -1441,6 +1442,54 @@ class AIO_Test
 	protected static void TeleportFootFinish()
 	{
 		Check("teleport-on-foot", !AIO_Vehicles.VehicleOf(s_TeleportPassenger) && vector.DistanceXZ(s_TeleportPassenger.GetOrigin(), s_vTeleportFoot) < 1, "on-foot body reaches destination after transform update");
+		Check("teleport-veh-not-in-veh", AIO_Server.TeleportWithVehicle(s_TeleportPassenger, s_vTeleportFoot).Contains("not in a vehicle"), "passenger on foot refused vehicle teleport");
+		vector vehDest = FindSpot(s_Vehicle.GetOrigin(), 60);
+		string vehReply = AIO_Server.TeleportWithVehicle(s_TeleportDriver, vehDest);
+		Check("teleport-veh-reply", vehReply.Contains("vehicle"), vehReply);
+		s_vTeleportVehicle = vehDest;
+		GetGame().GetCallqueue().CallLater(TeleportSquadStart, 2500, false);
+	}
+
+	protected static void TeleportSquadStart()
+	{
+		Check("teleport-veh-dest", vector.DistanceXZ(s_Vehicle.GetOrigin(), s_vTeleportVehicle) < 2, "vehicle reached destination with vehicle teleport");
+		Check("teleport-veh-driver-aboard", AIO_Vehicles.VehicleOf(s_TeleportDriver) == s_Vehicle, "driver remains in vehicle after vehicle teleport");
+		array<IEntity> squad = {};
+		Squad(squad);
+		s_vTeleportSquad = FindSpot(s_TeleportPassenger.GetOrigin(), 70);
+		string squadReply = AIO_Server.TeleportSquad(s_TeleportPassenger, squad, s_vTeleportSquad);
+		Check("teleport-squad-reply", squadReply.Contains("Teleported you"), squadReply);
+		GetGame().GetCallqueue().CallLater(TeleportSquadFinish, 2500, false);
+	}
+
+	protected static void TeleportSquadFinish()
+	{
+		Check("teleport-squad-player-dest", vector.DistanceXZ(s_TeleportPassenger.GetOrigin(), s_vTeleportSquad) < 2, "player reached squad teleport destination");
+		array<IEntity> squad = {};
+		Squad(squad);
+		array<vector> placed = {};
+		placed.Insert(s_TeleportPassenger.GetOrigin());
+		bool allCloseToCenter = true;
+		bool noZorp = true;
+		foreach (IEntity man : squad)
+		{
+			if (!man || man == s_TeleportPassenger)
+				continue;
+			vector pos = man.GetOrigin();
+			if (vector.DistanceXZ(pos, s_vTeleportSquad) > 35)
+				allCloseToCenter = false;
+			foreach (vector other : placed)
+			{
+				if (vector.DistanceXZ(pos, other) < 1.4)
+				{
+					noZorp = false;
+					break;
+				}
+			}
+			placed.Insert(pos);
+		}
+		Check("teleport-squad-nearby", allCloseToCenter, "all squad members teleported near destination");
+		Check("teleport-squad-no-zorp", noZorp, "squad members and leader spaced without zorping/overlapping");
 		Finish();
 	}
 

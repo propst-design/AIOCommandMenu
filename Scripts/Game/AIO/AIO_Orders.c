@@ -88,7 +88,9 @@ enum AIO_EOrder
 	RESUME_MANEUVER,
 	ROUTE_RESUME,
 	ROUTE_SKIP,
-	ADMIN_TELEPORT_MAP
+	ADMIN_TELEPORT_MAP,
+	ADMIN_TELEPORT_GROUP,
+	ADMIN_TELEPORT_VEHICLE
 }
 
 // What an order needs from the player's side.
@@ -254,6 +256,8 @@ class AIO_MenuTree
 		admin.Order("Teleport squad to me", AIO_EOrder.ADMIN_TELEPORT_SQUAD);
 		admin.Order("Kill what I look at", AIO_EOrder.ADMIN_KILL_TARGET, AIO_ETarget.POINT);
 		admin.Order("Teleport to my map cursor", AIO_EOrder.ADMIN_TELEPORT_MAP, AIO_ETarget.MAP_POINT);
+		admin.Order("Teleport squad (where I look)", AIO_EOrder.ADMIN_TELEPORT_GROUP, AIO_ETarget.POINT);
+		admin.Order("Teleport with vehicle", AIO_EOrder.ADMIN_TELEPORT_VEHICLE, AIO_ETarget.POINT);
 		AIO_MenuItem routes = more.Page("Routes (select men, then add points)");
 		routes.Order("Add waypoint here", AIO_EOrder.ROUTE_ADD, AIO_ETarget.POINT);
 		routes.Order("Start route (hold at end)", AIO_EOrder.ROUTE_START);
