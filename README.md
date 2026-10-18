@@ -1,7 +1,7 @@
 # AiO Command Menu (Reforger)
 
 [![Game: Arma Reforger](https://img.shields.io/badge/Arma-Reforger-556b2f?style=flat-square)](https://reforger.armaplatform.com/)
-[![Workshop release: 0.3.0](https://img.shields.io/badge/Workshop-0.3.0-blue?style=flat-square)](https://reforger.armaplatform.com/workshop/629405AEFC950C12)
+[![Workshop release: 0.3.1](https://img.shields.io/badge/Workshop-0.3.1-blue?style=flat-square)](https://reforger.armaplatform.com/workshop/629405AEFC950C12)
 [![Standalone addon](https://img.shields.io/badge/Addon-Standalone-teal?style=flat-square)](#version-and-installation)
 [![License: GPL v3 or later](https://img.shields.io/badge/License-GPL--3.0--or--later-orange?style=flat-square)](LICENSE.md)
 
@@ -18,10 +18,9 @@ create a squad, or command arbitrary groups from the Game Master camera.
 
 ## Version and installation
 
-The current public Workshop version is **0.3.0** (release status updated
-15 October 2026). This README describes that version; formations, watch orders,
-casualty treatment, routes, arrival popups, selectable defense radii and revised bounding are
-new in that version. See [CHANGELOG.md](CHANGELOG.md) for the version history.
+The current public Workshop version is **0.3.1**, confirmed by successful upload and
+Workshop processing. It includes route recovery, persistent status and squad/vehicle
+teleport options. See [CHANGELOG.md](CHANGELOG.md) for the version history.
 
 Get the mod from the [Arma Reforger Workshop](https://reforger.armaplatform.com/workshop/629405AEFC950C12)
 and enable it for your scenario. Multiplayer requires the mod on the server and
