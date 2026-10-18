@@ -2,6 +2,7 @@
 
 ## 0.3.1 — unreleased
 
+- Updated Workshop guidance for route recovery, persistent status and squad/vehicle teleport options.
 - Added Admin > Teleport squad (where I look) to teleport the player and whole squad together to a target point/map cursor, maintaining relative formation spacing and non-colliding slots so units do not overlap.
 - Added Admin > Teleport with vehicle to teleport the player's vehicle and all occupants inside it to the target point/map cursor.
 - Added Admin > Teleport to my map cursor. Drivers bring their vehicle and its occupants; passengers and gunners teleport out alone. Requires the map open.
