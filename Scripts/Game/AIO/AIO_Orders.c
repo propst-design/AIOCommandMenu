@@ -87,14 +87,16 @@ enum AIO_EOrder
 	DEF_360_50,
 	RESUME_MANEUVER,
 	ROUTE_RESUME,
-	ROUTE_SKIP
+	ROUTE_SKIP,
+	ADMIN_TELEPORT_MAP
 }
 
 // What an order needs from the player's side.
 enum AIO_ETarget
 {
 	NONE,  // just the order
-	POINT // where the player looks
+	POINT, // where the player looks
+	MAP_POINT // map cursor only; requires an open map
 }
 
 // One line of the menu: an order, or a page of further lines.
@@ -251,6 +253,7 @@ class AIO_MenuTree
 		admin.Order("Teleport me (where I look)", AIO_EOrder.ADMIN_TELEPORT_ME, AIO_ETarget.POINT);
 		admin.Order("Teleport squad to me", AIO_EOrder.ADMIN_TELEPORT_SQUAD);
 		admin.Order("Kill what I look at", AIO_EOrder.ADMIN_KILL_TARGET, AIO_ETarget.POINT);
+		admin.Order("Teleport to my map cursor", AIO_EOrder.ADMIN_TELEPORT_MAP, AIO_ETarget.MAP_POINT);
 		AIO_MenuItem routes = more.Page("Routes (select men, then add points)");
 		routes.Order("Add waypoint here", AIO_EOrder.ROUTE_ADD, AIO_ETarget.POINT);
 		routes.Order("Start route (hold at end)", AIO_EOrder.ROUTE_START);

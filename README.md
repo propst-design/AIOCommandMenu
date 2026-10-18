@@ -245,7 +245,10 @@ The full squad bar and head markers remain menu-only.
 ## Admin page (More > Admin)
 
 Commands are Heal me, Heal my squad (also heals you), Teleport me to the target
-point, Teleport squad to me (skips mounted soldiers), and Kill what I look at.
+point, Teleport squad to me (skips mounted soldiers), Kill what I look at, and
+Teleport to my map cursor (requires the map open). The map-cursor option takes
+your vehicle and its occupants if you are driving; passengers and gunners
+teleport out alone, leaving the vehicle in place.
 Squad admin commands affect the whole squad regardless of selection.
 
 The host/server startup option controls access:

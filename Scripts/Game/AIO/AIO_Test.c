@@ -10,6 +10,7 @@
 //   -aioDefenseTest 1 : 360 defense, Garrison and Clear a building, Fortify.
 //   -aioTowerTest 1 : the defense test on the airfield control tower.
 //   -aioVehicleTest 1 : get in, switch seats, lights/engine, disembark, get out, eject, unflip.
+//   -aioTeleportTest 1 : map teleport with driver, crew, passenger, gunner and on-foot bodies.
 //   -aioRecoveryTest 1 : GM-style rifle squad, unreachable interior posts, cancel, formation recovery.
 //   -aioSupportTest 1 : watch direction, commanded medical treatment, routes, patrols and arrival reports.
 //   -aioRadiusTest 1 : all-round defense radius selection, outward/crouched posts and actual movement.
@@ -42,6 +43,11 @@ class AIO_Test
 	protected static ResourceName s_sEnemyWeapon;
 	protected static vector s_vForward;
 	protected static bool s_bVehicleTest;
+	protected static bool s_bTeleportTest;
+	protected static IEntity s_TeleportPassenger;
+	protected static IEntity s_TeleportDriver;
+	protected static vector s_vTeleportVehicle;
+	protected static vector s_vTeleportFoot;
 	protected static bool s_bRecoveryTest;
 	protected static bool s_bFormationTest;
 	protected static bool s_bSupportTest;
@@ -84,6 +90,11 @@ class AIO_Test
 		string vehicleValue;
 		System.GetCLIParam("aioVehicleTest", vehicleValue);
 		s_bVehicleTest = vehicleValue == "1";
+		string teleportValue;
+		System.GetCLIParam("aioTeleportTest", teleportValue);
+		s_bTeleportTest = teleportValue == "1";
+		if (s_bTeleportTest)
+			s_bVehicleTest = true;
 		string recoveryValue;
 		System.GetCLIParam("aioRecoveryTest", recoveryValue);
 		s_bRecoveryTest = recoveryValue == "1";
@@ -1343,6 +1354,11 @@ class AIO_Test
 
 	protected static void VehBoarded()
 	{
+		if (s_bTeleportTest)
+		{
+			TeleportStart();
+			return;
+		}
 		array<IEntity> members = {};
 		Squad(members);
 		int cargo;
@@ -1369,6 +1385,63 @@ class AIO_Test
 		array<IEntity> one = {driver};
 		Print("[AIO] TEST mounted move: " + AIO_Server.ExecuteBodies(s_Group, AIO_EOrder.MOVE_HERE, one, s_vTarget, null, RplId.Invalid(), 0));
 		GetGame().GetCallqueue().CallLater(VehMoved, 35000, false);
+	}
+
+	// Real occupied-seat fixtures exercise the same helper used by the authorized admin RPC.
+	protected static void TeleportStart()
+	{
+		s_TeleportDriver = InSeat(ECompartmentType.PILOT);
+		s_TeleportPassenger = InSeat(ECompartmentType.CARGO);
+		s_Gunner = InSeat(ECompartmentType.TURRET);
+		Check("teleport-seats", s_TeleportDriver && s_TeleportPassenger && s_Gunner, "driver, passenger and gunner boarded");
+		if (!s_TeleportDriver || !s_TeleportPassenger || !s_Gunner)
+		{
+			Finish();
+			return;
+		}
+		array<IEntity> men = {};
+		Squad(men);
+		foreach (IEntity man : men)
+		{
+			AIO_Tasks.Release(man);
+			AIAgent agent = AIO_Tasks.AgentOf(man);
+			if (agent) agent.DeactivateAI();
+		}
+		vector before = s_Vehicle.GetOrigin();
+		Check("teleport-outside-map", AIO_Server.TeleportToMapCursor(s_TeleportDriver, Vector(-100000, 0, -100000)).Contains("outside"), "invalid cursor refused");
+		Check("teleport-invalid-preserves", vector.Distance(s_Vehicle.GetOrigin(), before) < 0.1 && AIO_Vehicles.VehicleOf(s_TeleportDriver) == s_Vehicle, "no movement or dismount on rejection");
+		s_vTeleportVehicle = FindSpot(before, 80);
+		Check("teleport-driver-reply", AIO_Server.TeleportToMapCursor(s_TeleportDriver, s_vTeleportVehicle).Contains("and your vehicle"), "driver takes vehicle");
+		GetGame().GetCallqueue().CallLater(TeleportOccupants, 2500, false);
+	}
+
+	protected static void TeleportOccupants()
+	{
+		Check("teleport-driver-persist", vector.DistanceXZ(s_Vehicle.GetOrigin(), s_vTeleportVehicle) < 2 && AIO_Vehicles.VehicleOf(s_TeleportDriver) == s_Vehicle, "vehicle remains at cursor with driver");
+		Check("teleport-crew-retained", AIO_Vehicles.VehicleOf(s_TeleportPassenger) == s_Vehicle && AIO_Vehicles.VehicleOf(s_Gunner) == s_Vehicle, "driver carries other occupants");
+		s_vTeleportVehicle = s_Vehicle.GetOrigin();
+		s_vTarget = FindSpot(s_vTeleportVehicle, 50);
+		Check("teleport-passenger-reply", AIO_Server.TeleportToMapCursor(s_TeleportPassenger, s_vTarget).Contains("Teleported"), "passenger detaches at cursor");
+		string gunnerReply = AIO_Server.TeleportToMapCursor(s_Gunner, s_vTarget + Vector(4, 0, 0));
+		Check("teleport-gunner-reply", gunnerReply.Contains("Teleported"), gunnerReply);
+		GetGame().GetCallqueue().CallLater(TeleportFinish, 2500, false);
+	}
+
+	protected static void TeleportFinish()
+	{
+		Check("teleport-passenger-position", !AIO_Vehicles.VehicleOf(s_TeleportPassenger) && vector.DistanceXZ(s_TeleportPassenger.GetOrigin(), s_vTarget) < 2, "passenger alone reaches cursor");
+		Check("teleport-gunner-position", !AIO_Vehicles.VehicleOf(s_Gunner) && vector.DistanceXZ(s_Gunner.GetOrigin(), s_vTarget + Vector(4, 0, 0)) < 2, "gunner alone reaches cursor");
+		Check("teleport-vehicle-stays", vector.DistanceXZ(s_Vehicle.GetOrigin(), s_vTeleportVehicle) < 2 && AIO_Vehicles.VehicleOf(s_TeleportDriver) == s_Vehicle, "passenger/gunner leave vehicle and driver in place");
+		s_vTeleportFoot = FindSpot(s_vTarget, 25);
+		string reply = AIO_Server.TeleportToMapCursor(s_TeleportPassenger, s_vTeleportFoot);
+		Check("teleport-foot-reply", reply.Contains("Teleported"), reply);
+		GetGame().GetCallqueue().CallLater(TeleportFootFinish, 2000, false);
+	}
+
+	protected static void TeleportFootFinish()
+	{
+		Check("teleport-on-foot", !AIO_Vehicles.VehicleOf(s_TeleportPassenger) && vector.DistanceXZ(s_TeleportPassenger.GetOrigin(), s_vTeleportFoot) < 1, "on-foot body reaches destination after transform update");
+		Finish();
 	}
 
 	protected static void VehMoved()

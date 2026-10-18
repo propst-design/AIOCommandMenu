@@ -124,7 +124,7 @@ class AIO_Server
 	static string Execute(SCR_PlayerController pc, int order, array<RplId> members, vector point, RplId target)
 	{
 		int playerId = pc.GetPlayerId();
-		if (order >= AIO_EOrder.ADMIN_HEAL_ME && order <= AIO_EOrder.ADMIN_KILL_TARGET)
+		if ((order >= AIO_EOrder.ADMIN_HEAL_ME && order <= AIO_EOrder.ADMIN_KILL_TARGET) || order == AIO_EOrder.ADMIN_TELEPORT_MAP)
 			return Admin(pc, order, point, target);
 		if (order == AIO_EOrder.TOGGLE_SQUAD_BAR)
 			return "";
@@ -706,6 +706,8 @@ class AIO_Server
 				if (SCR_Global.TeleportPlayer(playerId, point))
 					return "Teleported";
 				return "Can't teleport there";
+			case AIO_EOrder.ADMIN_TELEPORT_MAP:
+				return TeleportToMapCursor(player, point);
 			case AIO_EOrder.ADMIN_TELEPORT_SQUAD:
 				if (!player)
 					return "No body to teleport to";
@@ -739,6 +741,67 @@ class AIO_Server
 				return "Killed";
 		}
 		return "";
+	}
+
+	// Called only after AdminAllowed in Admin. Seat authority comes from the server.
+	static string TeleportToMapCursor(IEntity player, vector point)
+	{
+		if (!player)
+			return "No body to teleport";
+		point[1] = GetGame().GetWorld().GetSurfaceY(point[0], point[2]);
+		if (!SCR_Global.IsPositionWithinTerrainBounds(point))
+			return "Can't teleport outside the map";
+		IEntity vehicle = AIO_Vehicles.VehicleOf(player);
+		BaseCompartmentSlot seat = AIO_Vehicles.SeatOf(player);
+		vector transform[4];
+		if (vehicle && seat && seat.GetType() == ECompartmentType.PILOT)
+		{
+			vehicle.GetWorldTransform(transform);
+			transform[3] = point;
+			SCR_TerrainHelper.OrientToTerrain(transform);
+			vector mins, maxs;
+			vehicle.GetBounds(mins, maxs);
+			transform[3][1] = transform[3][1] - mins[1] + 0.4;
+			vector previous = vehicle.GetOrigin();
+			SCR_EditableEntityComponent editableVehicle = SCR_EditableEntityComponent.Cast(vehicle.FindComponent(SCR_EditableEntityComponent));
+			if (editableVehicle && !editableVehicle.SetTransform(transform))
+				return "Can't teleport this vehicle";
+			AIO_Vehicles.SetPose(vehicle, transform);
+			RplComponent rpl = RplComponent.Cast(vehicle.FindComponent(RplComponent));
+			if (rpl)
+				rpl.ForceNodeMovement(previous);
+			return "Teleported you and your vehicle";
+		}
+		player.GetWorldTransform(transform);
+		transform[3] = point;
+		// The GM character transform path detaches seated characters on their owner,
+		// including remote players, rather than moving the vehicle like TeleportPlayer.
+		SCR_EditableCharacterComponent editable = SCR_EditableCharacterComponent.Cast(player.FindComponent(SCR_EditableCharacterComponent));
+		if (editable)
+		{
+			if (!editable.SetTransform(transform))
+				return "Can't teleport this body";
+		}
+		else if (vehicle)
+		{
+			CompartmentAccessComponent access = CompartmentAccessComponent.Cast(player.FindComponent(CompartmentAccessComponent));
+			if (!access || !access.GetOutVehicle_NoDoor(transform, false, true))
+				return "Can't leave this seat to teleport";
+		}
+		else
+		{
+			BaseGameEntity body = BaseGameEntity.Cast(player);
+			if (!body)
+				return "Can't teleport this body";
+			body.Teleport(transform);
+			Physics physics = player.GetPhysics();
+			if (physics)
+			{
+				physics.SetVelocity(vector.Zero);
+				physics.SetAngularVelocity(vector.Zero);
+			}
+		}
+		return "Teleported to your map cursor";
 	}
 
 	static void Heal(IEntity entity)

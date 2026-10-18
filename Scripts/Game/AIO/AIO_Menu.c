@@ -354,6 +354,18 @@ class AIO_Menu
 		}
 		vector point = vector.Zero;
 		RplId target = RplId.Invalid();
+		if (item.m_eTarget == AIO_ETarget.MAP_POINT)
+		{
+			SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
+			if (!mapEntity || !mapEntity.IsOpen() || !mapEntity.GetMapWidget())
+			{
+				ShowFeedback("Open the map and place your cursor first");
+				return;
+			}
+			float x, z;
+			mapEntity.GetMapCursorWorldPosition(x, z);
+			point = Vector(x, GetGame().GetWorld().GetSurfaceY(x, z), z);
+		}
 		if (item.m_eTarget == AIO_ETarget.POINT)
 		{
 			IEntity hitEntity;

@@ -23,3 +23,4 @@ radius|-aioRadiusTest 1|120
 radius-aca|-aioRadiusTest 1|180|aca
 contact|-aioContactTest 1|220
 contact-aca|-aioContactTest 1|280|aca
+teleport|-aioTeleportTest 1|120
