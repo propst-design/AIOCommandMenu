@@ -594,7 +594,7 @@ class AIO_Explosives
 			job.m_Charge.SetWorldTransform(job.m_aPlaced);
 			job.m_Charge.Update();
 			if (job.m_Target)
-				placeable.PlaceItemWithParentChange(Replication.FindItemId(job.m_Target));
+				placeable.PlaceItemWithParentChange(SCR_EntityHelper.EntityToRplId(job.m_Target)); // RplComponent id, as the game expects
 			else
 				placeable.PlaceItem();
 		}
