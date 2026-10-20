@@ -73,7 +73,7 @@ from the map, a trace from above identifies the object under the cursor.
 | 3 | Vehicles | Get in (Any seat, Driver, Gunner, Passenger); Switch seat; Get out; Disembark passengers; EJECT; Vehicle controls; Unflip that vehicle |
 | 4 | Defense | Take cover; Garrison building; Clear building; 360 defense (radius); Fortify here; Watch that direction; Watch: own choice |
 | 5 | R.O.E. | Fire at will; Return fire only; Hold fire; Engage at will; Disengage |
-| 6 | Stance & speed | Stand; Crouch; Prone; Auto; Copy my stance; Speed (Walk, Run, Sprint, Auto) |
+| 6 | Stance & speed | Stand; Crouch; Prone; Auto; Copy my stance; Speed (Walk, Run, Sprint, Auto); Behaviour (Safe, Aware, Combat, Stealth) |
 | 7 | Supplies | Heal up!; Rearm; Rearm from that; Take that weapon; Treat that soldier; Treat me |
 | 8 | More | Squad bar on/off; Admin (when allowed); Routes |
 | 9 | HALT | Stop the current movement assignment |
@@ -119,6 +119,19 @@ selected men and GM-controlled groups receive a 20-second suppression task.
 Auto removes the forced stance; Copy my stance follows your stance as it changes.
 Speed Auto removes the requested pace. These settings use the game's AI and do
 not guarantee a particular pose or speed during every combat or vehicle action.
+
+**Behaviour** gives recipients one of Arma 3's behaviour modes. The game still
+judges danger itself, so a mode shapes how men travel and wait, not how they fight.
+
+- **Safe**: weapons lowered while nothing is seen, heard or shooting; each man
+  raises his weapon as soon as there is danger.
+- **Aware**: the game's normal behaviour. Clears the mode and its stance and pace.
+- **Combat**: crouched or prone while travelling and waiting, running, weapons up.
+- **Stealth**: crouched or prone, walking, weapons up and return fire only.
+  Leaving Stealth gives the man back the squad's rules of engagement.
+
+A later Stance or Speed order replaces the mode's stance or pace. Modes apply to
+men on foot; there is no Careless mode.
 
 **Bound to position** needs at least two soldiers on foot. Two elements
 alternate moves of up to 20 m toward spread posts at the camera/map destination.
@@ -264,9 +277,10 @@ AiO works with player-led AI squads in compatible scenarios.
 - Voice replies come from supported whole-squad commands routed through the
   game's commanding system. Individual and GM-possession orders use AiO text
   feedback instead.
-- AiO does not itself lower weapons for relaxed marching. Compatible BBB builds
-  can use ordinary Move here and route travel to do that when conditions allow;
-  tactical orders keep their readiness. BBB is optional and its version matters.
+- Outside Behaviour > Safe, AiO does not itself lower weapons for relaxed
+  marching. Compatible BBB builds can use ordinary Move here and route travel to
+  do that when conditions allow; tactical orders and men in Combat or Stealth
+  keep their readiness. BBB is optional and its version matters.
 - Input bindings extend the game's configuration. Rebind conflicting keys if
   needed. Combining AiO with another squad-command menu mod, including Enhanced
   AI Squad Commands, is unsupported.

@@ -251,6 +251,7 @@ class AIO_Tasks
 			return false;
 		Release(body);
 		AIO_MoveBehavior orderedMove = new AIO_MoveBehavior(utility, null, spot, radius: 2.0);
+		travel = travel && AIO_Behaviour.AllowsTravel(body);
 		orderedMove.m_bTravel = travel;
 		AIO_HoldBehavior orderedHold = new AIO_HoldBehavior(utility, null, spot);
 		orderedHold.m_bTravel = travel;
@@ -536,6 +537,13 @@ class AIO_Tasks
 				label += ", ";
 			label += "Copying";
 		}
+		string mode = AIO_Behaviour.Label(agent);
+		if (!mode.IsEmpty())
+		{
+			if (!label.IsEmpty())
+				label += ", ";
+			label += mode;
+		}
 		return label;
 	}
 
@@ -792,6 +800,7 @@ class AIO_Tasks
 	protected static void WatchTick()
 	{
 		KeepStances();
+		AIO_Behaviour.Tick();
 		AIO_Supplies.Tick();
 		AIO_Maneuvers.Tick();
 		AIO_Vehicles.Tick();

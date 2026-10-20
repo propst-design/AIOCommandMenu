@@ -90,7 +90,11 @@ enum AIO_EOrder
 	ROUTE_SKIP,
 	ADMIN_TELEPORT_MAP,
 	ADMIN_TELEPORT_GROUP,
-	ADMIN_TELEPORT_VEHICLE
+	ADMIN_TELEPORT_VEHICLE,
+	BEH_SAFE,
+	BEH_AWARE,
+	BEH_COMBAT,
+	BEH_STEALTH
 }
 
 // What an order needs from the player's side.
@@ -237,6 +241,12 @@ class AIO_MenuTree
 		speed.Order("Run", AIO_EOrder.SPEED_NORMAL);
 		speed.Order("Sprint", AIO_EOrder.SPEED_FAST);
 		speed.Order("Auto", AIO_EOrder.SPEED_AUTO);
+		// Arma 3's behaviour modes (no Careless: Reforger has no such state).
+		AIO_MenuItem behaviour = stance.Page("Behaviour");
+		behaviour.Order("Safe (weapons down while quiet)", AIO_EOrder.BEH_SAFE);
+		behaviour.Order("Aware (normal)", AIO_EOrder.BEH_AWARE);
+		behaviour.Order("Combat (low and ready)", AIO_EOrder.BEH_COMBAT);
+		behaviour.Order("Stealth (low, slow, return fire)", AIO_EOrder.BEH_STEALTH);
 
 		AIO_MenuItem supplies = root.Page("Supplies");
 		supplies.Order("Heal up!", AIO_EOrder.HEAL_UP);

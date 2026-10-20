@@ -155,6 +155,18 @@ class AIO_Server
 				return "No soldiers selected under your command";
 			return AIO_Support.Order(slave, supportMen, pc.GetControlledEntity(), order, point, EntityOf(target), playerId);
 		}
+		if (AIO_Behaviour.IsOrder(order))
+		{
+			array<IEntity> modeMen = {};
+			if (members && !members.IsEmpty())
+				AIO_Tasks.Resolve(slave, members, modeMen);
+			else
+				Members(slave, modeMen);
+			modeMen.RemoveItem(pc.GetControlledEntity());
+			if (modeMen.IsEmpty())
+				return "No soldiers selected under your command";
+			return AIO_Behaviour.Order(modeMen, order);
+		}
 		// Formations belong to the whole squad, also when men are selected.
 		if (AIO_Formations.IsFormationOrder(order))
 			return AIO_Formations.Set(slave, order);
@@ -556,6 +568,8 @@ class AIO_Server
 			return "No soldiers under your command";
 		if (AIO_Support.IsOrder(order))
 			return AIO_Support.Order(slave, bodies, player, order, point, EntityOf(target), playerId);
+		if (AIO_Behaviour.IsOrder(order))
+			return AIO_Behaviour.Order(bodies, order);
 		int count;
 		string moved = MoveMenu(slave, player, order, bodies);
 		if (!moved.IsEmpty())

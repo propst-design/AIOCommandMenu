@@ -14,6 +14,7 @@
 //   -aioRecoveryTest 1 : GM-style rifle squad, unreachable interior posts, cancel, formation recovery.
 //   -aioSupportTest 1 : watch direction, commanded medical treatment, routes, patrols and arrival reports.
 //   -aioRadiusTest 1 : all-round defense radius selection, outward/crouched posts and actual movement.
+//   -aioBehaviourTest 1 : Safe / Combat / Stealth / Aware modes: posture, stance, ROE, travel marking, danger.
 //   -aioContactTest 1 : native firefight, retained orders, danger interruption and arrival-driven bounding.
 //   -aioFormationTest 1 : rifle squad walks legs in Column, Staggered column, Line, Wedge; shapes measured on the move.
 // Prints "[AIO] TEST <name> PASS|FAIL ..." lines and "[AIO] TEST COMPLETE".
@@ -53,6 +54,7 @@ class AIO_Test
 	protected static bool s_bFormationTest;
 	protected static bool s_bSupportTest;
 	protected static bool s_bRadiusTest;
+	protected static bool s_bBehaviourTest;
 	protected static bool s_bContactTest;
 	protected static ref AIO_Route s_Route;
 	protected static ref AIO_Route s_Patrol;
@@ -108,10 +110,13 @@ class AIO_Test
 		string radiusValue;
 		System.GetCLIParam("aioRadiusTest", radiusValue);
 		s_bRadiusTest = radiusValue == "1";
+		string behaviourValue;
+		System.GetCLIParam("aioBehaviourTest", behaviourValue);
+		s_bBehaviourTest = behaviourValue == "1";
 		string contactValue;
 		System.GetCLIParam("aioContactTest", contactValue);
 		s_bContactTest = contactValue == "1";
-		if (!s_bContactTest && !s_bRadiusTest && !s_bSupportTest && !s_bFormationTest && !s_bRecoveryTest && !s_bVehicleTest && !s_bMoveTest && !s_bInfantryTest && !s_bSupplyTest && !s_bAttackTest && !s_bDefenseTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
+		if (!s_bBehaviourTest && !s_bContactTest && !s_bRadiusTest && !s_bSupportTest && !s_bFormationTest && !s_bRecoveryTest && !s_bVehicleTest && !s_bMoveTest && !s_bInfantryTest && !s_bSupplyTest && !s_bAttackTest && !s_bDefenseTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
 			return;
 		if (!Replication.IsServer())
 			return;
@@ -230,6 +235,8 @@ class AIO_Test
 			GetGame().GetCallqueue().CallLater(ContactStart, 12000, false);
 		else if (s_bRadiusTest)
 			GetGame().GetCallqueue().CallLater(RadiusStart, 12000, false);
+		else if (s_bBehaviourTest)
+			GetGame().GetCallqueue().CallLater(BehStart, 12000, false);
 		else if (s_bSupportTest)
 			GetGame().GetCallqueue().CallLater(SupportStart, 12000, false);
 		else if (s_bRecoveryTest)
@@ -312,6 +319,140 @@ class AIO_Test
 		AIO_Server.ExecuteMen(s_Group, AIO_EOrder.DEF_360_10, one, vector.Zero, Leader(), RplId.Invalid(), 0);
 		AIO_HoldBehavior selected = AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(men[0])));
 		Check("radius-selected-only", selected && Math.AbsFloat(vector.DistanceXZ(selected.m_vSpot, Leader().GetOrigin()) - 10) < 0.1 && untouched == AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(men[1]))), "changing one man's radius leaves the others' orders intact");
+		Finish();
+	}
+
+	// ---------------------------------------------------------------- behaviour modes
+
+	protected static ref array<RplId> s_aBehIds = {};
+
+	protected static bool Raised(IEntity body)
+	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(body);
+		return character && character.GetCharacterController() && character.GetCharacterController().IsWeaponRaised();
+	}
+
+	protected static bool Low(IEntity body)
+	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(body);
+		return character && character.GetCharacterController() && character.GetCharacterController().GetStance() != ECharacterStance.STAND;
+	}
+
+	protected static void BehStart()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		if (men.Count() < 3 || !Leader())
+		{
+			Check("behaviour-setup", false, "need a leader and three soldiers");
+			Finish();
+			return;
+		}
+		AIO_Tasks.AgentOf(Leader()).DeactivateAI();
+		s_aBehIds.Clear();
+		foreach (IEntity man : men)
+			s_aBehIds.Insert(Replication.FindItemId(man));
+		string reply = AIO_Server.ExecuteMen(s_Group, AIO_EOrder.BEH_SAFE, s_aBehIds, vector.Zero, Leader(), RplId.Invalid(), 0);
+		bool labelled = true;
+		foreach (IEntity soldier : men)
+		{
+			if (!AIO_Tasks.TaskLabel(soldier).Contains("Safe"))
+				labelled = false;
+		}
+		Check("behaviour-safe-order", reply.Contains("safe") && labelled, reply);
+		GetGame().GetCallqueue().CallLater(BehSafe, 6000, false);
+	}
+
+	protected static void BehSafe()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		// ACA's battle can be heard on its test range: only men the game considers quiet must lower.
+		int quiet, lowered;
+		foreach (IEntity man : men)
+		{
+			if (!AIO_Behaviour.Quiet(AIO_Tasks.AgentOf(man)))
+				continue;
+			quiet++;
+			if (!Raised(man))
+				lowered++;
+		}
+		Check("behaviour-safe-lowered", quiet > 0 && lowered == quiet, string.Format("%1 of %2 quiet men lowered (%3 men alerted by something)", lowered, quiet, men.Count() - quiet));
+		vector point = FindSpot(s_vStart, 25);
+		AIO_Server.ExecuteMen(s_Group, AIO_EOrder.MOVE_HERE, s_aBehIds, point, Leader(), RplId.Invalid(), 0);
+		AIO_MoveBehavior move = AIO_Tasks.ActiveMove(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(men[0])));
+		Check("behaviour-safe-travel", move && move.m_bTravel, "Move here in Safe counts as ordinary travel");
+
+		array<RplId> first = {s_aBehIds[0]};
+		array<RplId> second = {s_aBehIds[1]};
+		string combat = AIO_Server.ExecuteMen(s_Group, AIO_EOrder.BEH_COMBAT, first, vector.Zero, Leader(), RplId.Invalid(), 0);
+		string stealth = AIO_Server.ExecuteMen(s_Group, AIO_EOrder.BEH_STEALTH, second, vector.Zero, Leader(), RplId.Invalid(), 0);
+		Check("behaviour-orders", combat.Contains("combat") && stealth.Contains("stealth"), combat + " / " + stealth);
+		AIO_Server.ExecuteMen(s_Group, AIO_EOrder.MOVE_HERE, first, point, Leader(), RplId.Invalid(), 0);
+		move = AIO_Tasks.ActiveMove(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(men[0])));
+		Check("behaviour-combat-ready-move", move && !move.m_bTravel, "Move here in Combat stays a tactical move");
+		GetGame().GetCallqueue().CallLater(BehModes, 8000, false);
+	}
+
+	protected static void BehModes()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		Check("behaviour-combat", Raised(men[0]) && Low(men[0]) && AIO_Behaviour.ModeOf(AIO_Tasks.AgentOf(men[0])) == AIO_EBehaviour.COMBAT,
+			string.Format("raised %1, low %2", Raised(men[0]), Low(men[0])));
+		Check("behaviour-stealth", Raised(men[1]) && Low(men[1]) && AIO_Maneuvers.ROEOf(men[1]) == EAIGroupCombatMode.RETURN_FIRE,
+			string.Format("raised %1, low %2, roe %3", Raised(men[1]), Low(men[1]), AIO_Maneuvers.ROEOf(men[1])));
+		Check("behaviour-others-untouched", !Raised(men[2]) && AIO_Behaviour.ModeOf(AIO_Tasks.AgentOf(men[2])) == AIO_EBehaviour.SAFE, "the third man stays in Safe");
+
+		string aware = AIO_Server.ExecuteMen(s_Group, AIO_EOrder.BEH_AWARE, s_aBehIds, vector.Zero, Leader(), RplId.Invalid(), 0);
+		bool cleared = true;
+		foreach (IEntity man : men)
+		{
+			if (AIO_Behaviour.ModeOf(AIO_Tasks.AgentOf(man)) != AIO_EBehaviour.AWARE || AIO_Tasks.TaskLabel(man).Contains("Safe"))
+				cleared = false;
+		}
+		Check("behaviour-aware", cleared && AIO_Maneuvers.ROEOf(men[1]) == -1, aware + string.Format(", stealth man's roe %1", AIO_Maneuvers.ROEOf(men[1])));
+
+		// Safe again, then an enemy appears: the men must raise their weapons by themselves.
+		AIO_Server.ExecuteMen(s_Group, AIO_EOrder.BEH_SAFE, s_aBehIds, vector.Zero, Leader(), RplId.Invalid(), 0);
+		AIO_Server.ExecuteMen(s_Group, AIO_EOrder.HOLD_FIRE, s_aBehIds, vector.Zero, Leader(), RplId.Invalid(), 0);
+		EntitySpawnParams enemyParams = new EntitySpawnParams();
+		enemyParams.TransformMode = ETransformMode.WORLD;
+		enemyParams.Transform[3] = FindSpot(men[0].GetOrigin(), 70);
+		s_Enemy = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(Resource.Load(ENEMY), GetGame().GetWorld(), enemyParams));
+		GetGame().GetCallqueue().CallLater(BehDanger, 20000, false);
+	}
+
+	protected static void BehDanger()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		// Perception is the game's: a man who hasn't noticed the enemy yet rightly stays relaxed.
+		// Every man aware of danger must have raised his weapon, and someone must have noticed.
+		int alert, alertRaised, quietLowered;
+		foreach (IEntity man : men)
+		{
+			if (AIO_Behaviour.Quiet(AIO_Tasks.AgentOf(man)))
+			{
+				if (!Raised(man))
+					quietLowered++;
+				continue;
+			}
+			alert++;
+			if (Raised(man))
+			{
+				alertRaised++;
+				continue;
+			}
+			CharacterControllerComponent c = ChimeraCharacter.Cast(man).GetCharacterController();
+			SCR_AIUtilityComponent u = AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(man));
+			string doing = "none";
+			if (u && u.GetCurrentBehavior())
+				doing = u.GetCurrentBehavior().ClassName();
+			Print(string.Format("[AIO] TEST behaviour-danger lowered man: gadget %1 changing %2 reloading %3 disabled %4 uncon %5 behaviour %6 stance %7",
+				c.IsGadgetInHands(), c.IsChangingItem(), c.IsReloading(), c.GetDisableWeaponControls(), c.IsUnconscious(), doing, c.GetStance()));
+		}
+		Check("behaviour-safe-danger", alert > 0 && alertRaised == alert, string.Format("%1 of %2 alerted by an enemy 70 m away, %3 of them raised; %4 unaware and lowered", alert, men.Count(), alertRaised, quietLowered));
 		Finish();
 	}
 

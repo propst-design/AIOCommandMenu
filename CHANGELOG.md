@@ -2,6 +2,10 @@
 
 ## 0.3.2 — unreleased
 
+- Added Arma 3's behaviour modes under Stance & speed > Behaviour, for the whole squad or selected men:
+  Safe (weapons down while quiet, raised as soon as there is danger), Aware (normal), Combat (low, running,
+  weapons up) and Stealth (low, walking, weapons up, return fire only). The squad bar shows each man's mode.
+
 ## 0.3.1 — released
 
 - Updated Workshop guidance for route recovery, persistent status and squad/vehicle teleport options.
