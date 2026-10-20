@@ -153,7 +153,8 @@ function Invoke-Request($file) {
     if (Other-ServerRunning) { Write-Result $id @('status=refused', 'reason=another Reforger server kept running'); return }
 
     New-Item -ItemType Directory -Force $ServerProfile | Out-Null
-    $serverArgs = '-server "' + $config.World + '" -addonsDir "' + $AddonsDir + '" -addons ' + $config.Addons + ' -profile "' + $ServerProfile + '" -maxFPS 60 -noBackend ' + $config.Flags
+    # -aioCheats all: hidden dev servers have no host, so everyone gets the Admin page.
+    $serverArgs = '-server "' + $config.World + '" -addonsDir "' + $AddonsDir + '" -addons ' + $config.Addons + ' -profile "' + $ServerProfile + '" -maxFPS 60 -noBackend -aioCheats all ' + $config.Flags
     Write-Host "[$time] Running '$preset' on a hidden test server..." -ForegroundColor Cyan
     $started = Get-Date
     $proc = Start-Process -FilePath $server -ArgumentList $serverArgs -WorkingDirectory (Split-Path $server -Parent) -WindowStyle Hidden -PassThru
