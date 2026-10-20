@@ -5,6 +5,13 @@
 - Added Arma 3's behaviour modes under Stance & speed > Behaviour, for the whole squad or selected men:
   Safe (weapons down while quiet, raised as soon as there is danger), Aware (normal), Combat (low, running,
   weapons up) and Stealth (low, walking, weapons up, return fire only). The squad bar shows each man's mode.
+- Added Supplies > Explosives & mines. A soldier carrying a demolition charge places it on the vehicle, wall or
+  spot you aim at, with a 30-second timer or wired to his detonator for a new DETONATE command, then moves clear.
+  Soldiers can also lay a mine they carry, or disarm armed mines around a point.
+- Added Vehicles > Repair that vehicle for a soldier carrying a repair kit, with the kit's normal repair limits.
+- Added More > Fire mission: a squad soldier fires 3 or 6 HE, 3 smoke or 1 illumination round from a nearby mortar
+  at the aimed or map point, with Cease fire.
+- Added Supplies > Give me ammo and Give me bandages: the nearest soldier with spares brings them to you.
 
 ## 0.3.1 — released
 

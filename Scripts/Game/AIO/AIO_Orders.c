@@ -94,7 +94,20 @@ enum AIO_EOrder
 	BEH_SAFE,
 	BEH_AWARE,
 	BEH_COMBAT,
-	BEH_STEALTH
+	BEH_STEALTH,
+	EXP_PLACE_TIMED,
+	EXP_PLACE_REMOTE,
+	EXP_DETONATE,
+	EXP_LAY_MINE,
+	EXP_DISARM_MINES,
+	VEH_REPAIR,
+	FIRE_HE_3,
+	FIRE_HE_6,
+	FIRE_SMOKE,
+	FIRE_ILLUM,
+	FIRE_CEASE,
+	GIVE_AMMO,
+	GIVE_BANDAGES
 }
 
 // What an order needs from the player's side.
@@ -207,6 +220,7 @@ class AIO_MenuTree
 		controls.Order("Lights off", AIO_EOrder.VEH_LIGHTS_OFF);
 		controls.Order("Lights: driver decides", AIO_EOrder.VEH_LIGHTS_AUTO);
 		vehicles.Order("Unflip that vehicle", AIO_EOrder.VEH_UNFLIP, AIO_ETarget.POINT);
+		vehicles.Order("Repair that vehicle (repair kit)", AIO_EOrder.VEH_REPAIR, AIO_ETarget.POINT);
 
 		AIO_MenuItem defense = root.Page("Defense");
 		defense.Order("Take cover", AIO_EOrder.TAKE_COVER);
@@ -255,6 +269,15 @@ class AIO_MenuTree
 		supplies.Order("Take that weapon", AIO_EOrder.TAKE_WEAPON, AIO_ETarget.POINT);
 		supplies.Order("Treat that soldier", AIO_EOrder.TREAT_TARGET, AIO_ETarget.POINT);
 		supplies.Order("Treat me", AIO_EOrder.TREAT_ME);
+		supplies.Order("Give me ammo", AIO_EOrder.GIVE_AMMO);
+		supplies.Order("Give me bandages", AIO_EOrder.GIVE_BANDAGES);
+		// Men carrying demolition charges (and a detonator for remote charges) or mines.
+		AIO_MenuItem explosives = supplies.Page("Explosives & mines");
+		explosives.Order("Charge on that, 30 s timer", AIO_EOrder.EXP_PLACE_TIMED, AIO_ETarget.POINT);
+		explosives.Order("Charge on that, detonate on my order", AIO_EOrder.EXP_PLACE_REMOTE, AIO_ETarget.POINT);
+		explosives.Order("DETONATE", AIO_EOrder.EXP_DETONATE);
+		explosives.Order("Lay a mine there", AIO_EOrder.EXP_LAY_MINE, AIO_ETarget.POINT);
+		explosives.Order("Disarm mines there", AIO_EOrder.EXP_DISARM_MINES, AIO_ETarget.POINT);
 
 		AIO_MenuItem more = root.Page("More");
 		more.Order("Squad bar on/off", AIO_EOrder.TOGGLE_SQUAD_BAR);
@@ -268,6 +291,13 @@ class AIO_MenuTree
 		admin.Order("Teleport to my map cursor", AIO_EOrder.ADMIN_TELEPORT_MAP, AIO_ETarget.MAP_POINT);
 		admin.Order("Teleport squad (where I look)", AIO_EOrder.ADMIN_TELEPORT_GROUP, AIO_ETarget.POINT);
 		admin.Order("Teleport with vehicle", AIO_EOrder.ADMIN_TELEPORT_VEHICLE, AIO_ETarget.POINT);
+		// Squad mortar; the point is the map cursor when the map is open.
+		AIO_MenuItem fire = more.Page("Fire mission (mortar)");
+		fire.Order("3 HE rounds there", AIO_EOrder.FIRE_HE_3, AIO_ETarget.POINT);
+		fire.Order("6 HE rounds there", AIO_EOrder.FIRE_HE_6, AIO_ETarget.POINT);
+		fire.Order("3 smoke rounds there", AIO_EOrder.FIRE_SMOKE, AIO_ETarget.POINT);
+		fire.Order("Illumination round there", AIO_EOrder.FIRE_ILLUM, AIO_ETarget.POINT);
+		fire.Order("Cease fire", AIO_EOrder.FIRE_CEASE);
 		AIO_MenuItem routes = more.Page("Routes (select men, then add points)");
 		routes.Order("Add waypoint here", AIO_EOrder.ROUTE_ADD, AIO_ETarget.POINT);
 		routes.Order("Start route (hold at end)", AIO_EOrder.ROUTE_START);

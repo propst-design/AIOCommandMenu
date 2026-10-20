@@ -155,6 +155,25 @@ class AIO_Server
 				return "No soldiers selected under your command";
 			return AIO_Support.Order(slave, supportMen, pc.GetControlledEntity(), order, point, EntityOf(target), playerId);
 		}
+		if (AIO_Explosives.IsOrder(order))
+		{
+			array<IEntity> demoMen = {};
+			if (members && !members.IsEmpty())
+				AIO_Tasks.Resolve(slave, members, demoMen);
+			else
+				Members(slave, demoMen);
+			demoMen.RemoveItem(pc.GetControlledEntity());
+			return AIO_Explosives.Order(demoMen, pc.GetControlledEntity(), order, point, EntityOf(target), playerId);
+		}
+		if (AIO_Repair.IsOrder(order) || AIO_FireSupport.IsOrder(order) || AIO_Logistics.IsOrder(order))
+		{
+			array<IEntity> helpers = {};
+			if (members && !members.IsEmpty())
+				AIO_Tasks.Resolve(slave, members, helpers);
+			else
+				Members(slave, helpers);
+			return Specialist(helpers, pc.GetControlledEntity(), order, point, target, playerId);
+		}
 		if (AIO_Behaviour.IsOrder(order))
 		{
 			array<IEntity> modeMen = {};
@@ -546,6 +565,19 @@ class AIO_Server
 		return string.Format("%1 men %2", bodies.Count(), what);
 	}
 
+	// Repair, fire missions, Give me ... (AIO_Repair.c, AIO_FireSupport.c, AIO_Logistics.c).
+	static string Specialist(array<IEntity> bodies, IEntity player, int order, vector point, RplId target, int playerId)
+	{
+		bodies.RemoveItem(player);
+		if (AIO_FireSupport.IsOrder(order))
+			return AIO_FireSupport.Order(bodies, player, order, point, playerId);
+		if (bodies.IsEmpty())
+			return "No soldiers under your command";
+		if (AIO_Repair.IsOrder(order))
+			return AIO_Repair.Order(bodies, EntityOf(target), player, point, playerId);
+		return AIO_Logistics.Order(bodies, player, order, playerId);
+	}
+
 	// Orders to the selected men only (AIO_Tasks.c).
 	static string ExecuteMen(SCR_AIGroup slave, int order, array<RplId> ids, vector point, IEntity player, RplId target, int playerId)
 	{
@@ -570,6 +602,10 @@ class AIO_Server
 			return AIO_Support.Order(slave, bodies, player, order, point, EntityOf(target), playerId);
 		if (AIO_Behaviour.IsOrder(order))
 			return AIO_Behaviour.Order(bodies, order);
+		if (AIO_Explosives.IsOrder(order))
+			return AIO_Explosives.Order(bodies, player, order, point, EntityOf(target), playerId);
+		if (AIO_Repair.IsOrder(order) || AIO_FireSupport.IsOrder(order) || AIO_Logistics.IsOrder(order))
+			return Specialist(bodies, player, order, point, target, playerId);
 		int count;
 		string moved = MoveMenu(slave, player, order, bodies);
 		if (!moved.IsEmpty())

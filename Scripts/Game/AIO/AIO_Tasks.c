@@ -182,6 +182,9 @@ class AIO_Tasks
 			return;
 		utility.AIO_SetOrderHold(null);
 		AIO_Supplies.Cancel(agent); // any new order ends an errand
+		AIO_Explosives.Cancel(agent);
+		AIO_Repair.Cancel(agent);
+		AIO_Logistics.Cancel(agent);
 		AIO_Support.Cancel(body);
 		AIO_Maneuvers.Leave(agent); // ...and takes him out of a bound / peel
 		array<ref AIActionBase> holds = {};
@@ -513,6 +516,12 @@ class AIO_Tasks
 			label += ", Watching";
 		if (AIO_Supplies.IsFetching(agent))
 			label = "Rearming";
+		string demolition = AIO_Explosives.Label(agent);
+		if (!demolition.IsEmpty())
+			label = demolition;
+		string specialist = AIO_Repair.Label(agent) + AIO_FireSupport.Label(agent) + AIO_Logistics.Label(agent);
+		if (!specialist.IsEmpty())
+			label = specialist;
 		if (AIO_Maneuvers.IsBounding(agent))
 			label = AIO_Bounding.Label(agent);
 		if (AIO_Vehicles.IsPushing(body))
@@ -801,6 +810,10 @@ class AIO_Tasks
 	{
 		KeepStances();
 		AIO_Behaviour.Tick();
+		AIO_Explosives.Tick();
+		AIO_Repair.Tick();
+		AIO_FireSupport.Tick();
+		AIO_Logistics.Tick();
 		AIO_Supplies.Tick();
 		AIO_Maneuvers.Tick();
 		AIO_Vehicles.Tick();

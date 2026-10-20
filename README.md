@@ -70,12 +70,12 @@ from the map, a trace from above identifies the object under the cursor.
 | --- | --- | --- |
 | 1 | Move | Move here; Follow me / Return to formation; Advance; Stay back; Flank left; Flank right; Fall back; Hold here; Formation |
 | 2 | Attack | Advance; Flank left; Flank right; Assault; Suppress; Fire on my lead; Bound to position; Peel back; Resume bound / peel |
-| 3 | Vehicles | Get in (Any seat, Driver, Gunner, Passenger); Switch seat; Get out; Disembark passengers; EJECT; Vehicle controls; Unflip that vehicle |
+| 3 | Vehicles | Get in (Any seat, Driver, Gunner, Passenger); Switch seat; Get out; Disembark passengers; EJECT; Vehicle controls; Unflip that vehicle; Repair that vehicle |
 | 4 | Defense | Take cover; Garrison building; Clear building; 360 defense (radius); Fortify here; Watch that direction; Watch: own choice |
 | 5 | R.O.E. | Fire at will; Return fire only; Hold fire; Engage at will; Disengage |
 | 6 | Stance & speed | Stand; Crouch; Prone; Auto; Copy my stance; Speed (Walk, Run, Sprint, Auto); Behaviour (Safe, Aware, Combat, Stealth) |
-| 7 | Supplies | Heal up!; Rearm; Rearm from that; Take that weapon; Treat that soldier; Treat me |
-| 8 | More | Squad bar on/off; Admin (when allowed); Routes |
+| 7 | Supplies | Heal up!; Rearm; Rearm from that; Take that weapon; Treat that soldier; Treat me; Give me ammo; Give me bandages; Explosives & mines |
+| 8 | More | Squad bar on/off; Admin (when allowed); Fire mission (mortar); Routes |
 | 9 | HALT | Stop the current movement assignment |
 | 0 | Select members | Select individuals or colour teams |
 
@@ -190,6 +190,12 @@ sets headlights; **Lights: driver decides** restores the AI driver's choice.
 **Unflip** sends up to four available men on foot to right the target vehicle.
 Driving and boarding use the game's AI and remain subject to its pathfinding.
 
+**Repair that vehicle** sends the nearest man on foot who carries a repair kit
+(wrench). He crouches beside the vehicle and repairs it in steps using the kit's
+own repair rate and limit, so a field repair may stop short of full health, as it
+does for players. Destroyed vehicles can't be repaired. He stops if the vehicle
+drives off, and returns to his previous orders when done.
+
 **Heal up!** tells wounded recipients to use their own medical supplies.
 **Rearm** searches within 50 m of each man for useful bodies, loose gear,
 vehicle/crate storage or arsenals. **Rearm from that** uses the aimed-at source.
@@ -206,6 +212,40 @@ patient**. Treatment uses normal items and animations and may fail or stop;
 it is not instant healing. On completion or failure, the helper returns to a
 previous static post or rejoins formation. Follow or new movement for the helper
 cancels the assignment.
+
+**Give me ammo / Give me bandages** sends the nearest recipient with something
+to spare. He walks to you and hands over up to three magazines of each type your
+weapons use, or up to two bandages. He always keeps one of each for himself.
+
+### Explosives and mines (Supplies > Explosives & mines)
+
+Only men who carry the right equipment can do these. The nearest suitable
+recipient goes.
+
+- **Charge on that, 30 s timer**: he walks to what you aim at and places a
+  demolition charge. On a vehicle the charge sticks to it and moves with it;
+  otherwise it goes on the wall or ground at the point. He arms the timer, runs
+  35 m away and returns to his orders after the blast.
+- **Charge on that, detonate on my order**: the same, but he needs a detonator
+  too. He wires the charge to it and moves 35 m away. **DETONATE** fires all such
+  charges whose placer is alive, still has his detonator and is within its range.
+- **Lay a mine there**: he places a mine he carries on the ground and arms it.
+- **Disarm mines there**: the nearest man works on each armed mine within 10 m
+  of the point, a few seconds per mine, and switches it off. Disarmed mines stay
+  where they are, harmless.
+
+Charges damage what the game's explosives can damage; not every building can be
+destroyed.
+
+### Fire mission (More > Fire mission)
+
+A squad soldier fires a squad mortar at the point you aim at, or at the map
+cursor when the map is open: 3 or 6 HE, 3 smoke or 1 illumination round.
+He uses a recipient already manning a mortar, else the recipient nearest to a
+free mortar within 100 m of you. He fetches shells from a nearby mortar ammo box
+or arsenal, using the game's own mortar handling, and reports when the rounds are
+complete. **Cease fire** stops the mission. It fails with a report if there are no
+shells nearby or the target is out of range.
 
 ## Routes, patrols and feedback
 

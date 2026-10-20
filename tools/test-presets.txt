@@ -26,3 +26,6 @@ contact-aca|-aioContactTest 1|280|aca
 teleport|-aioTeleportTest 1|120
 behaviour|-aioBehaviourTest 1|130
 behaviour-aca|-aioBehaviourTest 1|190|aca
+explosives|-aioExplosivesTest 1|200
+specialists|-aioSpecialistsTest 1|200
+firemission|-aioFireMissionTest 1|200

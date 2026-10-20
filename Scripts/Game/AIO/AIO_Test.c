@@ -14,6 +14,9 @@
 //   -aioRecoveryTest 1 : GM-style rifle squad, unreachable interior posts, cancel, formation recovery.
 //   -aioSupportTest 1 : watch direction, commanded medical treatment, routes, patrols and arrival reports.
 //   -aioRadiusTest 1 : all-round defense radius selection, outward/crouched posts and actual movement.
+//   -aioSpecialistsTest 1 : Give me ammo, lay and disarm a mine, repair a damaged vehicle.
+//   -aioFireMissionTest 1 : a squad soldier mans a mortar and fires 3 HE rounds.
+//   -aioExplosivesTest 1 : remote charge on a vehicle + Detonate, timed charge on the ground.
 //   -aioBehaviourTest 1 : Safe / Combat / Stealth / Aware modes: posture, stance, ROE, travel marking, danger.
 //   -aioContactTest 1 : native firefight, retained orders, danger interruption and arrival-driven bounding.
 //   -aioFormationTest 1 : rifle squad walks legs in Column, Staggered column, Line, Wedge; shapes measured on the move.
@@ -55,6 +58,9 @@ class AIO_Test
 	protected static bool s_bSupportTest;
 	protected static bool s_bRadiusTest;
 	protected static bool s_bBehaviourTest;
+	protected static bool s_bExplosivesTest;
+	protected static bool s_bSpecialistsTest;
+	protected static bool s_bFireMissionTest;
 	protected static bool s_bContactTest;
 	protected static ref AIO_Route s_Route;
 	protected static ref AIO_Route s_Patrol;
@@ -113,10 +119,19 @@ class AIO_Test
 		string behaviourValue;
 		System.GetCLIParam("aioBehaviourTest", behaviourValue);
 		s_bBehaviourTest = behaviourValue == "1";
+		string explosivesValue;
+		System.GetCLIParam("aioExplosivesTest", explosivesValue);
+		s_bExplosivesTest = explosivesValue == "1";
+		string specialistsValue;
+		System.GetCLIParam("aioSpecialistsTest", specialistsValue);
+		s_bSpecialistsTest = specialistsValue == "1";
+		string fireValue;
+		System.GetCLIParam("aioFireMissionTest", fireValue);
+		s_bFireMissionTest = fireValue == "1";
 		string contactValue;
 		System.GetCLIParam("aioContactTest", contactValue);
 		s_bContactTest = contactValue == "1";
-		if (!s_bBehaviourTest && !s_bContactTest && !s_bRadiusTest && !s_bSupportTest && !s_bFormationTest && !s_bRecoveryTest && !s_bVehicleTest && !s_bMoveTest && !s_bInfantryTest && !s_bSupplyTest && !s_bAttackTest && !s_bDefenseTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
+		if (!s_bSpecialistsTest && !s_bFireMissionTest && !s_bExplosivesTest && !s_bBehaviourTest && !s_bContactTest && !s_bRadiusTest && !s_bSupportTest && !s_bFormationTest && !s_bRecoveryTest && !s_bVehicleTest && !s_bMoveTest && !s_bInfantryTest && !s_bSupplyTest && !s_bAttackTest && !s_bDefenseTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
 			return;
 		if (!Replication.IsServer())
 			return;
@@ -235,6 +250,12 @@ class AIO_Test
 			GetGame().GetCallqueue().CallLater(ContactStart, 12000, false);
 		else if (s_bRadiusTest)
 			GetGame().GetCallqueue().CallLater(RadiusStart, 12000, false);
+		else if (s_bSpecialistsTest)
+			GetGame().GetCallqueue().CallLater(SpecStart, 12000, false);
+		else if (s_bFireMissionTest)
+			GetGame().GetCallqueue().CallLater(FireStart, 12000, false);
+		else if (s_bExplosivesTest)
+			GetGame().GetCallqueue().CallLater(ExpStart, 12000, false);
 		else if (s_bBehaviourTest)
 			GetGame().GetCallqueue().CallLater(BehStart, 12000, false);
 		else if (s_bSupportTest)
@@ -453,6 +474,312 @@ class AIO_Test
 				c.IsGadgetInHands(), c.IsChangingItem(), c.IsReloading(), c.GetDisableWeaponControls(), c.IsUnconscious(), doing, c.GetStance()));
 		}
 		Check("behaviour-safe-danger", alert > 0 && alertRaised == alert, string.Format("%1 of %2 alerted by an enemy 70 m away, %3 of them raised; %4 unaware and lowered", alert, men.Count(), alertRaised, quietLowered));
+		Finish();
+	}
+
+	// ---------------------------------------------------------------- explosives
+
+	static const ResourceName DEMO_CHARGE = "{33CBDE73AB48172A}Prefabs/Weapons/Explosives/DemoBlock_M112/DemoBlock_M112.et";
+	static const ResourceName DETONATOR = "{CE0AF733722B3978}Prefabs/Items/Equipment/Detonators/BlastingMachine_M34/BlastingMachine_M34.et";
+	protected static IEntity s_ExpVehicle;
+	protected static IEntity s_ExpCharge;
+	protected static int s_iExpPolls;
+
+	protected static bool GiveItem(IEntity body, ResourceName prefab)
+	{
+		EntitySpawnParams params = new EntitySpawnParams();
+		params.TransformMode = ETransformMode.WORLD;
+		params.Transform[3] = body.GetOrigin() + "0 1 0";
+		IEntity item = GetGame().SpawnEntityPrefab(Resource.Load(prefab), GetGame().GetWorld(), params);
+		SCR_InventoryStorageManagerComponent inventory = AIO_Supplies.InventoryOf(body);
+		return item && inventory && inventory.TryInsertItem(item);
+	}
+
+	protected static float Health(IEntity entity)
+	{
+		if (!entity)
+			return 0;
+		SCR_DamageManagerComponent damage = SCR_DamageManagerComponent.Cast(entity.FindComponent(SCR_DamageManagerComponent));
+		if (!damage)
+			return -1;
+		return damage.GetHealthScaled();
+	}
+
+	protected static void ExpStart()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		if (men.Count() < 3 || !Leader())
+		{
+			Check("explosives-setup", false, "need a leader and three soldiers");
+			Finish();
+			return;
+		}
+		AIO_Tasks.AgentOf(Leader()).DeactivateAI();
+		bool given = GiveItem(men[0], DEMO_CHARGE) && GiveItem(men[0], DETONATOR) && GiveItem(men[1], DEMO_CHARGE);
+		EntitySpawnParams params = new EntitySpawnParams();
+		params.TransformMode = ETransformMode.WORLD;
+		params.Transform[3] = FindSpot(s_vStart, 25);
+		s_ExpVehicle = GetGame().SpawnEntityPrefab(Resource.Load(HUMVEE), GetGame().GetWorld(), params);
+		Check("explosives-setup", given && s_ExpVehicle, string.Format("items given %1, vehicle %2", given, s_ExpVehicle));
+		// Nobody with a detonator but men[0]: a remote order without him must refuse.
+		array<RplId> second = {Replication.FindItemId(men[1])};
+		string refused = AIO_Server.ExecuteMen(s_Group, AIO_EOrder.EXP_PLACE_REMOTE, second, s_vStart + "5 0 5", Leader(), RplId.Invalid(), 0);
+		Check("explosives-needs-detonator", refused.Contains("detonator"), refused);
+		GetGame().GetCallqueue().CallLater(ExpRemote, 4000, false);
+	}
+
+	protected static void ExpRemote()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		s_ExpCharge = AIO_Explosives.FindCharge(men[0]);
+		vector point = s_ExpVehicle.GetOrigin() + "0 1.2 0";
+		string reply = AIO_Server.ExecuteBodies(s_Group, AIO_EOrder.EXP_PLACE_REMOTE, men, point, Leader(), SCR_EntityHelper.EntityToRplId(s_ExpVehicle), 0);
+		Check("explosives-remote-order", reply.Contains(AIO_Server.NameOf(men[0])) && reply.Contains("vehicle"), reply);
+		s_iExpPolls = 0;
+		GetGame().GetCallqueue().CallLater(ExpRemoteWait, 3000, false);
+	}
+
+	protected static void ExpRemoteWait()
+	{
+		s_iExpPolls++;
+		SCR_ExplosiveChargeComponent charge = null;
+		if (s_ExpCharge)
+			charge = SCR_ExplosiveChargeComponent.Cast(s_ExpCharge.FindComponent(SCR_ExplosiveChargeComponent));
+		if ((!charge || charge.GetUsedFuzeType() != SCR_EFuzeType.REMOTE) && s_iExpPolls < 20)
+		{
+			GetGame().GetCallqueue().CallLater(ExpRemoteWait, 3000, false);
+			return;
+		}
+		bool attached = s_ExpCharge && s_ExpCharge.GetRootParent() == s_ExpVehicle;
+		Check("explosives-remote-placed", charge && charge.GetUsedFuzeType() == SCR_EFuzeType.REMOTE && attached,
+			string.Format("fuze %1, stuck to the vehicle %2, %3 m from its centre", charge && charge.GetUsedFuzeType(), attached, vector.Distance(AIO_Explosives.WorldPos(s_ExpCharge), s_ExpVehicle.GetOrigin())));
+		GetGame().GetCallqueue().CallLater(ExpDetonate, 12000, false);
+	}
+
+	protected static void ExpDetonate()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		float clear = vector.Distance(men[0].GetOrigin(), s_ExpVehicle.GetOrigin());
+		Check("explosives-remote-clear", clear > 20, string.Format("placer %1 m from the vehicle before detonation", clear));
+		float before = Health(s_ExpVehicle);
+		string reply = AIO_Explosives.Detonate(0); // the test has no player controller to route through
+		Print("[AIO] TEST explosives: detonate reply " + reply);
+		GetGame().GetCallqueue().CallLater(ExpBlast, 3000, false, before);
+	}
+
+	protected static void ExpBlast(float before)
+	{
+		float after = Health(s_ExpVehicle);
+		bool gone = !s_ExpCharge || s_ExpCharge.IsDeleted();
+		Check("explosives-detonated", gone && after < before, string.Format("charge gone %1, vehicle health %2 -> %3", gone, before, after));
+		array<IEntity> men = {};
+		NonLeaders(men);
+		s_ExpCharge = AIO_Explosives.FindCharge(men[1]);
+		array<RplId> second = {Replication.FindItemId(men[1])};
+		vector point = FindSpot(s_vStart, 12);
+		string reply = AIO_Server.ExecuteMen(s_Group, AIO_EOrder.EXP_PLACE_TIMED, second, point, Leader(), RplId.Invalid(), 0);
+		Check("explosives-timed-order", reply.Contains("timer"), reply);
+		s_iExpPolls = 0;
+		GetGame().GetCallqueue().CallLater(ExpTimedWait, 3000, false);
+	}
+
+	protected static void ExpTimedWait()
+	{
+		s_iExpPolls++;
+		SCR_ExplosiveChargeComponent charge = null;
+		if (s_ExpCharge)
+			charge = SCR_ExplosiveChargeComponent.Cast(s_ExpCharge.FindComponent(SCR_ExplosiveChargeComponent));
+		if ((!charge || charge.GetUsedFuzeType() != SCR_EFuzeType.TIMED) && s_iExpPolls < 20)
+		{
+			GetGame().GetCallqueue().CallLater(ExpTimedWait, 3000, false);
+			return;
+		}
+		Check("explosives-timed-armed", charge && charge.GetUsedFuzeType() == SCR_EFuzeType.TIMED, string.Format("fuze %1", charge && charge.GetUsedFuzeType()));
+		GetGame().GetCallqueue().CallLater(ExpTimedBlast, (AIO_Explosives.FUZE_SECONDS + 4) * 1000, false);
+	}
+
+	protected static void ExpTimedBlast()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		bool gone = !s_ExpCharge || s_ExpCharge.IsDeleted();
+		Check("explosives-timed-blast", gone && AIO_Server.IsAlive(men[1]), string.Format("charge gone %1, placer alive %2", gone, AIO_Server.IsAlive(men[1])));
+		Finish();
+	}
+
+	// ---------------------------------------------------------------- give / mines / repair
+
+	static const ResourceName MINE_AT = "{49FFE8F373F55960}Prefabs/Weapons/Explosives/Mine_M15AT/Mine_M15AT.et";
+	static const ResourceName WRENCH = "{33B2DFDCD0EBA3DB}Prefabs/Items/Equipment/Kits/RepairKit_01/RepairKit_01_wrench.et";
+	static const ResourceName MORTAR_AMMO = "{E1FD1ACDA98123AE}Prefabs/Props/Military/Arsenal/AmmoBoxes/US/AmmoBoxArsenal_Mortar_US.et";
+	protected static int s_iSpecBefore;
+	protected static IEntity s_SpecMine;
+	protected static IEntity s_SpecVehicle;
+	protected static float s_fSpecHealth;
+
+	protected static bool MineArmed(IEntity mine)
+	{
+		if (!mine)
+			return false;
+		SCR_PressureTriggerComponent trigger = SCR_PressureTriggerComponent.Cast(mine.FindComponent(SCR_PressureTriggerComponent));
+		return trigger && trigger.IsActivated();
+	}
+
+	protected static void SpecStart()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		if (men.Count() < 3 || !Leader())
+		{
+			Check("specialists-setup", false, "need a leader and three soldiers");
+			Finish();
+			return;
+		}
+		AIO_Tasks.AgentOf(Leader()).DeactivateAI();
+		// Give me ammo: the leader stands in for the player, with his carried magazines taken away.
+		SCR_InventoryStorageManagerComponent inventory = AIO_Supplies.InventoryOf(Leader());
+		array<IEntity> items = {};
+		inventory.GetItems(items);
+		foreach (IEntity item : items)
+		{
+			if (item.FindComponent(MagazineComponent) && AIO_Supplies.Kind(item) == AIO_Supplies.KIND_MAGAZINE)
+				inventory.TryDeleteItem(item);
+		}
+		GetGame().GetCallqueue().CallLater(SpecGive, 1500, false);
+	}
+
+	protected static void SpecGive()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		s_iSpecBefore = AIO_Supplies.MagazineCount(Leader());
+		string reply = AIO_Logistics.Order(men, Leader(), AIO_EOrder.GIVE_AMMO, 0);
+		Check("give-order", reply.Contains("magazines"), reply + string.Format(" (leader has %1)", s_iSpecBefore));
+		GetGame().GetCallqueue().CallLater(SpecGiven, 25000, false);
+	}
+
+	protected static void SpecGiven()
+	{
+		int after = AIO_Supplies.MagazineCount(Leader());
+		Check("give-ammo", after > s_iSpecBefore, string.Format("leader magazines %1 -> %2", s_iSpecBefore, after));
+		array<IEntity> men = {};
+		NonLeaders(men);
+		GiveItem(men[1], MINE_AT);
+		s_SpecMine = AIO_Explosives.FindMine(men[1]);
+		array<IEntity> layer = {men[1]};
+		string reply = AIO_Explosives.Order(layer, Leader(), AIO_EOrder.EXP_LAY_MINE, FindSpot(s_vStart, 12), null, 0);
+		Check("mine-order", reply.Contains("laying"), reply);
+		GetGame().GetCallqueue().CallLater(SpecMineLaid, 25000, false);
+	}
+
+	protected static void SpecMineLaid()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		bool laid = s_SpecMine && !s_SpecMine.GetParent() && !AIO_Explosives.Carries(men[1], s_SpecMine);
+		Check("mine-laid", laid && MineArmed(s_SpecMine), string.Format("out of his inventory %1, armed %2", laid, MineArmed(s_SpecMine)));
+		if (!s_SpecMine)
+		{
+			SpecRepairStart();
+			return;
+		}
+		array<IEntity> sapper = {men[2]};
+		string reply = AIO_Explosives.Order(sapper, Leader(), AIO_EOrder.EXP_DISARM_MINES, s_SpecMine.GetOrigin(), null, 0);
+		Check("disarm-order", reply.Contains("disarming 1"), reply);
+		GetGame().GetCallqueue().CallLater(SpecDisarmed, 30000, false);
+	}
+
+	protected static void SpecDisarmed()
+	{
+		Check("mine-disarmed", s_SpecMine && !MineArmed(s_SpecMine), string.Format("mine still there %1, armed %2", s_SpecMine != null, MineArmed(s_SpecMine)));
+		SpecRepairStart();
+	}
+
+	protected static void SpecRepairStart()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		EntitySpawnParams params = new EntitySpawnParams();
+		params.TransformMode = ETransformMode.WORLD;
+		params.Transform[3] = FindSpot(s_vStart, 20);
+		s_SpecVehicle = GetGame().SpawnEntityPrefab(Resource.Load(HUMVEE), GetGame().GetWorld(), params);
+		GiveItem(men[0], WRENCH);
+		GetGame().GetCallqueue().CallLater(SpecRepair, 3000, false);
+	}
+
+	protected static void SpecRepair()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		SCR_DamageManagerComponent damage = SCR_DamageManagerComponent.GetDamageManager(s_SpecVehicle);
+		array<HitZone> zones = {};
+		damage.GetAllHitZones(zones);
+		foreach (HitZone zone : zones)
+			zone.SetHealthScaled(0.3);
+		s_fSpecHealth = damage.GetHealthScaled();
+		string reply = AIO_Repair.Order(men, s_SpecVehicle, Leader(), s_SpecVehicle.GetOrigin(), 0);
+		Check("repair-order", reply.Contains("repairing"), reply + string.Format(" (health %1)", s_fSpecHealth));
+		GetGame().GetCallqueue().CallLater(SpecRepaired, 45000, false);
+	}
+
+	protected static void SpecRepaired()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		SCR_DamageManagerComponent damage = SCR_DamageManagerComponent.GetDamageManager(s_SpecVehicle);
+		float after = damage.GetHealthScaled();
+		Check("repair-health", after > s_fSpecHealth + 0.1, string.Format("vehicle health %1 -> %2, still repairing %3", s_fSpecHealth, after, AIO_Repair.IsRepairing(AIO_Tasks.AgentOf(men[0]))));
+		Finish();
+	}
+
+	// ---------------------------------------------------------------- fire mission
+
+	protected static void FireStart()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		if (men.Count() < 1 || !Leader())
+		{
+			Check("firemission-setup", false, "need a leader and a soldier");
+			Finish();
+			return;
+		}
+		AIO_Tasks.AgentOf(Leader()).DeactivateAI();
+		EntitySpawnParams params = new EntitySpawnParams();
+		params.TransformMode = ETransformMode.WORLD;
+		vector mortarAt = FindSpot(s_vStart, 8);
+		params.Transform[3] = mortarAt;
+		IEntity mortar = GetGame().SpawnEntityPrefab(Resource.Load(MORTAR), GetGame().GetWorld(), params);
+		params.Transform[3] = FindSpot(mortarAt, 3);
+		IEntity ammo = GetGame().SpawnEntityPrefab(Resource.Load(MORTAR_AMMO), GetGame().GetWorld(), params);
+		Check("firemission-setup", mortar && ammo, string.Format("mortar %1, ammo %2", mortar, ammo));
+		GetGame().GetCallqueue().CallLater(FireOrder, 3000, false);
+	}
+
+	protected static void FireOrder()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		AIO_FireSupport.s_iLastFired = -1;
+		vector target = FindSpot(s_vStart, 350);
+		string reply = AIO_FireSupport.Order(men, Leader(), AIO_EOrder.FIRE_HE_3, target, 0);
+		Check("firemission-order", reply.Contains("3 HE rounds"), reply);
+		s_iExpPolls = 0;
+		GetGame().GetCallqueue().CallLater(FireWait, 5000, false);
+	}
+
+	protected static void FireWait()
+	{
+		s_iExpPolls++;
+		if (AIO_FireSupport.s_iLastFired < 0 && s_iExpPolls < 30)
+		{
+			GetGame().GetCallqueue().CallLater(FireWait, 5000, false);
+			return;
+		}
+		Check("firemission-rounds", AIO_FireSupport.s_iLastFired == 3, string.Format("%1 rounds fired", AIO_FireSupport.s_iLastFired));
 		Finish();
 	}
 
