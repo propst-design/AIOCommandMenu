@@ -47,8 +47,9 @@ FULL GUIDE AND BUG REPORTS
 The full Reforger guide covers every menu, route planning, bounding, selection, targeting and server admin options:
 https://github.com/propst-design/AIOCommandMenu
 
-Report bugs:
-https://github.com/propst-design/AIOCommandMenu/issues
+Discord reports and ideas: https://discord.gg/WK8xGSztB
+Use #issues for bugs (choose AiO Command Menu), #suggestions for ideas. No GitHub account needed.
+GitHub alternative: https://github.com/propst-design/AIOCommandMenu/issues
 
 Include mod/game versions, scenario, other mods, host/client role, the menu path, recipients, camera/map targeting, and what happened versus what you expected. Attach console.log and script.log from the newest affected session under Documents\My Games\ArmaReforger\logs. Custom profiles and dedicated servers may use another location; multiplayer reports benefit from server and affected client logs.
 

@@ -276,8 +276,10 @@ AiO works with player-led AI squads in compatible scenarios.
 
 ## Reporting bugs
 
-Use [GitHub Issues](https://github.com/propst-design/AIOCommandMenu/issues)
-(New issue > Bug report). Include the mod and game versions, scenario, session
+Report in [Discord](https://discord.gg/WK8xGSztB) under **#issues** (choose **AiO Command Menu**);
+use **#suggestions** for ideas. No GitHub account needed. Search existing posts first.
+Alternatively, use [GitHub Issues](https://github.com/propst-design/AIOCommandMenu/issues)
+(New issue > Bug report). For either route, include the mod and game versions, scenario, session
 type, other mods, exact menu path, selected recipients and camera/map targeting.
 Describe what happened and what you expected.
 
