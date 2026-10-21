@@ -2,58 +2,56 @@ AiO Command Menu (Reforger)
 
 Your squad. Your orders.
 
-Press T and use the number keys to move your AI squad, split it into colour teams, manage vehicles, take cover or resupply. An unofficial standalone Reforger rebuild based on Leopard20's All-In-One Command Menu for Arma 3.
+Press T and use the number keys to move your AI squad, split it into colour teams, manage vehicles and put specialists to work. An unofficial standalone Reforger rebuild based on Leopard20's All-In-One Command Menu for Arma 3.
 
 PUT YOUR SQUAD TO WORK
 
-- Move the whole squad, selected soldiers or colour teams. Set formations, stance, speed and rules of engagement.
-- Push forward with arrival-driven bounding, peel back under cover, or send a team around a flank.
-- Garrison a building, clear reachable interior positions, watch a direction or form an outward-facing defensive ring.
-- Board vehicles and static weapons, choose seats, control engines/lights, dismount passengers or send soldiers to unflip a vehicle.
-- Rearm, collect a weapon, heal up or send an available squadmate to treat a casualty using real medical supplies.
-- Plan infantry routes and looping patrols. Stalled routes keep their plan: use More > Routes to resume or skip a waypoint. A compact HUD shows progress and blocked soldiers.
+- Command the whole squad, selected soldiers or colour teams. Set formations, stance, speed and rules of engagement.
+- Choose Safe, Aware, Combat or Stealth behaviour: from weapons-down travel while quiet to a low, cautious approach with return fire only.
+- Bound forward with covering soldiers, peel back or send a team around a flank.
+- Garrison a building, visit reachable interior positions, watch a direction or form an outward-facing defensive ring.
+- Board vehicles and static weapons, choose seats, control engines/lights and dismount passengers. Send soldiers to unflip a vehicle or repair it with a carried repair kit.
+- Rearm, collect a weapon, heal up or send a squadmate to treat a casualty using real supplies. Ask a soldier with spares to bring you ammunition or bandages.
+- Send an equipped soldier to plant a timed or detonator-controlled demolition charge, lay a mine or disarm mines around a point. Charges can attach to vehicles; DETONATE requires the living placer to carry his detonator within range.
+- Order a squad soldier to fire a nearby mortar: 3 or 6 HE rounds, 3 smoke rounds or 1 illumination round. It needs suitable shells nearby; Cease fire stops the mission.
+- Plan infantry routes and looping patrols. A stalled route keeps its plan: resume or skip a waypoint under More > Routes. Compact status shows progress and blocked soldiers.
 
 GET STARTED
 
 1. Enable AiO and lead a player squad with linked AI. In Game Master, take control of a soldier to command the other AI in that group.
-2. Press T. Use 1–9 to choose a line; 0 opens Select members from the top page. Backspace goes back, or clears selection on Select members.
+2. Press T. Use 1-9 to choose a line; 0 opens Select members from the top page. Backspace goes back, or clears selection on Select members.
 3. Choose an order. No selection means the whole squad. Most orders close the menu.
-4. For destinations, aim your camera or open the map and put the cursor where you want the order. Choosing the order uses that position immediately; there is no extra confirmation click.
+4. Aim at a destination, or open the map and place the cursor there. Choosing the order uses that position immediately; no extra confirmation click is needed.
 
-Rebind T under Settings > Controls > All-in-One Command Menu. While the menu is open, number keys operate it instead of weapon/quick-slot selection.
+Rebind T under Settings > Controls > All-in-One Command Menu. Number keys operate the open menu. Selection expires after about eight seconds with it closed; check the recipients in the heading. Formations and squad admin commands affect the whole squad. Colour teams last for the mission.
 
-Selection expires after about eight seconds with the menu closed; check the recipients in the heading before giving another order. Formations and squad admin commands always affect the whole squad. Colour-team assignments last for the current mission.
+The menu-only squad bar shows names, teams, health, magazines and tasks. More > Squad bar on/off toggles it and nearby soldier numbers. Compact status remains visible with the menu closed for recipients, routes, paused bounds/peels and commanded treatment. Behaviour modes appear in the squad bar.
 
-The full squad bar shows names, team colours, health, magazines and tasks while the menu is open. More > Squad bar on/off toggles it and nearby soldier numbers. Compact status remains visible with the menu closed, showing recipients, route progress, paused bound/peel reasons and commanded treatment.
+Admin commands require server permission. Teleport your squad with relative spacing, or your vehicle with everyone aboard. Teleport to my map cursor requires the map open: drivers bring their vehicle and occupants; passengers and gunners teleport out alone.
 
-Admin commands appear only when the server permits them. Teleport your squad to a target with relative spacing, or teleport your vehicle with everyone aboard. Teleport to my map cursor requires the map open: drivers bring their vehicle and occupants; passengers and gunners teleport out alone.
-
-REQUIREMENTS
+REQUIREMENTS AND LIMITS
 
 Requires Arma Reforger, with no other mod dependencies. Load AiO on the server and joining clients; it is not client-only.
 
-KNOW YOUR SQUAD'S LIMITS
+AiO commands your existing squad. It does not recruit soldiers or command arbitrary groups from the GM camera. Nearby friendly AI are not automatically yours.
 
-AiO commands your existing squad: it does not recruit soldiers or command arbitrary groups from the Game Master camera. Nearby friendly AI are not automatically yours.
+Buildings, doors and vehicle routes depend on Reforger's navigation. Clear building visits sampled reachable positions; it does not guarantee every room or enemy is cleared. Fortify here finds cover; it does not construct fortifications.
 
-Buildings, doors and vehicle routes still depend on Reforger's navigation. Clear building visits sampled reachable positions; it does not promise every room or enemy is cleared. Fortify here finds cover; it does not construct fortifications.
+Bounding needs ready cover and can pause under suppression, casualties or blocked movement. Use Attack > Resume bound / peel when requested; Follow or a new movement order regroups the men. Specialist orders require the right carried kit, available ammunition and a reachable target; repairs follow the kit's limits.
 
-Bounding needs ready covering soldiers and can pause under suppression, casualties or blocked movement. Use Attack > Resume bound / peel when requested. Follow or a new movement order lets you regroup.
+BBB is optional. Compatible builds can lower weapons on quiet ordinary travel; tactical orders retain readiness. Combining AiO with another squad-command menu mod, including Enhanced AI Squad Commands, is unsupported.
 
-BBB is optional. Compatible BBB builds can lower weapons during quiet ordinary travel; tactical orders retain readiness. Combining AiO with another squad-command menu mod, including Enhanced AI Squad Commands, is unsupported.
+GUIDE AND FEEDBACK
 
-FULL GUIDE AND BUG REPORTS
-
-The full Reforger guide covers every menu, route planning, bounding, selection, targeting and server admin options:
+Full Reforger guide, menu reference and server options:
 https://github.com/propst-design/AIOCommandMenu
-
-Report bugs:
-https://github.com/propst-design/AIOCommandMenu/issues
-
-Include mod/game versions, scenario, other mods, host/client role, the menu path, recipients, camera/map targeting, and what happened versus what you expected. Attach console.log and script.log from the newest affected session under Documents\My Games\ArmaReforger\logs. Custom profiles and dedicated servers may use another location; multiplayer reports benefit from server and affected client logs.
+Discord: https://discord.gg/WK8xGSztB
+Use #issues for AiO Command Menu bugs and #suggestions for ideas. No GitHub account needed.
+GitHub alternative: https://github.com/propst-design/AIOCommandMenu/issues
+Reports: include versions, scenario, mods, host/client role, menu path, recipients, camera/map targeting and affected server/client console.log/script.log.
 
 CREDITS AND LICENCE
 
-Original Arma 3 mod and design reference: Leopard20's All-In-One Command Menu. Unofficial Reforger rebuild by Jacob (propst-design), developed with Claude (Anthropic) and Codex (OpenAI). Use the Reforger guide for this version.
+Original Arma 3 design: Leopard20's All-In-One Command Menu. Unofficial Reforger rebuild by Jacob (propst-design), developed with Claude (Anthropic) and Codex (OpenAI).
 
 GNU GPL version 3 or later. Script source, LICENSE.md and COPYING ship with the mod.

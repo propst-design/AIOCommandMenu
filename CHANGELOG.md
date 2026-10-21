@@ -2,16 +2,19 @@
 
 ## 0.3.2 — unreleased
 
-- Added Arma 3's behaviour modes under Stance & speed > Behaviour, for the whole squad or selected men:
-  Safe (weapons down while quiet, raised as soon as there is danger), Aware (normal), Combat (low, running,
-  weapons up) and Stealth (low, walking, weapons up, return fire only). The squad bar shows each man's mode.
-- Added Supplies > Explosives & mines. A soldier carrying a demolition charge places it on the vehicle, wall or
-  spot you aim at, with a 30-second timer or wired to his detonator for a new DETONATE command, then moves clear.
-  Soldiers can also lay a mine they carry, or disarm armed mines around a point.
-- Added Vehicles > Repair that vehicle for a soldier carrying a repair kit, with the kit's normal repair limits.
-- Added More > Fire mission: a squad soldier fires 3 or 6 HE, 3 smoke or 1 illumination round from a nearby mortar
-  at the aimed or map point, with Cease fire.
-- Added Supplies > Give me ammo and Give me bandages: the nearest soldier with spares brings them to you.
+Put your specialists to work: set the squad's behaviour, send a demolition man forward, repair a vehicle or bring a mortar into the fight.
+
+### Set the pace
+
+- Stance & speed > Behaviour adds Safe, Aware, Combat and Stealth for the whole squad or selected soldiers. Safe lowers weapons while quiet; Aware restores normal behaviour; Combat keeps weapons up with a low stance and running pace; Stealth uses a low stance, walking and return fire only. The squad bar shows each man's mode.
+
+### Demolition and field support
+
+- Supplies > Explosives & mines sends an equipped soldier to plant a demolition charge on the aimed vehicle, wall or ground. Choose a 30-second timer or a detonator-controlled charge, then use DETONATE when ready. The soldier moves clear after planting; charges attached to vehicles move with them. Remote detonation needs a living placer still carrying his detonator within range.
+- Order soldiers to lay mines they carry or disarm armed mines around a target point. These orders use real equipment; they do not spawn explosives.
+- Vehicles > Repair that vehicle sends a soldier with a repair kit to work on the target. Repairs follow the kit's normal limits; wrecks remain beyond field repair.
+- More > Fire mission uses a squad soldier and a nearby mortar to fire 3 or 6 HE rounds, 3 smoke rounds or 1 illumination round at your aim or map cursor. It needs suitable shells nearby; Cease fire stops the mission.
+- Supplies > Give me ammo and Give me bandages sends the nearest selected soldier with spares to bring them to you, keeping a reserve for himself.
 
 ## 0.3.1 — released
 
