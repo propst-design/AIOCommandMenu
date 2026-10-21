@@ -39,21 +39,21 @@ and [Menu reference](#menu-reference), then consult movement, defense, vehicles/
 
 - **T** opens or closes the menu. Rebind it under Settings > Controls >
   All-in-One Command Menu.
-- **1â€“9** choose a line. **0** opens Select members on the top page and goes
+- **1–9** choose a line. **0** opens Select members on the top page and goes
   back on subpages. **Backspace** goes back; on Select members it clears the
   selection instead.
 - Choosing an order normally closes the menu. Adding or clearing draft route
   points keeps it open.
 - While the menu is open, number keys operate the menu instead of weapon and
   quick-slot selection.
-- No selected members means **whole squad**. On Select members, **1â€“7** toggle
+- No selected members means **whole squad**. On Select members, **1–7** toggle
   soldiers, **8** cycles pages, **9** opens Teams and **0** returns to orders.
 - Selection lasts for about **eight seconds with the menu closed**. Reopen it
   promptly for another order to the same men, and check the recipients shown in
   the menu heading. Clear selection with Backspace on Select members to order
   the whole squad again.
 - Teams are Red, Green, Blue and Yellow; White means unassigned. On Teams,
-  **1â€“4** select a team, **5â€“8** assign the selected men and **9** unassigns them.
+  **1–4** select a team, **5–8** assign the selected men and **9** unassigns them.
   Assignments last for the current mission; they are not saved presets.
 - Formation orders always affect the whole squad. Admin squad commands also
   ignore individual selection. Treat orders use selection to choose a helper.
