@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.3.2 — unreleased
+## 0.3.3 — unreleased
+
+## 0.3.2 — released
 
 Put your specialists to work: set the squad's behaviour, send a demolition man forward, repair a vehicle or bring a mortar into the fight.
 
