@@ -75,12 +75,20 @@ from the map, a trace from above identifies the object under the cursor.
 | 5 | R.O.E. | Fire at will; Return fire only; Hold fire; Engage at will; Disengage |
 | 6 | Stance & speed | Stand; Crouch; Prone; Auto; Copy my stance; Speed (Walk, Run, Sprint, Auto); Behaviour (Safe, Aware, Combat, Stealth) |
 | 7 | Supplies | Heal up!; Rearm; Rearm from that; Take that weapon; Treat that soldier; Treat me; Give me ammo; Give me bandages; Explosives & mines |
-| 8 | More | Squad bar on/off; Admin (when allowed); Fire mission (mortar); Routes |
+| 8 | More | Squad bar on/off; Admin (when allowed); Fire mission (mortar); Routes; Become leader; Step down as leader |
 | 9 | HALT | Stop the current movement assignment |
 | 0 | Select members | Select individuals or colour teams |
 
 The Admin page is hidden without permission, so the Routes line number under
 More changes with admin access. Follow labels when navigating that page.
+
+**More > Become leader** claims vacant leadership in your player squad, or takes over
+from the AI leader when you possess a soldier in an independent AI group. It cannot
+replace another player. **Step down as leader** passes player-squad leadership to
+another member (or leaves it vacant when you are alone); in a possessed AI group,
+it hands the lead to a living AI squadmate. These actions use your own group and
+ignore member selection. Game Master possession still permits AiO commands after
+stepping down. Native leadership changes can reset custom squad names/descriptions.
 
 ## Movement and combat
 

@@ -107,7 +107,9 @@ enum AIO_EOrder
 	FIRE_ILLUM,
 	FIRE_CEASE,
 	GIVE_AMMO,
-	GIVE_BANDAGES
+	GIVE_BANDAGES,
+	BECOME_LEADER,
+	STEP_DOWN_LEADER
 }
 
 // What an order needs from the player's side.
@@ -305,6 +307,9 @@ class AIO_MenuTree
 		routes.Order("Clear draft route", AIO_EOrder.ROUTE_CLEAR);
 		routes.Order("Resume paused routes (selected men)", AIO_EOrder.ROUTE_RESUME);
 		routes.Order("Skip blocked waypoint (selected routes)", AIO_EOrder.ROUTE_SKIP);
+
+		more.Order("Become leader", AIO_EOrder.BECOME_LEADER);
+		more.Order("Step down as leader", AIO_EOrder.STEP_DOWN_LEADER);
 
 		root.Order("HALT", AIO_EOrder.HALT);
 		return root;

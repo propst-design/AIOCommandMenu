@@ -62,6 +62,7 @@ class AIO_Test
 	protected static bool s_bSpecialistsTest;
 	protected static bool s_bFireMissionTest;
 	protected static bool s_bContactTest;
+	protected static bool s_bLeadershipTest;
 	protected static ref AIO_Route s_Route;
 	protected static ref AIO_Route s_Patrol;
 	protected static int s_iLeg;
@@ -131,12 +132,18 @@ class AIO_Test
 		string contactValue;
 		System.GetCLIParam("aioContactTest", contactValue);
 		s_bContactTest = contactValue == "1";
-		if (!s_bSpecialistsTest && !s_bFireMissionTest && !s_bExplosivesTest && !s_bBehaviourTest && !s_bContactTest && !s_bRadiusTest && !s_bSupportTest && !s_bFormationTest && !s_bRecoveryTest && !s_bVehicleTest && !s_bMoveTest && !s_bInfantryTest && !s_bSupplyTest && !s_bAttackTest && !s_bDefenseTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
+		string leadershipValue;
+		System.GetCLIParam("aioLeadershipTest", leadershipValue);
+		s_bLeadershipTest = leadershipValue == "1";
+		bool specialTest = s_bLeadershipTest || s_bSpecialistsTest || s_bFireMissionTest || s_bExplosivesTest || s_bBehaviourTest || s_bContactTest;
+		bool movementTest = s_bRadiusTest || s_bSupportTest || s_bFormationTest || s_bRecoveryTest || s_bVehicleTest || s_bMoveTest;
+		bool basicTest = s_bInfantryTest || s_bSupplyTest || s_bAttackTest || s_bDefenseTest;
+		if (!specialTest && !movementTest && !basicTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
 			return;
 		if (!Replication.IsServer())
 			return;
 		Print("[AIO] TEST tasks: starting in 8 s");
-		if (!s_bRecoveryTest)
+		if (!s_bRecoveryTest && !s_bLeadershipTest)
 			GetGame().GetCallqueue().CallLater(MakeMaster, 2000, false);
 		GetGame().GetCallqueue().CallLater(Spawn, 8000, false);
 	}
@@ -246,7 +253,9 @@ class AIO_Test
 		s_Group = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(Resource.Load(prefab), GetGame().GetWorld(), params));
 		LinkToMaster();
 		Print(string.Format("[AIO] TEST tasks: group spawned at %1", s_vStart));
-		if (s_bContactTest)
+		if (s_bLeadershipTest)
+			GetGame().GetCallqueue().CallLater(LeadershipStart, 12000, false);
+		else if (s_bContactTest)
 			GetGame().GetCallqueue().CallLater(ContactStart, 12000, false);
 		else if (s_bRadiusTest)
 			GetGame().GetCallqueue().CallLater(RadiusStart, 12000, false);
@@ -286,6 +295,49 @@ class AIO_Test
 			GetGame().GetCallqueue().CallLater(Advance, 12000, false);
 		else
 			GetGame().GetCallqueue().CallLater(Order, 12000, false);
+	}
+
+	protected static void LeadershipStart()
+	{
+		array<IEntity> men = {};
+		AIO_Server.Members(s_Group, men);
+		if (!s_Group || men.Count() < 3 || s_Group.IsSlave())
+		{
+			Check("leadership-setup", false, "need independent AI group with three men");
+			Finish();
+			return;
+		}
+		IEntity oldLeader = s_Group.GetLeaderEntity();
+		IEntity claimant;
+		foreach (IEntity man : men)
+		{
+			AIO_Tasks.AgentOf(man).DeactivateAI();
+			if (man != oldLeader) claimant = man;
+		}
+		string reply = AIO_Leadership.ChangeAILeader(s_Group, claimant, false);
+		Check("leadership-nonleader", reply == "You are not the squad leader" && s_Group.GetLeaderEntity() == oldLeader, reply);
+		reply = AIO_Leadership.ChangeAILeader(s_Group, claimant, true);
+		Check("leadership-ai-takeover", reply == "You are now the squad leader" && s_Group.GetLeaderEntity() == claimant, reply);
+		reply = AIO_Leadership.ChangeAILeader(s_Group, claimant, true);
+		Check("leadership-already", reply == "You are already the squad leader" && s_Group.GetLeaderEntity() == claimant, reply);
+		reply = AIO_Leadership.ChangeAILeader(s_Group, claimant, false);
+		Check("leadership-stepdown", reply == "Stepped down; an AI squadmate now leads" && s_Group.GetLeaderEntity() != claimant, reply);
+		AIAgent stableLeader = s_Group.GetLeaderAgent();
+		reply = AIO_Leadership.ChangeAILeader(null, claimant, true);
+		Check("leadership-null-group", reply == "No independent AI squad available" && s_Group.GetLeaderAgent() == stableLeader, reply);
+		reply = AIO_Leadership.ChangeAILeader(s_Group, null, true);
+		Check("leadership-null-body", reply == "No independent AI squad available" && s_Group.GetLeaderAgent() == stableLeader, reply);
+		// Retain just the claimant as a group member; stepping down cannot leave an AI group leaderless.
+		s_Group.SetNewLeader(AIO_Tasks.AgentOf(claimant));
+		foreach (IEntity man : men)
+		{
+			if (man != claimant) s_Group.RemoveAgent(AIO_Tasks.AgentOf(man));
+		}
+		reply = AIO_Leadership.ChangeAILeader(s_Group, oldLeader, true);
+		Check("leadership-outsider", reply == "No independent AI squad available" && s_Group.GetLeaderEntity() == claimant, reply);
+		reply = AIO_Leadership.ChangeAILeader(s_Group, claimant, false);
+		Check("leadership-alone", reply == "No living AI squadmate can take over" && s_Group.GetLeaderEntity() == claimant, reply);
+		Finish();
 	}
 
 	protected static void ContactStart()

@@ -132,6 +132,9 @@ class AIO_Server
 		if (order == AIO_EOrder.TOGGLE_SQUAD_BAR)
 			return "";
 
+		if (order == AIO_EOrder.BECOME_LEADER || order == AIO_EOrder.STEP_DOWN_LEADER)
+			return AIO_Leadership.Execute(pc, order == AIO_EOrder.BECOME_LEADER);
+
 		SCR_AIGroup slave = Slave(playerId);
 		if (!slave)
 			return "No soldiers under your command";
