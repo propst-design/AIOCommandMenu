@@ -1,5 +1,11 @@
 # AiO Command Menu (Reforger)
 
+
+> **Source development:** `main` contains ongoing development and can be ahead of
+> the Workshop release or contain unfinished changes. For normal play, use Workshop.
+> Contributions are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md) for setup,
+> testing and pull requests. No direct repository access is needed.
+
 [![Game: Arma Reforger](https://img.shields.io/badge/Arma-Reforger-556b2f?style=flat-square)](https://reforger.armaplatform.com/)
 [![Workshop release: 0.3.2](https://img.shields.io/badge/Workshop-0.3.2-blue?style=flat-square)](https://reforger.armaplatform.com/workshop/629405AEFC950C12)
 [![Standalone addon](https://img.shields.io/badge/Addon-Standalone-teal?style=flat-square)](#version-and-installation)
