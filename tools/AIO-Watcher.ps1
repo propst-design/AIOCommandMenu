@@ -8,6 +8,10 @@
 # Reforger dedicated server is running (e.g. Arma Commander Actual's test server, they
 # share port 2001), it waits for that to close first.
 #
+# A request 'pak:<preset>' runs a server preset on port 2303 instead of 2001, so it can run
+# while ACA's test server or a hosted game holds 2001. Port options only work with a server
+# config (-config), which only loads packed mods: the mods are packed first (see Get-Pack).
+#
 # A 'push' request pushes main to the public GitHub repo propst-design/AIOCommandMenu
 # with your GitHub login (creating it with gh the first time). Nothing else.
 #
@@ -67,6 +71,82 @@ function Find-Server {
     return $null
 }
 
+function Find-Workbench {
+    $server = Find-Server
+    $libs = @()
+    if ($server) { $libs += Split-Path (Split-Path $server -Parent) -Parent }
+    foreach ($drive in 'C', 'D', 'E', 'F', 'G') { $libs += "${drive}:\SteamLibrary\steamapps\common"; $libs += "${drive}:\Program Files (x86)\Steam\steamapps\common" }
+    foreach ($lib in $libs) {
+        $candidate = Join-Path $lib 'Arma Reforger Tools\Workbench\ArmaReforgerWorkbenchSteamDiag.exe'
+        if (Test-Path -LiteralPath $candidate) { return $candidate }
+    }
+    return $null
+}
+
+# pak: runs. Packed copies live outside the Workbench addons folder (no duplicate GUIDs there).
+$PakRoot = Join-Path $env:LOCALAPPDATA 'AIO-TestPack'
+$PakPort = 2303
+$PakFolders = @{ '629405AEFC950C12' = 'AIOCommandMenu'; 'AC230926A0010001' = 'ArmaCommanderReforger'; 'BBB0261015000001' = 'BetterBattleBuddies' }
+$PakScenarios = @{ 'worlds/gamemaster/gm_arland.ent' = '{2BBBE828037C6F4B}Missions/22_GM_Arland.conf'; 'worlds/acr_testrange.ent' = '{AC230926A0010011}Missions/ACR_TestRange.conf' }
+
+# Packs one mod folder with Workbench unless its sources are unchanged since the last pack.
+# Returns an error message, or $null when the pack is ready.
+function Get-Pack($guid) {
+    $source = Join-Path $AddonsDir $PakFolders[$guid]
+    $target = Join-Path $PakRoot "addons\$guid"
+    # Signature: every source file's path, size and time. Workbench rewrites
+    # resourceDatabase.rdb in the source on each pack, so that file doesn't count.
+    $sig = New-Object Text.StringBuilder
+    Get-ChildItem -LiteralPath $source -Recurse -File | Sort-Object FullName | ForEach-Object {
+        $rel = $_.FullName.Substring($source.Length + 1)
+        if ($rel -match '^(\.git|\.local-|\.aio-requests|\.acr-requests|docs\\|tools\\|dist\\)' -or $rel -eq 'resourceDatabase.rdb') { return }
+        [void]$sig.AppendLine("$rel $($_.Length) $($_.LastWriteTimeUtc.Ticks)")
+    }
+    $sigFile = "$target.sig"
+    $sigText = $sig.ToString()
+    if ((Test-Path -LiteralPath (Join-Path $target 'data.pak')) -and (Test-Path -LiteralPath $sigFile) -and ([IO.File]::ReadAllText($sigFile) -eq $sigText)) { return $null }
+    $wb = Find-Workbench
+    if (!$wb) { return 'Arma Reforger Tools (Workbench) not found' }
+    $gameAddons = Join-Path (Split-Path (Find-Server) -Parent) '..\Arma Reforger\addons'
+    $fresh = "$target.packing"
+    $wbProfile = Join-Path $PakRoot 'workbench'
+    if (Test-Path -LiteralPath $fresh) { Remove-Item -LiteralPath $fresh -Recurse -Force }
+    New-Item -ItemType Directory -Force $fresh, $wbProfile | Out-Null
+    Write-Host "[$(Get-Date -Format 'HH:mm:ss')] Packing $($PakFolders[$guid])..." -ForegroundColor Cyan
+    $wbArgs = '-gproj "' + (Join-Path $source 'addon.gproj') + '" -addonsDir "' + [IO.Path]::GetFullPath($gameAddons) + ',' + $AddonsDir + '" -profile "' + $wbProfile + '" -noThrow -wbModule=ResourceManager -packAddon -packAddonDir "' + $fresh + '"'
+    $proc = Start-Process -FilePath $wb -ArgumentList $wbArgs -WindowStyle Hidden -PassThru
+    if (!$proc.WaitForExit(900000)) { Stop-Process -Id $proc.Id -ErrorAction SilentlyContinue; return "packing $($PakFolders[$guid]) timed out" }
+    if (!(Test-Path -LiteralPath (Join-Path $fresh 'data.pak'))) { return "packing $($PakFolders[$guid]) failed (Workbench logs in $wbProfile\logs)" }
+    if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Recurse -Force }
+    Move-Item -LiteralPath $fresh -Destination $target
+    [IO.File]::WriteAllText($sigFile, $sigText)
+    return $null
+}
+
+# Packs the preset's mods and writes the server config; returns the -config start line or an error.
+function Get-PakArgs($config, $serverProfile) {
+    $scenario = $PakScenarios[$config.World.ToLower()]
+    if (!$scenario) { return @{ Error = "no scenario known for $($config.World)" } }
+    $guids = @($config.Addons.Split(','))
+    # ACA needs BBB, its dependency.
+    if ($guids -contains 'AC230926A0010001' -and $guids -notcontains 'BBB0261015000001') { $guids = @('BBB0261015000001') + $guids }
+    foreach ($guid in $guids) { $err = Get-Pack $guid; if ($err) { return @{ Error = $err } } }
+    $mods = @($guids | ForEach-Object { @{ modId = $_; name = $PakFolders[$_] } })
+    $serverConfig = @{
+        bindAddress = '0.0.0.0'; bindPort = $PakPort; publicAddress = '127.0.0.1'; publicPort = $PakPort
+        a2s = @{ address = '127.0.0.1'; port = 17779 }
+        game = @{ name = 'AIO hidden test server'; password = ''; passwordAdmin = ''; scenarioId = $scenario; maxPlayers = 4
+                  visible = $false; crossPlatform = $false; gameProperties = @{ battlEye = $false }; mods = $mods }
+    }
+    $cfgPath = Join-Path $serverProfile 'server.json'
+    Set-Content -LiteralPath $cfgPath -Value ($serverConfig | ConvertTo-Json -Depth 5) -Encoding ASCII
+    return @{ Args = '-config "' + $cfgPath + '" -addonsDir "' + (Join-Path $PakRoot 'addons') + '" -profile "' + $serverProfile + '"' }
+}
+
+function Test-PortListening($port) {
+    return [bool]([Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties().GetActiveUdpListeners() | Where-Object Port -eq $port)
+}
+
 function Find-Game {
     $server = Find-Server
     if ($server) {
@@ -122,6 +202,8 @@ function Invoke-Request($file) {
     $id = [IO.Path]::GetFileNameWithoutExtension($file.Name)
     $preset = (Get-Content -LiteralPath $file.FullName -Raw).Trim().ToLower()
     Remove-Item -LiteralPath $file.FullName
+    $pak = $preset.StartsWith('pak:')
+    if ($pak) { $preset = $preset.Substring(4) }
     # Extra server test presets from tools\test-presets.txt, re-read on every request so new tests
     # need no launcher restart: "name|-aioSomethingTest 1|timeoutSec[|aca]" (only -aio...Test flags).
     $extraFile = Join-Path $PSScriptRoot 'test-presets.txt'
@@ -142,23 +224,41 @@ function Invoke-Request($file) {
         return
     }
     $config = $Presets[$preset]
-    if ($config.Client) { Invoke-Client $id $preset $config; return }
+    if ($config.Client) {
+        if ($pak) { Write-Result $id @('status=refused', "reason=$preset needs the game client; pak: is for server presets"); return }
+        Invoke-Client $id $preset $config; return
+    }
     $server = Find-Server
     if (!$server) { Write-Result $id @('status=refused', 'reason=Arma Reforger Server not found (start with -ServerPath)'); return }
-    # Wait (up to 10 min) for another dedicated server to close: they share port 2001.
-    # (A game you host from the client also uses 2001: the run then fails with
-    # 'Unable to start replication', reported below.)
-    $waited = 0
-    while ((Other-ServerRunning) -and $waited -lt 600) { Start-Sleep -Seconds 5; $waited += 5 }
-    if (Other-ServerRunning) { Write-Result $id @('status=refused', 'reason=another Reforger server kept running'); return }
-
-    New-Item -ItemType Directory -Force $ServerProfile | Out-Null
-    # -aioCheats all: hidden dev servers have no host, so everyone gets the Admin page.
-    $serverArgs = '-server "' + $config.World + '" -addonsDir "' + $AddonsDir + '" -addons ' + $config.Addons + ' -profile "' + $ServerProfile + '" -maxFPS 60 -noBackend -aioCheats all ' + $config.Flags
-    Write-Host "[$time] Running '$preset' on a hidden test server..." -ForegroundColor Cyan
+    $label = $preset
+    if ($pak) {
+        $label = "pak:$preset"
+        if (Test-PortListening $PakPort) { Write-Result $id @('status=refused', "reason=port $PakPort is in use"); return }
+        $profileDir = Join-Path $PakRoot 'server'
+        New-Item -ItemType Directory -Force $profileDir | Out-Null
+        $packStart = Get-Date
+        $pakArgs = Get-PakArgs $config $profileDir
+        if ($pakArgs.Error) { Write-Result $id @('status=pack failed', "preset=$label", "reason=$($pakArgs.Error)"); return }
+        $packSeconds = [int]((Get-Date) - $packStart).TotalSeconds
+        # Backend stays on: without it the server config's mods aren't mounted. It fetches the
+        # Workshop copies into the profile once but loads the packs from -addonsDir.
+        $serverArgs = $pakArgs.Args + ' -maxFPS 60 -aioCheats all ' + $config.Flags
+    } else {
+        # Wait (up to 10 min) for another dedicated server to close: they share port 2001.
+        # (A game you host from the client also uses 2001: the run then fails with
+        # 'Unable to start replication', reported below.)
+        $waited = 0
+        while ((Other-ServerRunning) -and $waited -lt 600) { Start-Sleep -Seconds 5; $waited += 5 }
+        if (Other-ServerRunning) { Write-Result $id @('status=refused', 'reason=another Reforger server kept running'); return }
+        $profileDir = $ServerProfile
+        New-Item -ItemType Directory -Force $profileDir | Out-Null
+        # -aioCheats all: hidden dev servers have no host, so everyone gets the Admin page.
+        $serverArgs = '-server "' + $config.World + '" -addonsDir "' + $AddonsDir + '" -addons ' + $config.Addons + ' -profile "' + $profileDir + '" -maxFPS 60 -noBackend -aioCheats all ' + $config.Flags
+    }
+    Write-Host "[$time] Running '$label' on a hidden test server..." -ForegroundColor Cyan
     $started = Get-Date
     $proc = Start-Process -FilePath $server -ArgumentList $serverArgs -WorkingDirectory (Split-Path $server -Parent) -WindowStyle Hidden -PassThru
-    $logs = Join-Path $ServerProfile 'logs'
+    $logs = Join-Path $profileDir 'logs'
     $outcome = 'timeout'
     $log = $null
     while ($true) {
@@ -171,7 +271,7 @@ function Invoke-Request($file) {
         if ($proc.HasExited) { $outcome = 'server exited'; break }
         if ($log -and (Test-Path -LiteralPath $log)) {
             $text = Get-Content -LiteralPath $log -Raw -ErrorAction SilentlyContinue
-            if ($text -match 'Unable to start replication') { $outcome = 'port busy (a hosted game or server is using 2001)'; break }
+            if ($text -match 'Unable to start replication') { $outcome = 'port busy (a hosted game or server is using the port)'; break }
             if ($text -match "Can't compile") { Start-Sleep -Seconds 2; $outcome = 'compile error'; break }
             # Vanilla noise (crash damage, AI movement, suppression) is not a script error of ours.
             $errors = ($text -split "`n") | Where-Object { $_ -match 'SCRIPT\s+\(E\)' -and $_ -notmatch 'SCR_InstigatorContextData|SCR_AIProcessFailedMovementResult|No suppression volume provided' }
@@ -181,14 +281,16 @@ function Invoke-Request($file) {
         if (((Get-Date) - $started).TotalSeconds -gt $config.TimeoutSec) { break }
     }
     if (!$proc.HasExited) { Stop-Process -Id $proc.Id -ErrorAction SilentlyContinue }
-    $result = @("status=$outcome", "preset=$preset", "started=$($started.ToString('s'))", "seconds=$([int]((Get-Date) - $started).TotalSeconds)", "log=$log", '---')
+    $result = @("status=$outcome", "preset=$label", "started=$($started.ToString('s'))", "seconds=$([int]((Get-Date) - $started).TotalSeconds)", "log=$log")
+    if ($pak) { $result += "packSeconds=$packSeconds" }
+    $result += '---'
     if ($log -and (Test-Path -LiteralPath $log)) {
         $result += Get-Content -LiteralPath $log | Where-Object { $_ -match "\[AIO\]|SCRIPT\s+\(E\)|SCRIPT\s+\(W\)|Can't compile|AIO_|ERROR|chimeraInputCommon|keyBindingMenu" } | Select-Object -First 200
     } else {
         $result += 'No server console.log was found for this run.'
     }
     Write-Result $id $result
-    Write-Host "[$(Get-Date -Format 'HH:mm:ss')] '$preset' finished: $outcome" -ForegroundColor Green
+    Write-Host "[$(Get-Date -Format 'HH:mm:ss')] '$label' finished: $outcome" -ForegroundColor Green
 }
 
 # Runs the game client (own profile) and reads its console.log; refuses if a game is already open.
