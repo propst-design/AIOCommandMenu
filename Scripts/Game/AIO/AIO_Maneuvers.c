@@ -339,7 +339,11 @@ class AIO_Maneuvers
 				return "You need to be on foot in the world to give that order";
 			vector forward, right;
 			AIO_Tasks.Facing(player, forward, right);
-			return StartBound(bodies, forward * -1, vector.Zero, true, playerId, player);
+			AIO_Bound peeling;
+			string peeled = AIO_Bounding.Start(bodies, forward * -1, vector.Zero, true, playerId, player, peeling);
+			if (!peeling)
+				return peeled;
+			return peeled + AIO_Grenades.Cover(bodies, AIO_Grenades.ThreatPoint(bodies, player.GetOrigin() + forward * 50), 2, playerId);
 		}
 		if (point == vector.Zero)
 			return "Look at a spot first";
@@ -401,7 +405,10 @@ class AIO_Maneuvers
 			if (Route(bodies[f], legs))
 				sent++;
 		}
-		return string.Format("%1 men flanking %2", sent, which);
+		string smoke;
+		if (sent > 0)
+			smoke = AIO_Grenades.Cover(bodies, point, 2, playerId); // screens the swing out
+		return string.Format("%1 men flanking %2", sent, which) + smoke;
 	}
 
 	static bool Suppress(IEntity body, vector point, float seconds)

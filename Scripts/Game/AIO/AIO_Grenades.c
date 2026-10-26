@@ -14,6 +14,9 @@
 // soldier is within DANGER_CLOSE of the point. Server only.
 // - Frag there / Smoke there: the nearest man carrying one.
 // - Smoke screen there: up to three men, a wall across the player's line to the point.
+// Cover(): Fall back, Peel back and Attack > Flank add a smoke screen between the squad and the
+// threat when the squad is in contact (not AIO_Behaviour.Quiet), thrown by carriers among the men
+// on top of their new movement; quiet moves throw nothing.
 
 class AIO_Throw
 {
@@ -35,6 +38,7 @@ class AIO_Throw
 	IEntity m_Anchor;
 	vector m_vOffset;
 	bool m_bEnding;
+	bool m_bCover;             // smoke added to a maneuver
 }
 
 // A thrown frag in flight: where it bursts, for the log.
@@ -67,6 +71,7 @@ class AIO_Grenades
 	protected static ref array<ref AIO_Burst> s_aBursts = {};
 	static int s_iThrown; // grenades that left a thrower's inventory (tests)
 	static float s_fLastMiss = -1; // last frag burst's distance from its point (tests)
+	static vector s_vLastCover;    // centre of the last cover screen (tests)
 
 	static bool IsOrder(int order)
 	{
@@ -156,6 +161,101 @@ class AIO_Grenades
 		if (walking)
 			reply += " (moving up to throw)";
 		return reply;
+	}
+
+	// Smoke screen for a maneuver just ordered: up to count smokes across the line from the men to the
+	// threat, 8-20 m out from them. Only in contact, only carriers already within throwing range.
+	// Returns a reply suffix, empty when nothing is thrown.
+	static string Cover(array<IEntity> bodies, vector threat, int count, int playerId)
+	{
+		if (bodies.IsEmpty() || !InContact(bodies))
+			return "";
+		vector from = AIO_Maneuvers.Centroid(bodies);
+		vector line = threat - from;
+		line[1] = 0;
+		float distance = line.Length();
+		if (distance < 1)
+			return "";
+		line.Normalize();
+		vector across = Vector(-line[2], 0, line[0]);
+		vector centre = from + line * Math.Clamp(distance * 0.5, 8, 20);
+		s_vLastCover = centre;
+		array<vector> spots = {Ground(centre), Ground(centre + across * SCREEN_GAP), Ground(centre - across * SCREEN_GAP)};
+		array<IEntity> free = {};
+		foreach (IEntity body : bodies)
+		{
+			if (Ready(body) && Count(body, EWeaponType.WT_SMOKEGRENADE) > 0)
+				free.Insert(body);
+		}
+		if (free.IsEmpty())
+			return "; no smoke to cover it";
+		array<string> names = {};
+		for (int i = 0; i < count && i < spots.Count() && !free.IsEmpty(); i++)
+		{
+			IEntity thrower = null;
+			float best = THROW_RANGE;
+			foreach (IEntity body : free)
+			{
+				float d = vector.Distance(body.GetOrigin(), spots[i]);
+				if (d <= best)
+				{
+					best = d;
+					thrower = body;
+				}
+			}
+			if (!thrower)
+				break;
+			free.RemoveItem(thrower);
+			if (!Start(thrower, EWeaponType.WT_SMOKEGRENADE, spots[i], i * 0.8, playerId))
+				continue;
+			s_aThrows[s_aThrows.Count() - 1].m_bCover = true;
+			names.Insert(AIO_Server.NameOf(thrower));
+		}
+		if (names.IsEmpty())
+			return "";
+		Print(string.Format("[AIO] GRENADES cover smoke x %1 toward %2", names.Count(), threat));
+		string who = names[0];
+		for (int n = 1; n < names.Count(); n++)
+			who += ", " + names[n];
+		return "; smoke: " + who;
+	}
+
+	// Someone among the men is aware of a threat (the opposite of the Safe mode's quiet).
+	static bool InContact(array<IEntity> bodies)
+	{
+		foreach (IEntity body : bodies)
+		{
+			AIAgent agent = AIO_Tasks.AgentOf(body);
+			if (agent && AIO_Server.IsAlive(body) && !AIO_Behaviour.Quiet(agent))
+				return true;
+		}
+		return false;
+	}
+
+	// Centre of the enemies the men have detected in the last 30 s, or fallback.
+	static vector ThreatPoint(array<IEntity> bodies, vector fallback)
+	{
+		vector sum = vector.Zero;
+		int found;
+		foreach (IEntity body : bodies)
+		{
+			SCR_AIUtilityComponent utility = AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(body));
+			if (!utility || !utility.m_PerceptionComponent)
+				continue;
+			array<BaseTarget> targets = {};
+			utility.m_PerceptionComponent.GetTargetsList(targets, ETargetCategory.ENEMY);
+			foreach (BaseTarget target : targets)
+			{
+				float since = target.GetTimeSinceDetected();
+				if (since < 0 || since > 30)
+					continue;
+				sum += target.GetLastDetectedPosition();
+				found++;
+			}
+		}
+		if (found == 0)
+			return fallback;
+		return sum * (1.0 / found);
 	}
 
 	// The nearest carrier to the spot; for a frag within throwing range, one whose lob isn't blocked
@@ -404,13 +504,13 @@ class AIO_Grenades
 		return "";
 	}
 
-	// A new order for the man calls the throw off.
+	// A new order for the man calls the throw off (a bound's own next leg doesn't).
 	static void Cancel(AIAgent agent)
 	{
 		for (int i = s_aThrows.Count() - 1; i >= 0; i--)
 		{
 			AIO_Throw job = s_aThrows[i];
-			if (job.m_Agent != agent || job.m_bEnding)
+			if (job.m_Agent != agent || job.m_bEnding || (job.m_bCover && AIO_Bounding.IsIssuing()))
 				continue;
 			if (job.m_Behavior)
 				job.m_Behavior.Fail();

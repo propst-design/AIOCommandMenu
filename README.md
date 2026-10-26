@@ -104,6 +104,14 @@ with your position but do not rotate when you turn. **Fall back** moves to fixed
 posts about 40 m behind your order-time position. **Attack > Advance / Flank**
 instead use the camera/map target. Attack flanks take a wide route to its side.
 
+**Smoke cover:** when the squad is in contact, **Fall back**, **Attack > Peel back**
+and **Attack > Flank left/right** also have up to two men carrying smoke throw a
+screen 8-20 m out, between the squad and the enemy they have seen (for flanks,
+the target; with no enemy seen, the way you face). They throw, then follow the
+order. Quiet moves throw nothing. Bound to position throws none: a screen ahead
+of a forward bound would blind the covering element. The reply names the
+throwers.
+
 **Follow me / Return to formation** releases individual assignments and restores
 the game's formation movement. **HALT** cancels current movement; selected men
 hold where they are. **Hold here** with the whole normal player-led squad uses
@@ -198,6 +206,7 @@ then returns to his previous orders; targets more than 120 m from every carrier
 are refused. Frags are refused, or held back at the last moment, when a friendly
 soldier (or you) is within 15 m of the target. You are told when each grenade
 is out, or why it wasn't thrown. Danger and close combat still come first.
+Throws are the game's own and scatter: a frag can land several metres off.
 
 ## Vehicles and supplies
 

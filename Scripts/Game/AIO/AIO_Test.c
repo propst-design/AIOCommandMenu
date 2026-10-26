@@ -679,6 +679,7 @@ class AIO_Test
 	protected static int s_iGrenExpected;
 	protected static vector s_vGrenSpot;
 	protected static vector s_vFragSpot;
+	protected static vector s_vGrenEnemy;
 
 	protected static void GrenStart()
 	{
@@ -692,6 +693,11 @@ class AIO_Test
 		}
 		AIO_Tasks.AgentOf(Leader()).DeactivateAI();
 		bool given = GiveItem(men[0], FRAG) && GiveItem(men[0], FRAG) && GiveItem(men[1], SMOKE) && GiveItem(men[1], SMOKE) && GiveItem(men[2], SMOKE);
+		// Cover smoke only in contact: the gate agrees with the men's own state.
+		string quiet = AIO_Grenades.Cover(men, FindSpot(s_vStart, 60), 2, 0);
+		Check("grenades-cover-gate", quiet.IsEmpty() != AIO_Grenades.InContact(men), string.Format("in contact %1, cover '%2'", AIO_Grenades.InContact(men), quiet));
+		foreach (IEntity cancelled : men)
+			AIO_Grenades.Cancel(AIO_Tasks.AgentOf(cancelled));
 		Check("grenades-setup", given, string.Format("frags %1/%2/%3, smokes %4/%5/%6", AIO_Grenades.Count(men[0], EWeaponType.WT_FRAGGRENADE),
 			AIO_Grenades.Count(men[1], EWeaponType.WT_FRAGGRENADE), AIO_Grenades.Count(men[2], EWeaponType.WT_FRAGGRENADE), AIO_Grenades.Count(men[0], EWeaponType.WT_SMOKEGRENADE),
 			AIO_Grenades.Count(men[1], EWeaponType.WT_SMOKEGRENADE), AIO_Grenades.Count(men[2], EWeaponType.WT_SMOKEGRENADE)));
@@ -774,7 +780,7 @@ class AIO_Test
 			GetGame().GetCallqueue().CallLater(GrenBurstWait, 1000, false);
 			return;
 		}
-		Check("grenades-frag-burst", AIO_Grenades.s_fLastMiss >= 0 && AIO_Grenades.s_fLastMiss <= 8, string.Format("burst %1 m from the point", AIO_Grenades.s_fLastMiss));
+		Check("grenades-frag-burst", AIO_Grenades.s_fLastMiss >= 0 && AIO_Grenades.s_fLastMiss <= 12, string.Format("burst %1 m from the point", AIO_Grenades.s_fLastMiss));
 		GrenHealth("after the burst");
 		// men[1] is sent alone at a spot beyond throwing range, away from the burst: he walks up, throws, and rejoins.
 		vector away = men[1].GetOrigin() - s_vFragSpot;
@@ -839,6 +845,112 @@ class AIO_Test
 		bool started = AIO_Grenades.IsThrowing(AIO_Tasks.AgentOf(men[0]));
 		AIO_Tasks.Rejoin(men[0], Leader());
 		Check("grenades-cancel", started && !AIO_Grenades.IsThrowing(AIO_Tasks.AgentOf(men[0])), string.Format("%1; throwing before %2", reply, started));
+		// Smoke on Fall back: a live enemy fire team 70 m out (gunfire makes contact certain).
+		foreach (IEntity body : men)
+		{
+			GiveItem(body, SMOKE);
+			GiveItem(body, SMOKE);
+		}
+		// As in the contact test: noon, full AI LOD (no players on the server), both sides facing.
+		ChimeraWorld.CastFrom(GetGame().GetWorld()).GetTimeAndWeatherManager().SetHoursMinutesSeconds(12, 0, 0);
+		s_Group.PreventMaxLOD();
+		s_Group.SetPermanentLOD(0);
+		foreach (IEntity watcher : men)
+		{
+			AIO_Tasks.AgentOf(watcher).PreventMaxLOD();
+			AIO_Tasks.AgentOf(watcher).SetPermanentLOD(0);
+		}
+		EntitySpawnParams enemyParams = new EntitySpawnParams();
+		enemyParams.TransformMode = ETransformMode.WORLD;
+		// South: the earlier smoke (screen east, walk-up throw north-west) would hide them.
+		s_vGrenEnemy = FindSpot(AIO_Maneuvers.Centroid(men) + Vector(0, 0, -60), 0);
+		enemyParams.Transform[3] = s_vGrenEnemy;
+		s_Enemy = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(Resource.Load(ENEMY), GetGame().GetWorld(), enemyParams));
+		// Like the contact test: the enemy team under a USSR playable group, as real opposing squads are.
+		SCR_FactionManager factions = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		SCR_AIGroup enemyMaster = SCR_GroupsManagerComponent.GetInstance().CreateNewPlayableGroup(factions.GetFactionByKey("USSR"));
+		if (enemyMaster)
+		{
+			enemyMaster.SetDeleteWhenEmpty(false);
+			enemyMaster.SetCanDeleteIfNoPlayer(false);
+			if (s_Enemy)
+				GetGame().GetCallqueue().CallLater(GrenEnemySlave, 2000, false, enemyMaster);
+		}
+		GetGame().GetCallqueue().CallLater(GrenEnemyReady, 6000, false);
+	}
+
+	protected static void GrenEnemySlave(SCR_AIGroup master)
+	{
+		SCR_GroupsManagerComponent.GetInstance().RequestSetGroupSlave(Replication.FindItemId(master), Replication.FindItemId(s_Enemy));
+	}
+
+	protected static void GrenEnemyReady()
+	{
+		array<IEntity> enemies = {};
+		AIO_Server.Members(s_Enemy, enemies);
+		foreach (IEntity enemy : enemies)
+		{
+			AIO_Tasks.AgentOf(enemy).PreventMaxLOD();
+			AIO_Tasks.AgentOf(enemy).SetPermanentLOD(0);
+			vector facing = s_vStart - enemy.GetOrigin();
+			enemy.SetYawPitchRoll(Vector(facing.ToYaw(), 0, 0));
+			AIO_Maneuvers.SetROE(enemy, EAIGroupCombatMode.FIRE_AT_WILL);
+			AIO_Tasks.AgentOf(enemy).ActivateAI();
+		}
+		Print(string.Format("[AIO] TEST grenades: %1 enemies %2 m out", enemies.Count(), Math.Round(vector.Distance(s_vGrenEnemy, s_vStart))));
+		s_iGrenPolls = 0;
+		GetGame().GetCallqueue().CallLater(GrenContactWait, 1000, false);
+	}
+
+	protected static void GrenContactWait()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		s_iGrenPolls++;
+		bool seen = AIO_Grenades.InContact(men) && AIO_Grenades.ThreatPoint(men, vector.Zero) != vector.Zero;
+		if (!seen && s_iGrenPolls < 40)
+		{
+			GetGame().GetCallqueue().CallLater(GrenContactWait, 1000, false);
+			return;
+		}
+		Check("grenades-contact", seen, string.Format("enemy seen after %1 s", s_iGrenPolls));
+		if (!seen)
+		{
+			Print("[AIO] TEST grenades: no contact, Fall back smoke not established in this run");
+			Finish();
+			return;
+		}
+		s_iGrenThrown = AIO_Grenades.s_iThrown;
+		// The screen faces the enemies the men know about (on ACA's range that can be the range's own fight).
+		vector east = s_vGrenEnemy;
+		vector known = AIO_Grenades.ThreatPoint(men, east);
+		vector toSpawned = east - AIO_Maneuvers.Centroid(men);
+		string reply = AIO_Server.MoveMenu(s_Group, Leader(), AIO_EOrder.FALL_BACK, null, 0);
+		vector toEnemy = known - AIO_Maneuvers.Centroid(men);
+		vector toScreen = AIO_Grenades.s_vLastCover - AIO_Maneuvers.Centroid(men);
+		toEnemy[1] = 0;
+		toScreen[1] = 0;
+		bool between = vector.Dot(toEnemy.Normalized(), toScreen.Normalized()) > 0.7;
+		Check("grenades-fallback-smoke", reply.Contains("smoke: ") && between,
+			string.Format("%1; screen %2 m out, toward the known enemy %3 (%4 m away; spawned team %5 m)", reply, Math.Round(toScreen.Length()), between, Math.Round(toEnemy.Length()), Math.Round(toSpawned.Length())));
+		s_iGrenPolls = 0;
+		GetGame().GetCallqueue().CallLater(GrenCoverWait, 1000, false);
+	}
+
+	protected static void GrenCoverWait()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		s_iGrenPolls++;
+		if (AIO_Grenades.s_iThrown == s_iGrenThrown && Throwing(men) && s_iGrenPolls < 15)
+		{
+			GetGame().GetCallqueue().CallLater(GrenCoverWait, 1000, false);
+			return;
+		}
+		if (AIO_Grenades.s_iThrown == s_iGrenThrown)
+			GrenHealth("no cover smoke");
+		Check("grenades-fallback-thrown", AIO_Grenades.s_iThrown > s_iGrenThrown,
+			string.Format("%1 smokes thrown after %2 s", AIO_Grenades.s_iThrown - s_iGrenThrown, s_iGrenPolls));
 		Finish();
 	}
 

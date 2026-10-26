@@ -230,7 +230,7 @@ class AIO_Server
 		}
 
 		IEntity player = pc.GetControlledEntity();
-		string moved = MoveMenu(slave, player, order, null);
+		string moved = MoveMenu(slave, player, order, null, playerId);
 		if (!moved.IsEmpty())
 			return moved;
 		string infantry = Infantry(slave, player, order, null);
@@ -321,8 +321,9 @@ class AIO_Server
 	static const float FALL_BACK_DISTANCE = 40;
 
 	// Move menu: Advance, Stay back, Flank left/right keep station on the player; Fall back goes to
-	// a spot behind him and holds. men = null means the whole squad. Empty string = not a Move order.
-	static string MoveMenu(SCR_AIGroup slave, IEntity player, int order, array<IEntity> men)
+	// a spot behind him and holds, with smoke between the men and the enemy when in contact.
+	// men = null means the whole squad. Empty string = not a Move order.
+	static string MoveMenu(SCR_AIGroup slave, IEntity player, int order, array<IEntity> men, int playerId = 0)
 	{
 		if (order != AIO_EOrder.ADVANCE && order != AIO_EOrder.STAY_BACK && order != AIO_EOrder.FLANK_LEFT
 			&& order != AIO_EOrder.FLANK_RIGHT && order != AIO_EOrder.FALL_BACK)
@@ -387,7 +388,10 @@ class AIO_Server
 			if (ok)
 				count++;
 		}
-		return string.Format("%1 men %2", count, what);
+		string smoke;
+		if (order == AIO_EOrder.FALL_BACK && count > 0)
+			smoke = AIO_Grenades.Cover(bodies, AIO_Grenades.ThreatPoint(bodies, player.GetOrigin() + forward * SHIFT_DISTANCE), 2, playerId);
+		return string.Format("%1 men %2", count, what) + smoke;
 	}
 
 	static IEntity EntityOf(RplId id)
@@ -622,7 +626,7 @@ class AIO_Server
 		if (AIO_Repair.IsOrder(order) || AIO_FireSupport.IsOrder(order) || AIO_Logistics.IsOrder(order))
 			return Specialist(bodies, player, order, point, target, playerId);
 		int count;
-		string moved = MoveMenu(slave, player, order, bodies);
+		string moved = MoveMenu(slave, player, order, bodies, playerId);
 		if (!moved.IsEmpty())
 			return moved;
 		string infantry = Infantry(slave, player, order, bodies);
