@@ -1669,11 +1669,19 @@ class AIO_Test
 		AIO_Maneuvers.SetROE(a, -1);
 		bool back = utility.m_CombatComponent.GetCombatMode() == s_Group.GetGroupUtilityComponent().GetCombatModeActual();
 		Check("roe-per-man", held && groupFree && back, string.Format("held %1, group still free %2, back to group %3", held, groupFree, back));
-		AIO_Maneuvers.SetEngage(a, 1);
-		bool keep = utility.ShouldKeepFormation();
+		// An ordered post outranks a bare engage override (24d377b); the Engage order releases the post first.
 		AIO_Maneuvers.SetEngage(a, 0);
-		bool free = !utility.ShouldKeepFormation();
+		bool postHeld = utility.ShouldKeepFormation();
 		AIO_Maneuvers.SetEngage(a, -1);
+		Check("engage-keeps-post", postHeld, string.Format("holder with engage override keeps formation %1", postHeld));
+		vector post = a.GetOrigin();
+		array<IEntity> one = {a};
+		AIO_Maneuvers.Attack(one, Leader(), AIO_EOrder.ENGAGE_AT_WILL, vector.Zero, 0);
+		bool free = !utility.ShouldKeepFormation();
+		AIO_Maneuvers.Attack(one, Leader(), AIO_EOrder.DISENGAGE, vector.Zero, 0);
+		bool keep = utility.ShouldKeepFormation();
+		AIO_Maneuvers.SetEngage(a, -1);
+		AIO_Tasks.MoveTo(a, post);
 		Check("engage-disengage", keep && free, string.Format("disengage keeps formation %1, engage frees %2", keep, free));
 		AIO_Maneuvers.FireOnMyLead(a, Leader());
 		bool waiting = AIO_Maneuvers.IsWaitingForLead(AIO_Tasks.AgentOf(a)) && utility.m_CombatComponent.GetCombatMode() == EAIGroupCombatMode.HOLD_FIRE;
