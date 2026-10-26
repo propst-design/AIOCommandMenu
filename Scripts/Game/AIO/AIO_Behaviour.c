@@ -182,7 +182,8 @@ class AIO_Behaviour
 	// Safe lowers the weapon while the man is quiet; Combat and Stealth keep it up.
 	protected static void ApplyPosture(AIAgent agent, ChimeraCharacter character, int mode)
 	{
-		if (character.IsInVehicle())
+		// A grenade throw raises the arm itself; lowering it would cancel the throw.
+		if (character.IsInVehicle() || AIO_Grenades.IsThrowing(agent))
 			return;
 		CharacterControllerComponent controller = character.GetCharacterController();
 		if (!controller || controller.IsUnconscious() || controller.IsReloading() || controller.IsChangingItem()

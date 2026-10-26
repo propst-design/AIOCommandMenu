@@ -29,5 +29,7 @@ behaviour-aca|-aioBehaviourTest 1|190|aca
 explosives|-aioExplosivesTest 1|200
 specialists|-aioSpecialistsTest 1|200
 firemission|-aioFireMissionTest 1|200
+grenades|-aioGrenadesTest 1|200
+grenades-aca|-aioGrenadesTest 1|260|aca
 
 leadership|-aioLeadershipTest 1|90

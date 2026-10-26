@@ -1,10 +1,11 @@
 # Changelog
 
-## 0.3.3 â€” unreleased
+## 0.3.3 — unreleased
 
 - More > Become leader / Step down as leader changes leadership in your own squad, including taking over from an AI leader while possessing a squad member. Another player cannot be displaced.
+- Defense > Grenades & smoke: Frag there, Smoke there and Smoke screen there (up to three men) use the grenades your soldiers carry. Men throw from their posts or move up when the target is beyond throwing range, and frags are refused when a friendly is within 15 m of the target.
 
-## 0.3.2 â€” released
+## 0.3.2 — released
 
 Put your specialists to work: set the squad's behaviour, send a demolition man forward, repair a vehicle or bring a mortar into the fight.
 
@@ -20,7 +21,7 @@ Put your specialists to work: set the squad's behaviour, send a demolition man f
 - More > Fire mission uses a squad soldier and a nearby mortar to fire 3 or 6 HE rounds, 3 smoke rounds or 1 illumination round at your aim or map cursor. It needs suitable shells nearby; Cease fire stops the mission.
 - Supplies > Give me ammo and Give me bandages sends the nearest selected soldier with spares to bring them to you, keeping a reserve for himself.
 
-## 0.3.1 â€” released
+## 0.3.1 — released
 
 - Updated Workshop guidance for route recovery, persistent status and squad/vehicle teleport options.
 - Added Admin > Teleport squad (where I look) to teleport the player and whole squad together to a target point/map cursor, maintaining relative formation spacing and non-colliding slots so units do not overlap.
@@ -29,7 +30,7 @@ Put your specialists to work: set the squad's behaviour, send a demolition man f
 - Stalled routes now pause with the remaining plan intact, identify blocked soldiers and waypoint, and offer Resume or Skip waypoint under More > Routes. Recovery follows selected route members; skipping never counts as arrival.
 - Added compact persistent feedback for current recipients, route/patrol progress, paused bound/peel reasons and commanded treatment. The full squad bar remains menu-only.
 
-## 0.3.0 â€” released
+## 0.3.0 — released
 
 Published on the Arma Reforger Workshop; release status updated 2026-10-15.
 The changes below have automated server coverage; live checks of the new menu/map/contact
@@ -48,11 +49,11 @@ behavior and a second-player multiplayer check remain outstanding.
 - Moved Speed to the Stance page (now Stance & speed).
 - Expanded the Reforger guide and aligned Workshop copy, credits and bug reporting with actual selection, targeting, admin access and AI limitations.
 
-## 0.2.1 â€” 2026-10-14
+## 0.2.1 — 2026-10-14
 
 - Made the Workshop item public; same content as 0.2.0.
 
-## 0.2.0 â€” 2026-10-14
+## 0.2.0 — 2026-10-14
 
 - Added a Vehicles page: board as driver, gunner or passenger; switch seats; get out, disembark passengers or eject.
 - Added engine and light controls, automatic driver light control, and squad-assisted vehicle unflip.
@@ -67,6 +68,6 @@ behavior and a second-player multiplayer check remain outstanding.
 - Improved interior-position checks and avoided assigning multiple soldiers to the same garrison post when a building has too few positions.
 - Stalled interior movement can open nearby closed doors through the game's normal door actions and retry the path.
 
-## 0.1.0 â€” 2026-10-13
+## 0.1.0 — 2026-10-13
 
 - Initial Workshop release: infantry movement, attack and defense orders, stance and engagement controls, supplies, member/team selection, squad indicators, and admin commands.

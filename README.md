@@ -77,7 +77,7 @@ from the map, a trace from above identifies the object under the cursor.
 | 1 | Move | Move here; Follow me / Return to formation; Advance; Stay back; Flank left; Flank right; Fall back; Hold here; Formation |
 | 2 | Attack | Advance; Flank left; Flank right; Assault; Suppress; Fire on my lead; Bound to position; Peel back; Resume bound / peel |
 | 3 | Vehicles | Get in (Any seat, Driver, Gunner, Passenger); Switch seat; Get out; Disembark passengers; EJECT; Vehicle controls; Unflip that vehicle; Repair that vehicle |
-| 4 | Defense | Take cover; Garrison building; Clear building; 360 defense (radius); Fortify here; Watch that direction; Watch: own choice |
+| 4 | Defense | Take cover; Garrison building; Clear building; 360 defense (radius); Fortify here; Watch that direction; Watch: own choice; Grenades & smoke |
 | 5 | R.O.E. | Fire at will; Return fire only; Hold fire; Engage at will; Disengage |
 | 6 | Stance & speed | Stand; Crouch; Prone; Auto; Copy my stance; Speed (Walk, Run, Sprint, Auto); Behaviour (Safe, Aware, Combat, Stealth) |
 | 7 | Supplies | Heal up!; Rearm; Rearm from that; Take that weapon; Treat that soldier; Treat me; Give me ammo; Give me bandages; Explosives & mines |
@@ -188,6 +188,16 @@ completion. Use Follow to cancel and regroup.
 holders keep their positions; others hold where they are. Combat and danger can
 still draw their attention. **Watch: own choice** removes the facing override
 while leaving the hold in place; Follow returns them to formation.
+
+**Defense > 8 Grenades & smoke** uses the hand grenades your men carry, thrown at
+the camera or map target. **Frag there** and **Smoke there** send the nearest
+soldier carrying one; **Smoke screen there** has up to three men throw a wall of
+smoke across your line to the target. A man holding a post throws from it and
+keeps it. A man more than about 30 m away first moves up to about 25 m, throws,
+then returns to his previous orders; targets more than 120 m from every carrier
+are refused. Frags are refused, or held back at the last moment, when a friendly
+soldier (or you) is within 15 m of the target. You are told when each grenade
+is out, or why it wasn't thrown. Danger and close combat still come first.
 
 ## Vehicles and supplies
 

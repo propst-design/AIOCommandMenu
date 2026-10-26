@@ -168,6 +168,16 @@ class AIO_Server
 			demoMen.RemoveItem(pc.GetControlledEntity());
 			return AIO_Explosives.Order(demoMen, pc.GetControlledEntity(), order, point, EntityOf(target), playerId);
 		}
+		if (AIO_Grenades.IsOrder(order))
+		{
+			array<IEntity> throwers = {};
+			if (members && !members.IsEmpty())
+				AIO_Tasks.Resolve(slave, members, throwers);
+			else
+				Members(slave, throwers);
+			throwers.RemoveItem(pc.GetControlledEntity());
+			return AIO_Grenades.Order(throwers, pc.GetControlledEntity(), order, point, playerId);
+		}
 		if (AIO_Repair.IsOrder(order) || AIO_FireSupport.IsOrder(order) || AIO_Logistics.IsOrder(order))
 		{
 			array<IEntity> helpers = {};
@@ -607,6 +617,8 @@ class AIO_Server
 			return AIO_Behaviour.Order(bodies, order);
 		if (AIO_Explosives.IsOrder(order))
 			return AIO_Explosives.Order(bodies, player, order, point, EntityOf(target), playerId);
+		if (AIO_Grenades.IsOrder(order))
+			return AIO_Grenades.Order(bodies, player, order, point, playerId);
 		if (AIO_Repair.IsOrder(order) || AIO_FireSupport.IsOrder(order) || AIO_Logistics.IsOrder(order))
 			return Specialist(bodies, player, order, point, target, playerId);
 		int count;

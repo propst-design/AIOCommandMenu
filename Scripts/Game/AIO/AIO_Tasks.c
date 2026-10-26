@@ -183,6 +183,7 @@ class AIO_Tasks
 		utility.AIO_SetOrderHold(null);
 		AIO_Supplies.Cancel(agent); // any new order ends an errand
 		AIO_Explosives.Cancel(agent);
+		AIO_Grenades.Cancel(agent);
 		AIO_Repair.Cancel(agent);
 		AIO_Logistics.Cancel(agent);
 		AIO_Support.Cancel(body);
@@ -519,6 +520,9 @@ class AIO_Tasks
 		string demolition = AIO_Explosives.Label(agent);
 		if (!demolition.IsEmpty())
 			label = demolition;
+		string grenade = AIO_Grenades.Label(agent);
+		if (!grenade.IsEmpty())
+			label = grenade;
 		string specialist = AIO_Repair.Label(agent) + AIO_FireSupport.Label(agent) + AIO_Logistics.Label(agent);
 		if (!specialist.IsEmpty())
 			label = specialist;
@@ -811,6 +815,7 @@ class AIO_Tasks
 		KeepStances();
 		AIO_Behaviour.Tick();
 		AIO_Explosives.Tick();
+		AIO_Grenades.Tick();
 		AIO_Repair.Tick();
 		AIO_FireSupport.Tick();
 		AIO_Logistics.Tick();

@@ -109,7 +109,10 @@ enum AIO_EOrder
 	GIVE_AMMO,
 	GIVE_BANDAGES,
 	BECOME_LEADER,
-	STEP_DOWN_LEADER
+	STEP_DOWN_LEADER,
+	GREN_FRAG,
+	GREN_SMOKE,
+	GREN_SMOKE_SCREEN
 }
 
 // What an order needs from the player's side.
@@ -238,6 +241,11 @@ class AIO_MenuTree
 		defense.Order("Fortify here", AIO_EOrder.DEF_FORTIFY, AIO_ETarget.POINT);
 		defense.Order("Watch that direction", AIO_EOrder.WATCH_DIRECTION, AIO_ETarget.POINT);
 		defense.Order("Watch: own choice", AIO_EOrder.WATCH_AUTO);
+		// Hand grenades from the men carrying them (Attack has no free line).
+		AIO_MenuItem grenades = defense.Page("Grenades & smoke");
+		grenades.Order("Frag there", AIO_EOrder.GREN_FRAG, AIO_ETarget.POINT);
+		grenades.Order("Smoke there", AIO_EOrder.GREN_SMOKE, AIO_ETarget.POINT);
+		grenades.Order("Smoke screen there (up to 3 men)", AIO_EOrder.GREN_SMOKE_SCREEN, AIO_ETarget.POINT);
 
 		AIO_MenuItem roe = root.Page("R.O.E.");
 		roe.Order("Fire at will", AIO_EOrder.FIRE_AT_WILL);

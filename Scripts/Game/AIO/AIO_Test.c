@@ -17,6 +17,7 @@
 //   -aioSpecialistsTest 1 : Give me ammo, lay and disarm a mine, repair a damaged vehicle.
 //   -aioFireMissionTest 1 : a squad soldier mans a mortar and fires 3 HE rounds.
 //   -aioExplosivesTest 1 : remote charge on a vehicle + Detonate, timed charge on the ground.
+//   -aioGrenadesTest 1 : frag from a held post, danger close / range refusals, walk-up smoke, smoke screen, cancel.
 //   -aioBehaviourTest 1 : Safe / Combat / Stealth / Aware modes: posture, stance, ROE, travel marking, danger.
 //   -aioContactTest 1 : native firefight, retained orders, danger interruption and arrival-driven bounding.
 //   -aioFormationTest 1 : rifle squad walks legs in Column, Staggered column, Line, Wedge; shapes measured on the move.
@@ -59,6 +60,7 @@ class AIO_Test
 	protected static bool s_bRadiusTest;
 	protected static bool s_bBehaviourTest;
 	protected static bool s_bExplosivesTest;
+	protected static bool s_bGrenadesTest;
 	protected static bool s_bSpecialistsTest;
 	protected static bool s_bFireMissionTest;
 	protected static bool s_bContactTest;
@@ -123,6 +125,9 @@ class AIO_Test
 		string explosivesValue;
 		System.GetCLIParam("aioExplosivesTest", explosivesValue);
 		s_bExplosivesTest = explosivesValue == "1";
+		string grenadesValue;
+		System.GetCLIParam("aioGrenadesTest", grenadesValue);
+		s_bGrenadesTest = grenadesValue == "1";
 		string specialistsValue;
 		System.GetCLIParam("aioSpecialistsTest", specialistsValue);
 		s_bSpecialistsTest = specialistsValue == "1";
@@ -135,7 +140,7 @@ class AIO_Test
 		string leadershipValue;
 		System.GetCLIParam("aioLeadershipTest", leadershipValue);
 		s_bLeadershipTest = leadershipValue == "1";
-		bool specialTest = s_bLeadershipTest || s_bSpecialistsTest || s_bFireMissionTest || s_bExplosivesTest || s_bBehaviourTest || s_bContactTest;
+		bool specialTest = s_bLeadershipTest || s_bGrenadesTest || s_bSpecialistsTest || s_bFireMissionTest || s_bExplosivesTest || s_bBehaviourTest || s_bContactTest;
 		bool movementTest = s_bRadiusTest || s_bSupportTest || s_bFormationTest || s_bRecoveryTest || s_bVehicleTest || s_bMoveTest;
 		bool basicTest = s_bInfantryTest || s_bSupplyTest || s_bAttackTest || s_bDefenseTest;
 		if (!specialTest && !movementTest && !basicTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
@@ -265,6 +270,8 @@ class AIO_Test
 			GetGame().GetCallqueue().CallLater(FireStart, 12000, false);
 		else if (s_bExplosivesTest)
 			GetGame().GetCallqueue().CallLater(ExpStart, 12000, false);
+		else if (s_bGrenadesTest)
+			GetGame().GetCallqueue().CallLater(GrenStart, 12000, false);
 		else if (s_bBehaviourTest)
 			GetGame().GetCallqueue().CallLater(BehStart, 12000, false);
 		else if (s_bSupportTest)
@@ -659,6 +666,179 @@ class AIO_Test
 		NonLeaders(men);
 		bool gone = !s_ExpCharge || s_ExpCharge.IsDeleted();
 		Check("explosives-timed-blast", gone && AIO_Server.IsAlive(men[1]), string.Format("charge gone %1, placer alive %2", gone, AIO_Server.IsAlive(men[1])));
+		Finish();
+	}
+
+	// ---------------------------------------------------------------- grenades
+
+	static const ResourceName FRAG = "{E8F00BF730225B00}Prefabs/Weapons/Grenades/Grenade_M67.et";
+	static const ResourceName SMOKE = "{9DB69176CEF0EE97}Prefabs/Weapons/Grenades/Smoke_ANM8HC.et";
+	protected static int s_iGrenPolls;
+	protected static int s_iGrenThrown;
+	protected static int s_iGrenCarried;
+	protected static int s_iGrenExpected;
+	protected static vector s_vGrenSpot;
+	protected static vector s_vFragSpot;
+
+	protected static void GrenStart()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		if (men.Count() < 3 || !Leader())
+		{
+			Check("grenades-setup", false, "need a leader and three soldiers");
+			Finish();
+			return;
+		}
+		AIO_Tasks.AgentOf(Leader()).DeactivateAI();
+		bool given = GiveItem(men[0], FRAG) && GiveItem(men[0], FRAG) && GiveItem(men[1], SMOKE) && GiveItem(men[1], SMOKE) && GiveItem(men[2], SMOKE);
+		Check("grenades-setup", given, string.Format("frags %1/%2/%3, smokes %4/%5/%6", AIO_Grenades.Count(men[0], EWeaponType.WT_FRAGGRENADE),
+			AIO_Grenades.Count(men[1], EWeaponType.WT_FRAGGRENADE), AIO_Grenades.Count(men[2], EWeaponType.WT_FRAGGRENADE), AIO_Grenades.Count(men[0], EWeaponType.WT_SMOKEGRENADE),
+			AIO_Grenades.Count(men[1], EWeaponType.WT_SMOKEGRENADE), AIO_Grenades.Count(men[2], EWeaponType.WT_SMOKEGRENADE)));
+		// A frag on a squadmate's position, or far out of reach, is refused and nobody throws.
+		string close = AIO_Server.ExecuteBodies(s_Group, AIO_EOrder.GREN_FRAG, men, men[2].GetOrigin() + "1 0 0", Leader(), RplId.Invalid(), 0);
+		Check("grenades-danger-close", close.Contains("Danger close") && !Throwing(men), close);
+		string far = AIO_Server.ExecuteBodies(s_Group, AIO_EOrder.GREN_FRAG, men, FindSpot(s_vStart, 300), Leader(), RplId.Invalid(), 0);
+		Check("grenades-too-far", far.Contains("Too far") && !Throwing(men), far);
+		// men[0] holds a post; the frag goes from there and he keeps it.
+		AIO_Tasks.MoveTo(men[0], men[0].GetOrigin());
+		GetGame().GetCallqueue().CallLater(GrenFrag, 3000, false);
+	}
+
+	// Who the frag hurt: health, distance from the burst, self-aid.
+	protected static void GrenHealth(string when)
+	{
+		array<IEntity> men = {};
+		AIO_Server.Members(s_Group, men);
+		foreach (IEntity body : men)
+		{
+			SCR_AIUtilityComponent utility = AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(body));
+			bool healing = utility && utility.HasActionOfType(SCR_AIHealBehavior);
+			Print(string.Format("[AIO] TEST grenades health %1: %2 health %3, %4 m from the frag point, healing %5", when, AIO_Server.NameOf(body), Health(body), Math.Round(vector.Distance(body.GetOrigin(), s_vFragSpot)), healing));
+		}
+	}
+
+	protected static bool Throwing(array<IEntity> men)
+	{
+		foreach (IEntity body : men)
+		{
+			if (AIO_Grenades.IsThrowing(AIO_Tasks.AgentOf(body)))
+				return true;
+		}
+		return false;
+	}
+
+	protected static void GrenFrag()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		s_vGrenSpot = FindSpot(men[0].GetOrigin(), 24);
+		s_vFragSpot = s_vGrenSpot;
+		s_iGrenThrown = AIO_Grenades.s_iThrown;
+		s_iGrenCarried = AIO_Grenades.Count(men[0], EWeaponType.WT_FRAGGRENADE);
+		string reply = AIO_Server.ExecuteBodies(s_Group, AIO_EOrder.GREN_FRAG, men, s_vGrenSpot, Leader(), RplId.Invalid(), 0);
+		Check("grenades-frag-order", reply.Contains(AIO_Server.NameOf(men[0])) && reply.Contains("throwing frag") && !reply.Contains("moving up"),
+			string.Format("%1; point %2 m from him", reply, Math.Round(vector.Distance(men[0].GetOrigin(), s_vGrenSpot))));
+		Check("grenades-label", AIO_Tasks.TaskLabel(men[0]) == "Throwing frag", AIO_Tasks.TaskLabel(men[0]));
+		s_iGrenPolls = 0;
+		GetGame().GetCallqueue().CallLater(GrenFragWait, 1000, false);
+	}
+
+	protected static void GrenFragWait()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		s_iGrenPolls++;
+		if (AIO_Grenades.s_iThrown == s_iGrenThrown && AIO_Grenades.IsThrowing(AIO_Tasks.AgentOf(men[0])) && s_iGrenPolls < 20)
+		{
+			GetGame().GetCallqueue().CallLater(GrenFragWait, 1000, false);
+			return;
+		}
+		int left = AIO_Grenades.Count(men[0], EWeaponType.WT_FRAGGRENADE);
+		Check("grenades-frag-thrown", AIO_Grenades.s_iThrown == s_iGrenThrown + 1 && left == s_iGrenCarried - 1,
+			string.Format("thrown %1, frags %2 -> %3 after %4 s", AIO_Grenades.s_iThrown - s_iGrenThrown, s_iGrenCarried, left, s_iGrenPolls));
+		AIO_HoldBehavior hold = AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(men[0])));
+		Check("grenades-frag-keeps-post", hold != null, string.Format("hold %1", hold));
+		s_iGrenPolls = 0;
+		GetGame().GetCallqueue().CallLater(GrenBurstWait, 1000, false);
+	}
+
+	// The frag bursts before anyone moves on.
+	protected static void GrenBurstWait()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		s_iGrenPolls++;
+		if (AIO_Grenades.s_fLastMiss < 0 && s_iGrenPolls < 12)
+		{
+			GetGame().GetCallqueue().CallLater(GrenBurstWait, 1000, false);
+			return;
+		}
+		Check("grenades-frag-burst", AIO_Grenades.s_fLastMiss >= 0 && AIO_Grenades.s_fLastMiss <= 8, string.Format("burst %1 m from the point", AIO_Grenades.s_fLastMiss));
+		GrenHealth("after the burst");
+		// men[1] is sent alone at a spot beyond throwing range, away from the burst: he walks up, throws, and rejoins.
+		vector away = men[1].GetOrigin() - s_vFragSpot;
+		away[1] = 0;
+		away.Normalize();
+		s_vGrenSpot = FindSpot(men[1].GetOrigin() + away * 55, 0);
+		s_iGrenThrown = AIO_Grenades.s_iThrown;
+		array<IEntity> one = {men[1]};
+		string reply = AIO_Server.ExecuteBodies(s_Group, AIO_EOrder.GREN_SMOKE, one, s_vGrenSpot, Leader(), RplId.Invalid(), 0);
+		Check("grenades-walk-order", reply.Contains("moving up"), string.Format("%1; point %2 m from him", reply, Math.Round(vector.Distance(men[1].GetOrigin(), s_vGrenSpot))));
+		s_iGrenPolls = 0;
+		GetGame().GetCallqueue().CallLater(GrenWalkWait, 2000, false);
+	}
+
+	protected static void GrenWalkWait()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		s_iGrenPolls++;
+		if (AIO_Grenades.s_iThrown == s_iGrenThrown && AIO_Grenades.IsThrowing(AIO_Tasks.AgentOf(men[1])) && s_iGrenPolls < 40)
+		{
+			GetGame().GetCallqueue().CallLater(GrenWalkWait, 2000, false);
+			return;
+		}
+		float distance = vector.Distance(men[1].GetOrigin(), s_vGrenSpot);
+		Check("grenades-walk-thrown", AIO_Grenades.s_iThrown == s_iGrenThrown + 1 && distance <= AIO_Grenades.THROW_RANGE + 3,
+			string.Format("thrown %1 after %2 s, he is %3 m from the point", AIO_Grenades.s_iThrown - s_iGrenThrown, s_iGrenPolls * 2, Math.Round(distance)));
+		AIO_HoldBehavior hold = AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(men[1])));
+		Check("grenades-walk-rejoined", !hold && AIO_Tasks.TaskLabel(men[1]) == "", string.Format("hold %1, label '%2'", hold, AIO_Tasks.TaskLabel(men[1])));
+		// Smoke screen across the leader's line to a spot 22 m out: every man with smoke throws one.
+		s_vGrenSpot = FindSpot(Leader().GetOrigin(), 22);
+		s_iGrenThrown = AIO_Grenades.s_iThrown;
+		string reply = AIO_Server.ExecuteBodies(s_Group, AIO_EOrder.GREN_SMOKE_SCREEN, men, s_vGrenSpot, Leader(), RplId.Invalid(), 0);
+		s_iGrenExpected = 0;
+		if (reply.Contains("Smoke screen: "))
+		{
+			array<string> names = {};
+			reply.Split(", ", names, false);
+			s_iGrenExpected = names.Count();
+		}
+		Check("grenades-screen-order", s_iGrenExpected >= 2, reply);
+		s_iGrenPolls = 0;
+		GetGame().GetCallqueue().CallLater(GrenScreenWait, 1000, false);
+	}
+
+	protected static void GrenScreenWait()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		s_iGrenPolls++;
+		if (AIO_Grenades.s_iThrown < s_iGrenThrown + s_iGrenExpected && Throwing(men) && s_iGrenPolls < 25)
+		{
+			GetGame().GetCallqueue().CallLater(GrenScreenWait, 1000, false);
+			return;
+		}
+		Check("grenades-screen-thrown", s_iGrenExpected >= 2 && AIO_Grenades.s_iThrown == s_iGrenThrown + s_iGrenExpected,
+			string.Format("%1 of %2 smokes thrown after %3 s", AIO_Grenades.s_iThrown - s_iGrenThrown, s_iGrenExpected, s_iGrenPolls));
+		// A new order to a man walking up calls his throw off.
+		vector far = FindSpot(men[0].GetOrigin(), 60);
+		array<IEntity> one = {men[0]};
+		string reply = AIO_Server.ExecuteBodies(s_Group, AIO_EOrder.GREN_FRAG, one, far, Leader(), RplId.Invalid(), 0);
+		bool started = AIO_Grenades.IsThrowing(AIO_Tasks.AgentOf(men[0]));
+		AIO_Tasks.Rejoin(men[0], Leader());
+		Check("grenades-cancel", started && !AIO_Grenades.IsThrowing(AIO_Tasks.AgentOf(men[0])), string.Format("%1; throwing before %2", reply, started));
 		Finish();
 	}
 
