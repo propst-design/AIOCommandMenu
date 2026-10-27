@@ -182,14 +182,18 @@ Auto scales with the number of recipients, between 5 and 12 m. Men crouch and
 face outward around your position when ordered; the ring stays there when you
 move. Selection limits the recipients.
 
-**Garrison building** assigns distinct detected interior posts; extra men stay
-in formation if there are too few posts. **Clear building** visits up to six
-sampled interior positions and holds at the last reachable one. It does not
-guarantee every room is visited or that the building is free of enemies.
-Both depend on the building's geometry and the game's navigation. Men may first
-approach a distant building so its interior can be detected. They try normal
-door actions, abandon unreachable garrison posts, and skip stalled clearing
-positions with feedback. Locked doors and unsupported buildings can prevent
+**Garrison building** gives each man a distinct interior post, at a window
+where there is one, and he faces out of it. The nearest man takes each post,
+and extra men stay in formation if there are too few posts. A man who can't
+get to his post tries other free posts. Once everyone is in or has given up,
+you get one report saying how many men are in position. **Clear building**
+shares out up to six sampled interior positions (two per man in bigger squads)
+and each man holds at his last reachable one. It does not guarantee every room
+is visited or that the building is free of enemies. Both depend on the
+building's geometry and the game's navigation. Men walk up to a distant
+building while its navigation data loads. They use normal door actions, and
+skip floors and rooms the squad has found no way into (stairs the AI can't use,
+ladder-only lofts). Locked doors and unsupported buildings can still prevent
 completion. Use Follow to cancel and regroup.
 
 **Watch that direction** points men toward the camera/map target. Existing

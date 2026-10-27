@@ -20,6 +20,7 @@
 //   -aioGrenadesTest 1 : frag from a held post, danger close / range refusals, walk-up smoke, smoke screen, cancel.
 //   -aioBehaviourTest 1 : Safe / Combat / Stealth / Aware modes: posture, stance, ROE, travel marking, danger.
 //   -aioContactTest 1 : native firefight, retained orders, danger interruption and arrival-driven bounding.
+//   -aioGarrisonTest 1 : Garrison from 50 m on several building kinds (AIO_GarrisonTest.c).
 //   -aioFormationTest 1 : rifle squad walks legs in Column, Staggered column, Line, Wedge; shapes measured on the move.
 // Prints "[AIO] TEST <name> PASS|FAIL ..." lines and "[AIO] TEST COMPLETE".
 class AIO_Test
@@ -140,6 +141,14 @@ class AIO_Test
 		string leadershipValue;
 		System.GetCLIParam("aioLeadershipTest", leadershipValue);
 		s_bLeadershipTest = leadershipValue == "1";
+		string garrisonValue;
+		System.GetCLIParam("aioGarrisonTest", garrisonValue);
+		if (garrisonValue == "1" && Replication.IsServer())
+		{
+			Print("[AIO] TEST garrison: starting in 8 s");
+			GetGame().GetCallqueue().CallLater(AIO_GarrisonTest.Start, 8000, false);
+			return;
+		}
 		bool specialTest = s_bLeadershipTest || s_bGrenadesTest || s_bSpecialistsTest || s_bFireMissionTest || s_bExplosivesTest || s_bBehaviourTest || s_bContactTest;
 		bool movementTest = s_bRadiusTest || s_bSupportTest || s_bFormationTest || s_bRecoveryTest || s_bVehicleTest || s_bMoveTest;
 		bool basicTest = s_bInfantryTest || s_bSupplyTest || s_bAttackTest || s_bDefenseTest;
@@ -1404,7 +1413,7 @@ class AIO_Test
 			if (!AIO_Tasks.ActiveHold(utility) && !AIO_Tasks.ActiveMove(utility) && utility.AIO_GetKeepFormation() == -1 && AIO_Tasks.HasFormation(utility))
 				clean++;
 		}
-		Check("follow-cleanup", clean == men.Count() && AIO_Maneuvers.s_aApproaches.IsEmpty(), string.Format("%1 of %2 in native formation after late waypoint cancel, %3 pending approaches", clean, men.Count(), AIO_Maneuvers.s_aApproaches.Count()));
+		Check("follow-cleanup", clean == men.Count() && AIO_Maneuvers.Approaching() == 0, string.Format("%1 of %2 in native formation after late waypoint cancel, %3 pending approaches", clean, men.Count(), AIO_Maneuvers.Approaching()));
 		IEntity leader = Leader();
 		vector transform[4];
 		leader.GetWorldTransform(transform);
@@ -1775,6 +1784,7 @@ class AIO_Test
 	{
 		array<IEntity> men = {};
 		NonLeaders(men);
+		AIO_Maneuvers.s_sLastGarrison = "";
 		string reply = AIO_Maneuvers.Defense(men, Leader(), AIO_EOrder.DEF_360, vector.Zero, null);
 		Check("360-order", reply.Contains("all-round"), reply);
 		GetGame().GetCallqueue().CallLater(AllRounded, 25000, false);
@@ -1793,7 +1803,28 @@ class AIO_Test
 		Print(string.Format("[AIO] TEST defense: %1 interior points (%2)", inside.Count(), AIO_Maneuvers.InteriorReport(s_Building)));
 		string reply = AIO_Maneuvers.Defense(men, Leader(), AIO_EOrder.DEF_GARRISON, vector.Zero, s_Building);
 		Check("garrison-order", reply.Contains("garrisoning"), reply);
-		GetGame().GetCallqueue().CallLater(Garrisoned, 45000, false);
+		s_iGarrisonPolls = 0;
+		GetGame().GetCallqueue().CallLater(GarrisonPoll, 15000, false);
+	}
+
+	// Until the garrison's own summary (everyone at a post or given up), at most 75 s.
+	protected static int s_iGarrisonPolls;
+	protected static void GarrisonPoll()
+	{
+		s_iGarrisonPolls++;
+		bool pending;
+		foreach (AIO_Approach job : AIO_Maneuvers.s_aApproaches)
+		{
+			if (job.m_Building == s_Building)
+				pending = true;
+		}
+		if (pending && s_iGarrisonPolls < 20)
+		{
+			GetGame().GetCallqueue().CallLater(GarrisonPoll, 3000, false);
+			return;
+		}
+		Print(string.Format("[AIO] TEST defense: garrison settled after %1 s", 15 + (s_iGarrisonPolls - 1) * 3));
+		Garrisoned();
 	}
 
 	protected static int MenInside(array<IEntity> men)
@@ -1814,8 +1845,19 @@ class AIO_Test
 	{
 		array<IEntity> men = {};
 		NonLeaders(men);
-		int inside = MenInside(men);
-		Check("garrison", inside == men.Count(), string.Format("%1 of %2 men inside the building", inside, men.Count()));
+		// At the post itself (on its floor, no wall between), not merely within the bounds.
+		int atPost;
+		int holding;
+		foreach (IEntity man : men)
+		{
+			AIO_HoldBehavior hold = AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(man)));
+			if (!hold || hold.m_Building != s_Building)
+				continue;
+			holding++;
+			if (AIO_Tasks.InteriorArrived(man, hold))
+				atPost++;
+		}
+		Check("garrison", atPost == men.Count() && AIO_Maneuvers.s_sLastGarrison.Contains(string.Format("Garrison: %1 men in position", atPost)), string.Format("%1 of %2 men at their interior posts (%3 holding); %4", atPost, men.Count(), holding, AIO_Maneuvers.s_sLastGarrison));
 		foreach (IEntity man : men)
 			AIO_Tasks.Release(man);
 		string reply = AIO_Maneuvers.Defense(men, Leader(), AIO_EOrder.DEF_CLEAR, vector.Zero, s_Building);
@@ -1897,7 +1939,7 @@ class AIO_Test
 				holding++;
 			AIO_Tasks.Release(man);
 		}
-		Check("approach", inside == men.Count() && holding == men.Count() && AIO_Maneuvers.s_aApproaches.IsEmpty(), string.Format("%1 of %2 inside, %3 holding, %4 approaches left", inside, men.Count(), holding, AIO_Maneuvers.s_aApproaches.Count()));
+		Check("approach", inside == men.Count() && holding == men.Count() && AIO_Maneuvers.Approaching() == 0, string.Format("%1 of %2 inside, %3 holding, %4 approaches left", inside, men.Count(), holding, AIO_Maneuvers.Approaching()));
 		Finish();
 	}
 

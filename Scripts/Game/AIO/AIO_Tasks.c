@@ -58,6 +58,10 @@ class AIO_HoldBehavior : SCR_AIBehaviorBase
 	bool m_bRouteComplete;
 	vector m_vLastRoom;
 	IEntity m_Building;
+	bool m_bReachedPost;          // got to this interior post (garrison summary)
+	int m_iDeadEnds;              // watchdog ticks his move had ended short of the post
+	int m_iReplans;               // garrison: other posts tried after this one failed
+	ref array<vector> m_aFailedSpots;
 	bool m_bAllowPursuit; // assault's final position allows autonomous attack movement
 	bool m_bTravel;
 
@@ -112,7 +116,9 @@ class AIO_Tasks
 	static const float HOLD_SLACK = 6;
 	static const int WATCH_MS = 1000;
 	static const float LOOK_PRIORITY = 15; // below danger reactions (20) and targets (50+)
-	static const float INTERIOR_STALL_MS = 45000;
+	static const float INTERIOR_STALL_MS = 25000;
+	static const int DEAD_END_TICKS = 4;    // ~4 s standing with his move ended short of the post
+	static const int GARRISON_REPLANS = 3;  // other posts tried before he rejoins the formation
 	static const float ROOM_STALL_MS = 20000;
 	static const float INTERIOR_RADIUS = 0.7;
 	static const float INTERIOR_TRAVEL_MS = 180000;
@@ -341,6 +347,8 @@ class AIO_Tasks
 		hold.m_fCheckedAt = hold.m_fProgressAt;
 		hold.m_fTravelMs = 0;
 		hold.m_iPlayerId = playerId;
+		hold.m_bReachedPost = false;
+		hold.m_iDeadEnds = 0;
 		AIO_MoveBehavior move = ActiveMove(UtilityOf(AgentOf(body)));
 		if (move)
 			move.m_Radius.m_Value = INTERIOR_RADIUS;
@@ -412,8 +420,21 @@ class AIO_Tasks
 		float now = GetGame().GetWorld().GetWorldTime();
 		float elapsed = Math.Max(0, now - hold.m_fCheckedAt);
 		hold.m_fCheckedAt = now;
-		if (InteriorArrived(body, hold))
+		// Clear: rooms another man already found cut off are skipped without walking to them.
+		bool knownDead;
+		if (hold.m_Building && hold.m_aLegs && !hold.m_bRouteComplete)
 		{
+			while (!hold.m_aLegs.IsEmpty() && AIO_Maneuvers.CutOff(hold.m_Building, hold.m_aLegs[0]))
+			{
+				hold.m_aLegs.RemoveOrdered(0);
+				hold.m_iSkippedRooms++;
+			}
+			knownDead = AIO_Maneuvers.CutOff(hold.m_Building, hold.m_vSpot);
+		}
+		if (!knownDead && InteriorArrived(body, hold))
+		{
+			hold.m_bReachedPost = true;
+			hold.m_iDeadEnds = 0;
 			if (hold.m_aLegs && !hold.m_bRouteComplete)
 			{
 				hold.m_iVisitedRooms++;
@@ -437,8 +458,15 @@ class AIO_Tasks
 		{
 			hold.m_vProgressPos = body.GetOrigin();
 			hold.m_fProgressAt = now;
+			hold.m_iDeadEnds = 0;
 		}
-		if (hold.m_Building && now - hold.m_fProgressAt >= 5000)
+		// The native pathfinder ends his move at the nearest point it can reach when the post
+		// can't be reached (a floor with no stairs on the navmesh, a closed-off room). The
+		// watchdog re-issues it and he stands there: a few of those in a row is a dead end,
+		// no need to wait out the whole stall time.
+		if (!ActiveMove(utility) && now - hold.m_fProgressAt >= 2000)
+			hold.m_iDeadEnds++;
+		if (hold.m_Building && now - hold.m_fProgressAt >= 3000)
 		{
 			s_DoorBody = body;
 			s_DoorBuilding = hold.m_Building;
@@ -457,10 +485,35 @@ class AIO_Tasks
 		float stall = INTERIOR_STALL_MS;
 		if (hold.m_aLegs)
 			stall = ROOM_STALL_MS;
-		if (now - hold.m_fProgressAt < stall && hold.m_fTravelMs < INTERIOR_TRAVEL_MS)
+		bool deadEnd = hold.m_iDeadEnds >= DEAD_END_TICKS || knownDead;
+		if (!deadEnd && now - hold.m_fProgressAt < stall && hold.m_fTravelMs < INTERIOR_TRAVEL_MS)
 			return true;
 		int playerId = hold.m_iPlayerId;
-		Print(string.Format("[AIO] %1 cannot reach interior post %2 from %3 (action %4); abandoning that position", AIO_Server.NameOf(body), hold.m_vSpot, body.GetOrigin(), utility.GetExecutedAction()));
+		Print(string.Format("[AIO] %1 cannot reach interior post %2 from %3 (action %4, dead end %5); abandoning that position", AIO_Server.NameOf(body), hold.m_vSpot, body.GetOrigin(), utility.GetExecutedAction(), deadEnd));
+		AIAgent agent = AgentOf(body);
+		AIO_Approach garrison = AIO_Maneuvers.GarrisonOf(agent);
+		if (hold.m_Building)
+			AIO_Maneuvers.DeadEnd(hold.m_Building, body, hold.m_vSpot, hold.m_iDeadEnds >= DEAD_END_TICKS);
+		// Garrison: try the nearest free post he may be able to reach before giving up.
+		if (!hold.m_aLegs && hold.m_Building && hold.m_iReplans < GARRISON_REPLANS)
+		{
+			if (!hold.m_aFailedSpots)
+				hold.m_aFailedSpots = {};
+			hold.m_aFailedSpots.Insert(hold.m_vSpot);
+			hold.m_iReplans++;
+			vector look;
+			vector next = AIO_Maneuvers.AlternatePost(body, hold, look);
+			if (next != vector.Zero)
+			{
+				Print(string.Format("[AIO] %1 takes post %2 instead (try %3)", AIO_Server.NameOf(body), next, hold.m_iReplans));
+				hold.m_vSpot = next;
+				hold.m_vLook = next + look * 60;
+				GuardInterior(body, hold, playerId);
+				StopMoves(utility);
+				utility.AddAction(new AIO_MoveBehavior(utility, null, next, radius: INTERIOR_RADIUS));
+				return true;
+			}
+		}
 		if (hold.m_aLegs && !hold.m_bRouteComplete)
 		{
 			hold.m_iSkippedRooms++;
@@ -481,9 +534,27 @@ class AIO_Tasks
 				utility.AddAction(new AIO_MoveBehavior(utility, null, hold.m_vSpot, radius: INTERIOR_RADIUS));
 				return true;
 			}
+			// None of his rooms could be reached: one he can reach instead, so he still ends inside.
+			if (hold.m_Building && hold.m_iReplans < GARRISON_REPLANS)
+			{
+				hold.m_iReplans++;
+				vector roomLook;
+				vector room = AIO_Maneuvers.AlternatePost(body, hold, roomLook);
+				if (room != vector.Zero)
+				{
+					Print(string.Format("[AIO] %1 clears %2 instead (try %3)", AIO_Server.NameOf(body), room, hold.m_iReplans));
+					hold.m_vSpot = room;
+					GuardInterior(body, hold, playerId);
+					utility.AddAction(new AIO_MoveBehavior(utility, null, room, radius: INTERIOR_RADIUS));
+					return true;
+				}
+			}
 		}
+		if (garrison)
+			AIO_Maneuvers.GaveUp(agent); // the garrison summary reports him
 		Rejoin(body, null);
-		AIO_Supplies.Report(playerId, "A soldier cannot reach his building position; returning to formation");
+		if (!garrison)
+			AIO_Supplies.Report(playerId, "A soldier cannot reach his building position; returning to formation");
 		return false;
 	}
 

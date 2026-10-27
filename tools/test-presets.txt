@@ -6,6 +6,7 @@ supply|-aioSupplyTest 1|170
 attack|-aioAttackTest 1|260
 defense|-aioDefenseTest 1|350
 tower|-aioTowerTest 1|550
+garrison|-aioGarrisonTest 1|500
 tasks-aca|-aioTaskTest 1|240|aca
 moves-aca|-aioMoveTest 1|280|aca
 infantry-aca|-aioInfantryTest 1|240|aca

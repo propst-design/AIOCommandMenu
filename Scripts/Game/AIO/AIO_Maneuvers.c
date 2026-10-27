@@ -71,8 +71,10 @@ modded class SCR_AIUtilityComponent
 	}
 }
 
-// Garrison / Clear on a building whose inside could not be found from afar: the men walk up
-// to it first and the order is given again when they get there.
+// Garrison / Clear on a building whose inside could not be found yet (navmesh still loading,
+// or none from afar): the men walk up to it first and the order is given again when the inside
+// is found. A garrison then stays here as m_bPosted until every man has reached his post or
+// given up, and the player gets one honest summary.
 class AIO_Approach
 {
 	ref array<AIAgent> m_aMen = {};
@@ -81,11 +83,29 @@ class AIO_Approach
 	int m_iOrder;
 	int m_iPlayerId;
 	int m_iTicks;
+	bool m_bPosted;  // garrison posts handed out; waiting for the men to reach them
+	bool m_bWaitTiles; // the building's navmesh was still streaming in: retry once it has
+	int m_iGaveUp;   // men who could reach no post (back in formation)
+}
+
+// What the men learned about a building: posts nobody could reach and floors with no way up
+// (stairs missing from the navmesh, a ladder-only attic). Garrison and Clear skip them from
+// then on, so the squad doesn't rediscover a dead end man by man. Forgotten after a while in
+// case a door was opened.
+class AIO_BuildingMemory
+{
+	IEntity m_Building;
+	float m_fUntil;
+	ref array<vector> m_aDeadEnds = {};
+	ref array<float> m_aDeadFloors = {};
 }
 
 class AIO_Maneuvers
 {
 	static const float FLANK_WIDTH = 45;
+	static const int GARRISON_REPORT_S = 150; // summary even if someone is still on his way in
+	static const float VIEW_EYE = 1.5;       // window height check (standing)
+	static const float VIEW_PAST = 4;        // sight must carry on this far past a window
 	static const vector PROBE_EXTENT = "1.2 1.5 1.2";
 
 
@@ -444,8 +464,12 @@ class AIO_Maneuvers
 		if (AIO_Bounding.IsIssuing() || !agent)
 			return;
 		StopLead(agent);
-		foreach (AIO_Approach approach : s_aApproaches)
-			approach.m_aMen.RemoveItem(agent);
+		for (int i = s_aApproaches.Count() - 1; i >= 0; i--)
+		{
+			s_aApproaches[i].m_aMen.RemoveItem(agent);
+			if (s_aApproaches[i].m_bPosted && s_aApproaches[i].m_aMen.IsEmpty() && s_aApproaches[i].m_iGaveUp == 0)
+				s_aApproaches.Remove(i); // everyone has a new order: nothing to report
+		}
 		AIO_Bounding.Leave(agent);
 	}
 
@@ -529,10 +553,12 @@ class AIO_Maneuvers
 		if (!building)
 			return "Look at a building";
 		array<vector> inside = {};
-		InteriorPoints(building, bodies[0], inside);
+		array<vector> views = {};
+		InteriorPoints(building, bodies[0], inside, views);
 		Print("[AIO] Interior of " + InteriorReport(building));
 		if (inside.IsEmpty())
 			return Approach(bodies, player, order, building);
+		DropCutOff(building, inside, views);
 		vector mins, maxs;
 		building.GetWorldBounds(mins, maxs);
 		vector middle = (mins + maxs) * 0.5;
@@ -541,37 +567,65 @@ class AIO_Maneuvers
 			playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(player);
 		if (order == AIO_EOrder.DEF_GARRISON)
 		{
-			// Spread over the building: farthest-apart points first.
+			// Posts at windows first (a view out), spread over the building; then any other room.
+			array<vector> windows = {};
+			array<vector> rooms = {};
+			for (int w = 0; w < inside.Count(); w++)
+			{
+				if (views[w] != vector.Zero)
+					windows.Insert(inside[w]);
+				else
+					rooms.Insert(inside[w]);
+			}
 			array<vector> posts = {};
-			PickSpread(inside, bodies.Count(), posts);
+			PickSpread(windows, bodies.Count(), posts);
+			int atWindows = posts.Count();
+			if (posts.Count() < bodies.Count())
+				PickSpread(rooms, bodies.Count(), posts);
+			// Nearest man to each post, so the squad doesn't cross paths in the doorway.
+			array<int> assigned = {};
+			AssignNearest(bodies, posts, assigned);
+			AIO_Approach job = new AIO_Approach();
+			job.m_Building = building;
+			job.m_Player = player;
+			job.m_iOrder = order;
+			job.m_iPlayerId = playerId;
+			job.m_bPosted = true;
 			for (int g = 0; g < bodies.Count(); g++)
 			{
-				if (g >= posts.Count())
+				if (assigned[g] < 0)
 				{
 					AIO_Tasks.Rejoin(bodies[g], player);
 					continue;
 				}
-				vector post = posts[g];
-				vector outward = Flat(post - middle);
-				HoldFacing(bodies[g], post, post + outward * 60, false);
-				AIO_Tasks.GuardInterior(bodies[g], AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(bodies[g]))), playerId);
+				vector post = posts[assigned[g]];
+				HoldFacing(bodies[g], post, post + PostFacing(post, inside, views, middle) * 60, false);
 				AIO_HoldBehavior garrison = AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(bodies[g])));
-				if (garrison)
-					garrison.m_Building = building;
+				if (!garrison)
+					continue;
+				garrison.m_Building = building;
+				AIO_Tasks.GuardInterior(bodies[g], garrison, playerId);
+				job.m_aMen.Insert(AIO_Tasks.AgentOf(bodies[g]));
 			}
-			return string.Format("%1 men garrisoning (%2 remain in formation)", posts.Count(), bodies.Count() - posts.Count());
+			if (!job.m_aMen.IsEmpty())
+			{
+				s_aApproaches.Insert(job);
+				AIO_Tasks.Watch();
+			}
+			return string.Format("%1 men garrisoning, %2 at windows (%3 remain in formation)", posts.Count(), atWindows, bodies.Count() - posts.Count());
 		}
-		// Clear: everyone walks through the building room by room, then holds inside.
+		// Clear: the rooms are shared out, each man walks his own nearest-first and holds inside
+		// at his last one. All men walking every room in single file jammed narrow houses.
 		array<vector> sweep = {};
-		PickSpread(inside, Math.Min(inside.Count(), 6), sweep);
+		PickSpread(inside, Math.Min(inside.Count(), Math.Max(6, bodies.Count() * 2)), sweep);
 		// order the sweep from the men's side of the building inward
 		vector approach = Centroid(bodies);
 		SortByDistance(sweep, approach);
 		for (int c = 0; c < bodies.Count(); c++)
 		{
 			array<vector> legs = {};
-			foreach (vector room : sweep)
-				legs.Insert(room); // sideways offsets can put later squad members inside walls
+			for (int r = c % sweep.Count(); r < sweep.Count(); r += bodies.Count())
+				legs.Insert(sweep[r]); // sideways offsets can put later squad members inside walls
 			Route(bodies[c], legs);
 			AIO_Tasks.GuardInterior(bodies[c], AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(bodies[c]))), playerId);
 			AIO_HoldBehavior clearing = AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(bodies[c])));
@@ -599,6 +653,7 @@ class AIO_Maneuvers
 		approach.m_Building = building;
 		approach.m_Player = player;
 		approach.m_iOrder = order;
+		approach.m_bWaitTiles = s_bTilesLoading;
 		if (player)
 			approach.m_iPlayerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(player);
 		int index;
@@ -617,12 +672,173 @@ class AIO_Maneuvers
 		return string.Format("%1 men moving up to the building first", approach.m_aMen.Count());
 	}
 
+	// Men still walking up to a building (not yet given posts).
+	static int Approaching()
+	{
+		int count;
+		foreach (AIO_Approach approach : s_aApproaches)
+		{
+			if (!approach.m_bPosted)
+				count++;
+		}
+		return count;
+	}
+
+	// The garrison a man belongs to, or null.
+	static AIO_Approach GarrisonOf(AIAgent agent)
+	{
+		foreach (AIO_Approach approach : s_aApproaches)
+		{
+			if (approach.m_bPosted && approach.m_aMen.Contains(agent))
+				return approach;
+		}
+		return null;
+	}
+
+	static const float MEMORY_MS = 600000;
+	static ref array<ref AIO_BuildingMemory> s_aMemories = {};
+
+	static AIO_BuildingMemory MemoryOf(IEntity building, bool create)
+	{
+		float now = GetGame().GetWorld().GetWorldTime();
+		for (int i = s_aMemories.Count() - 1; i >= 0; i--)
+		{
+			AIO_BuildingMemory memory = s_aMemories[i];
+			if (!memory.m_Building || memory.m_fUntil < now)
+			{
+				s_aMemories.Remove(i);
+				continue;
+			}
+			if (memory.m_Building == building)
+				return memory;
+		}
+		if (!create || !building)
+			return null;
+		AIO_BuildingMemory added = new AIO_BuildingMemory();
+		added.m_Building = building;
+		s_aMemories.Insert(added);
+		return added;
+	}
+
+	// A post or room he could not reach: nobody is sent near it again. When the pathfinder gave
+	// up ('pathEnd', not just a jam on the stairs) while he stood within the building's footprint
+	// on another level, that whole floor is cut off from here.
+	static void DeadEnd(IEntity building, IEntity body, vector spot, bool pathEnd)
+	{
+		AIO_BuildingMemory memory = MemoryOf(building, true);
+		if (!memory)
+			return;
+		memory.m_fUntil = GetGame().GetWorld().GetWorldTime() + MEMORY_MS;
+		memory.m_aDeadEnds.Insert(spot);
+		vector at = body.GetOrigin();
+		vector mins, maxs;
+		building.GetWorldBounds(mins, maxs);
+		bool under = at[0] > mins[0] && at[0] < maxs[0] && at[2] > mins[2] && at[2] < maxs[2];
+		if (pathEnd && Math.AbsFloat(spot[1] - at[1]) > 1.5 && under && !memory.m_aDeadFloors.Contains(spot[1]))
+		{
+			memory.m_aDeadFloors.Insert(spot[1]);
+			Print(string.Format("[AIO] Floor at height %1 of %2 has no way in from %3; skipping it", spot[1], building, at));
+		}
+	}
+
+	// Known to be cut off: near a dead end on the same floor, or on a dead floor.
+	static bool CutOff(IEntity building, vector point)
+	{
+		AIO_BuildingMemory memory = MemoryOf(building, false);
+		if (!memory)
+			return false;
+		foreach (vector dead : memory.m_aDeadEnds)
+		{
+			if (vector.DistanceXZ(dead, point) < 2 && Math.AbsFloat(dead[1] - point[1]) < 1)
+				return true;
+		}
+		foreach (float floor : memory.m_aDeadFloors)
+		{
+			if (Math.AbsFloat(floor - point[1]) < 1)
+				return true;
+		}
+		return false;
+	}
+
+	// Drop what the squad already knows to be cut off (all of it if nothing else is left).
+	static void DropCutOff(IEntity building, notnull array<vector> points, array<vector> views)
+	{
+		array<vector> keptPoints = {};
+		array<vector> keptViews = {};
+		for (int i = 0; i < points.Count(); i++)
+		{
+			if (CutOff(building, points[i]))
+				continue;
+			keptPoints.Insert(points[i]);
+			if (views)
+				keptViews.Insert(views[i]);
+		}
+		if (keptPoints.IsEmpty())
+			return;
+		points.Copy(keptPoints);
+		if (views)
+			views.Copy(keptViews);
+	}
+
+	// He could reach none of his posts; he rejoins the formation and the summary says so.
+	static void GaveUp(AIAgent agent)
+	{
+		AIO_Approach job = GarrisonOf(agent);
+		if (job)
+			job.m_iGaveUp++;
+	}
+
+	static string s_sLastGarrison; // for the garrison test
+
+	// One report per garrison once nobody is still on the way in: who is at a post, who isn't.
+	protected static bool TickGarrison(AIO_Approach job)
+	{
+		int inPlace;
+		int moving;
+		for (int m = job.m_aMen.Count() - 1; m >= 0; m--)
+		{
+			AIAgent agent = job.m_aMen[m];
+			IEntity body;
+			if (agent)
+				body = agent.GetControlledEntity();
+			AIO_HoldBehavior hold = AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(agent));
+			if (!body || !AIO_Server.IsAlive(body) || !hold || hold.m_Building != job.m_Building)
+			{
+				job.m_aMen.Remove(m);
+				continue;
+			}
+			if (hold.m_bReachedPost)
+				inPlace++;
+			else
+				moving++;
+		}
+		if (moving > 0 && job.m_iTicks < GARRISON_REPORT_S)
+			return false;
+		if (inPlace + moving + job.m_iGaveUp == 0)
+			return true;
+		string result = string.Format("Garrison: %1 men in position", inPlace);
+		if (moving > 0)
+			result += string.Format(", %1 still working their way in", moving);
+		if (job.m_iGaveUp > 0)
+			result += string.Format(", %1 found no way to a post and rejoined the formation", job.m_iGaveUp);
+		AIO_Supplies.Report(job.m_iPlayerId, result);
+		Print("[AIO] " + result);
+		s_sLastGarrison = result;
+		return true;
+	}
+
 	protected static void TickApproaches()
 	{
 		for (int i = s_aApproaches.Count() - 1; i >= 0; i--)
 		{
 			AIO_Approach approach = s_aApproaches[i];
 			approach.m_iTicks++;
+			if (approach.m_bPosted)
+			{
+				if (TickGarrison(approach))
+					s_aApproaches.Remove(i);
+				continue;
+			}
 			array<IEntity> men = {};
 			Bodies(approach.m_aMen, men);
 			if (men.IsEmpty() || !approach.m_Building)
@@ -637,8 +853,12 @@ class AIO_Maneuvers
 			vector middle = (mins + maxs) * 0.5;
 			float half = Math.Max(maxs[0] - mins[0], maxs[2] - mins[2]) * 0.5;
 			bool close = vector.DistanceXZ(Centroid(men), middle) < half + 10;
-			// Try every 5 s on the way, and once more when they are there.
-			if (!close && approach.m_iTicks % 5 != 0 && approach.m_iTicks < 90)
+			// Try as soon as the building's navmesh has loaded, every 5 s on the way, and once
+			// more when they are there.
+			bool loaded = approach.m_bWaitTiles && NavmeshReady(approach.m_Building, false);
+			if (loaded)
+				approach.m_bWaitTiles = false;
+			if (!close && !loaded && approach.m_iTicks % 5 != 0 && approach.m_iTicks < 90)
 				continue;
 			array<vector> inside = {};
 			InteriorPoints(approach.m_Building, men[0], inside);
@@ -760,16 +980,57 @@ class AIO_Maneuvers
 	static int s_iNavHits;
 	static int s_iOutside;
 	static int s_iOpen;
+	static int s_iFurniture;
+	static bool s_bTilesLoading;
 
-	// Standable points inside the building: a grid over its footprint on each floor, snapped to
-	// the navmesh, kept when they stay inside the walls and have a roof over them. Buildings
-	// with no roofed navmesh (open towers, decks) fall back to the open points inside.
-	static void InteriorPoints(IEntity building, IEntity walker, notnull array<vector> points)
+	// The navmesh streams in around AI. A building nobody is near has no navmesh yet, which
+	// used to read as "no inside": ask the engine to load its tiles (takes a few frames).
+	static bool NavmeshReady(IEntity building, bool request)
+	{
+		AIWorld ai = GetGame().GetAIWorld();
+		if (!ai)
+			return true;
+		NavmeshWorldComponent mesh = ai.GetNavmeshWorldComponent("Soldiers");
+		if (!mesh)
+			return true;
+		vector mins, maxs;
+		building.GetWorldBounds(mins, maxs);
+		array<vector> corners = {mins, Vector(mins[0], mins[1], maxs[2]), Vector(maxs[0], mins[1], mins[2]), Vector(maxs[0], mins[1], maxs[2]), (mins + maxs) * 0.5};
+		bool ready = true;
+		foreach (vector corner : corners)
+		{
+			if (mesh.IsTileLoaded(corner))
+				continue;
+			ready = false;
+			if (request && !mesh.IsTileRequested(corner))
+				mesh.LoadTileIn(corner);
+		}
+		return ready;
+	}
+
+	// Standable points inside the building, and for each the direction of a view out of a
+	// window (zero = none) when 'views' is given.
+	static void InteriorPoints(IEntity building, IEntity walker, notnull array<vector> points, array<vector> views = null)
+	{
+		s_bTilesLoading = !NavmeshReady(building, true);
+		SamplePoints(building, walker, points);
+		if (!views)
+			return;
+		foreach (vector point : points)
+			views.Insert(ViewOut(point, walker));
+	}
+
+	// A grid over the building's footprint on each floor, snapped to the navmesh, kept when they
+	// stay inside the walls, stand on the building's own floor (not furniture) and have a roof
+	// over them. Buildings with no roofed navmesh (open towers, decks) fall back to the open
+	// points inside.
+	protected static void SamplePoints(IEntity building, IEntity walker, notnull array<vector> points)
 	{
 		s_iProbes = 0;
 		s_iNavHits = 0;
 		s_iOutside = 0;
 		s_iOpen = 0;
+		s_iFurniture = 0;
 		AIPathfindingComponent pathfinding = AIPathfindingComponent.Cast(walker.FindComponent(AIPathfindingComponent));
 		if (!pathfinding)
 			return;
@@ -796,7 +1057,7 @@ class AIO_Maneuvers
 						s_iOutside++;
 						continue;
 					}
-					if (!StandingRoom(corrected, walker) || !BuildingFloor(corrected, walker, building))
+					if (!StandingRoom(corrected, walker) || !BuildingFloor(corrected, walker, building, true))
 						continue;
 					// Under a roof: something solid above (rules out yards inside the bounds).
 					if (!Covered(corrected, maxs[1] + 1))
@@ -844,7 +1105,193 @@ class AIO_Maneuvers
 		string name = "?";
 		if (building.GetPrefabData())
 			name = building.GetPrefabData().GetPrefabName();
-		return string.Format("%1 size %2: %3 probes, %4 on navmesh, %5 outside, %6 unroofed", name, maxs - mins, s_iProbes, s_iNavHits, s_iOutside, s_iOpen);
+		string report = string.Format("%1 size %2: %3 probes, %4 on navmesh, %5 outside, %6 unroofed, %7 on furniture", name, maxs - mins, s_iProbes, s_iNavHits, s_iOutside, s_iOpen, s_iFurniture);
+		if (s_bTilesLoading)
+			report += " (navmesh still loading)";
+		return report;
+	}
+
+	// The open direction at a window: sight at eye height through glass and window frames that
+	// carries on past the window, or a long clear view (an open deck, an empty window hole).
+	// Zero when every direction faces a wall.
+	static vector ViewOut(vector point, IEntity walker)
+	{
+		vector eye = point + Vector(0, VIEW_EYE, 0);
+		vector best = vector.Zero;
+		float bestScore = 0;
+		for (int i = 0; i < 8; i++)
+		{
+			float angle = Math.PI2 * i / 8;
+			vector dir = Vector(Math.Sin(angle), 0, Math.Cos(angle));
+			float score = SightOut(eye, dir, walker);
+			if (score > bestScore)
+			{
+				bestScore = score;
+				best = dir;
+			}
+		}
+		return best;
+	}
+
+	// > 0 when the line of sight leaves the building: metres seen beyond a window, or the full
+	// range for an unbroken 20 m view.
+	protected static float SightOut(vector eye, vector dir, IEntity walker)
+	{
+		float range = 20;
+		vector start = eye;
+		IEntity skip = walker;
+		float windowAt = -1;
+		for (int pass = 0; pass < 4; pass++)
+		{
+			TraceParam trace = new TraceParam();
+			trace.Start = start;
+			trace.End = eye + dir * range;
+			trace.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
+			trace.Exclude = skip;
+			float fraction = GetGame().GetWorld().TraceMove(trace, null);
+			vector hit = trace.Start + (trace.End - trace.Start) * fraction;
+			float seen = vector.Distance(eye, hit);
+			if (fraction >= 1 || !SeeThrough(trace.TraceEnt))
+			{
+				if (windowAt >= 0 && seen - windowAt >= VIEW_PAST)
+					return seen - windowAt;
+				if (windowAt < 0 && fraction >= 1)
+					return range;
+				return 0;
+			}
+			if (windowAt < 0)
+				windowAt = seen;
+			skip = trace.TraceEnt;
+			start = hit + dir * 0.3; // past the pane and frame
+		}
+		return 0;
+	}
+
+	// Window frames and glass are separate entities in the building: they don't block the view.
+	static bool SeeThrough(IEntity entity)
+	{
+		while (entity)
+		{
+			if (entity.GetPrefabData())
+			{
+				string name = entity.GetPrefabData().GetPrefabName();
+				if (name.Contains("/Windows/") || name.Contains("Glass"))
+					return true;
+			}
+			entity = entity.GetParent();
+		}
+		return false;
+	}
+
+	// Where a post's man should look: out of its window, else away from the middle.
+	static vector PostFacing(vector post, array<vector> inside, array<vector> views, vector middle)
+	{
+		for (int i = 0; i < inside.Count() && i < views.Count(); i++)
+		{
+			if (inside[i] == post && views[i] != vector.Zero)
+				return views[i];
+		}
+		return Flat(post - middle);
+	}
+
+	// Each post to the nearest free man (greedy, closest pair first); -1 = no post for him.
+	static void AssignNearest(array<IEntity> bodies, array<vector> posts, notnull array<int> assigned)
+	{
+		array<bool> taken = {};
+		foreach (vector post : posts)
+			taken.Insert(false);
+		foreach (IEntity body : bodies)
+			assigned.Insert(-1);
+		int pairs = Math.Min(bodies.Count(), posts.Count());
+		for (int n = 0; n < pairs; n++)
+		{
+			float best = float.MAX;
+			int bestMan = -1;
+			int bestPost = -1;
+			for (int g = 0; g < bodies.Count(); g++)
+			{
+				if (assigned[g] >= 0)
+					continue;
+				for (int p = 0; p < posts.Count(); p++)
+				{
+					if (taken[p])
+						continue;
+					float cost = PostCost(bodies[g].GetOrigin(), posts[p]);
+					if (cost < best)
+					{
+						best = cost;
+						bestMan = g;
+						bestPost = p;
+					}
+				}
+			}
+			if (bestMan < 0)
+				return;
+			assigned[bestMan] = bestPost;
+			taken[bestPost] = true;
+		}
+	}
+
+	// Distance with climbing counted extra (stairs are the slow part).
+	static float PostCost(vector from, vector post)
+	{
+		return vector.Distance(from, post) + Math.AbsFloat(post[1] - from[1]) * 2;
+	}
+
+	// A free interior point for a man who could not reach his post: near where he is, not one he
+	// (or anyone) already found unreachable and not one another man of his garrison holds.
+	// Window posts preferred. 'look' = where to face. Zero = none left.
+	static vector AlternatePost(IEntity body, AIO_HoldBehavior hold, out vector look)
+	{
+		look = vector.Zero;
+		if (!hold.m_Building)
+			return vector.Zero;
+		array<vector> inside = {};
+		array<vector> views = {};
+		InteriorPoints(hold.m_Building, body, inside, views);
+		array<vector> claimed = {};
+		if (hold.m_aFailedSpots)
+			claimed.InsertAll(hold.m_aFailedSpots);
+		claimed.Insert(hold.m_vSpot);
+		AIO_Approach job = GarrisonOf(AIO_Tasks.AgentOf(body));
+		if (job)
+		{
+			foreach (AIAgent agent : job.m_aMen)
+			{
+				AIO_HoldBehavior other = AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(agent));
+				if (other && other != hold)
+					claimed.Insert(other.m_vSpot);
+			}
+		}
+		vector mins, maxs;
+		hold.m_Building.GetWorldBounds(mins, maxs);
+		vector middle = (mins + maxs) * 0.5;
+		vector best = vector.Zero;
+		float bestCost = float.MAX;
+		for (int i = 0; i < inside.Count(); i++)
+		{
+			bool free = true;
+			foreach (vector spot : claimed)
+			{
+				if (vector.Distance(spot, inside[i]) < 1.5)
+				{
+					free = false;
+					break;
+				}
+			}
+			if (!free || CutOff(hold.m_Building, inside[i]))
+				continue;
+			float cost = PostCost(body.GetOrigin(), inside[i]);
+			if (views[i] == vector.Zero)
+				cost += 4;
+			if (cost < bestCost)
+			{
+				bestCost = cost;
+				best = inside[i];
+				look = PostFacing(inside[i], inside, views, middle);
+			}
+		}
+		return best;
 	}
 
 	static bool Covered(vector point, float top)
@@ -871,7 +1318,9 @@ class AIO_Maneuvers
 	// A roof overhead alone also accepts grass underneath overhangs/foundations. Require an
 	// actual, reasonably level floor beneath the sample. Bare-ground/separate-floor rooms must
 	// be enclosed by this building, so barns work while grass beneath an overhang is rejected.
-	static bool BuildingFloor(vector point, IEntity walker, IEntity building)
+	// 'structural' (choosing posts) also rejects the tops of beds, tables and cupboards: the
+	// navmesh has small islands on furniture that nobody can walk onto.
+	static bool BuildingFloor(vector point, IEntity walker, IEntity building, bool structural = false)
 	{
 		TraceParam trace = new TraceParam();
 		trace.Start = point + Vector(0, 0.4, 0);
@@ -881,6 +1330,11 @@ class AIO_Maneuvers
 		if (GetGame().GetWorld().TraceMove(trace, null) >= 1 || trace.TraceNorm[1] < 0.9)
 			return false;
 		IEntity floor = trace.TraceEnt;
+		if (structural && floor && floor != building && Furniture(floor))
+		{
+			s_iFurniture++;
+			return false;
+		}
 		while (floor)
 		{
 			if (floor == building)
@@ -909,13 +1363,24 @@ class AIO_Maneuvers
 		return walls >= 3;
 	}
 
-	// 'count' points spread out over the set (greedy farthest-first).
+	// A small separate object (bed, table, cupboard), not a floor slab of the building.
+	static bool Furniture(IEntity entity)
+	{
+		vector mins, maxs;
+		entity.GetWorldBounds(mins, maxs);
+		return maxs[0] - mins[0] < 3.5 && maxs[2] - mins[2] < 3.5;
+	}
+
+	// Up to 'count' points in all, spread out over the set (greedy farthest-first); points
+	// already in 'picked' count as chosen.
 	static void PickSpread(array<vector> from, int count, notnull array<vector> picked)
 	{
 		if (from.IsEmpty())
 			return;
-		picked.Insert(from[0]);
-		while (picked.Count() < count && picked.Count() < from.Count())
+		int start = picked.Count();
+		if (picked.IsEmpty())
+			picked.Insert(from[0]);
+		while (picked.Count() < count && picked.Count() - start < from.Count())
 		{
 			vector best = from[0];
 			float bestDistance = -1;
