@@ -30,7 +30,8 @@ enum AIO_EAimType
 class AIO_AimMarker
 {
 	static const int RING_DOTS = 16;
-	static const int BAR = 2;
+	static const float BAR = 1.5;
+	static const int ALPHA = 160; // see-through, so the marker doesn't hide what it marks
 
 	protected static ref AIO_AimMarker s_Instance;
 	protected static AIO_EAimStyle s_eStyle = AIO_EAimStyle.CROSSHAIR;
@@ -43,6 +44,7 @@ class AIO_AimMarker
 	protected ref array<ImageWidget> m_aOutline = {}; // building / vehicle: top, bottom, left, right
 	protected ImageWidget m_wDot;
 	protected TextWidget m_wLabel;
+	protected float m_fHalf; // the marker's half-size on screen, for placing the label clear of it
 
 	static AIO_AimMarker Get()
 	{
@@ -113,23 +115,23 @@ class AIO_AimMarker
 	{
 		switch (type)
 		{
-			case AIO_EAimType.ATTACK: return ARGB(235, 255, 100, 60);
-			case AIO_EAimType.DEFEND: return ARGB(235, 90, 170, 255);
-			case AIO_EAimType.VEHICLE: return ARGB(235, 110, 230, 110);
-			case AIO_EAimType.SUPPLY: return ARGB(235, 255, 215, 90);
-			case AIO_EAimType.ADMIN: return ARGB(235, 200, 120, 255);
+			case AIO_EAimType.ATTACK: return ARGB(ALPHA, 255, 100, 60);
+			case AIO_EAimType.DEFEND: return ARGB(ALPHA, 90, 170, 255);
+			case AIO_EAimType.VEHICLE: return ARGB(ALPHA, 110, 230, 110);
+			case AIO_EAimType.SUPPLY: return ARGB(ALPHA, 255, 215, 90);
+			case AIO_EAimType.ADMIN: return ARGB(ALPHA, 200, 120, 255);
 		}
-		return ARGB(235, 240, 240, 240);
+		return ARGB(ALPHA, 240, 240, 240);
 	}
 
 	static int Grey()
 	{
-		return ARGB(200, 150, 150, 150);
+		return ARGB(ALPHA, 150, 150, 150);
 	}
 
 	static int Warn()
 	{
-		return ARGB(235, 255, 80, 70);
+		return ARGB(200, 255, 80, 70);
 	}
 
 	void Update(SCR_PlayerController pc, AIO_MenuItem page, bool onRoot)
@@ -208,7 +210,7 @@ class AIO_AimMarker
 			labelColor = Warn();
 		vector screen;
 		Project(point, screen);
-		PlaceLabel(screen[0] + 14, screen[1] - 12, text.Trim(), labelColor);
+		PlaceLabel(screen[0] + m_fHalf + 8, screen[1] - 12, text.Trim(), labelColor); // past the right arm / ring
 	}
 
 	// The marker at the point, sized in metres so it shrinks with distance. False when off screen.
@@ -223,11 +225,11 @@ class AIO_AimMarker
 			m_wDot.SetVisible(false);
 			return false;
 		}
-		float metres = 0.5;
+		float metres = 0.3;
 		if (s_iSize == 1)
-			metres = 1;
+			metres = 0.6;
 		else if (s_iSize == 2)
-			metres = 2;
+			metres = 1.2;
 		// Pixels per metre at the point, from a sideways step along the camera's right axis.
 		vector camera[4];
 		GetGame().GetWorld().GetCurrentCamera(camera);
@@ -235,15 +237,17 @@ class AIO_AimMarker
 		float perMetre = 0;
 		if (Project(point + camera[0], side))
 			perMetre = Math.AbsFloat(side[0] - centre[0]);
-		float half = Math.Clamp(perMetre * metres, 5, 80);
-		float dot = Math.Clamp(half * 0.15, 3, 6);
+		float half = Math.Clamp(perMetre * metres, 5, 45);
+		m_fHalf = half;
+		float dot = Math.Clamp(half * 0.12, 2, 4);
 
 		bool arms = type != AIO_EAimType.DEFEND;
 		bool box = type == AIO_EAimType.ATTACK || type == AIO_EAimType.DEFEND;
 		bool centreDot = type != AIO_EAimType.MOVE;
 		if (s_eStyle == AIO_EAimStyle.RING)
 		{
-			Ring(point, normal, metres, dot, color);
+			Ring(point, normal, metres * 1.5, dot, color);
+			m_fHalf = half * 1.5;
 			arms = false;
 			box = false;
 			centreDot = true;
