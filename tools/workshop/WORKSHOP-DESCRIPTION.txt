@@ -7,13 +7,15 @@ Press T and use the number keys to move your AI squad, split it into colour team
 PUT YOUR SQUAD TO WORK
 
 - Command the whole squad, selected soldiers or colour teams. Set formations, stance, speed and rules of engagement.
-- Choose Safe, Aware, Combat or Stealth behaviour: from weapons-down travel while quiet to a low, cautious approach with return fire only.
-- Bound forward with covering soldiers, peel back or send a team around a flank.
-- Garrison a building, visit reachable interior positions, watch a direction or form an outward-facing defensive ring.
+- Choose Safe, Aware, Combat or Stealth behaviour.
+- Bound forward with covering soldiers, peel back or send a team around a flank; in contact, men with smoke screen the move.
+- Garrison a building, each man at a window post facing out, or clear it room by room. Watch a direction or form an outward-facing ring.
+- Throw frags or smoke, or lay a smoke screen, where you aim, using the grenades your men carry.
+- Become leader of your own squad, including from an AI leader while possessing a squad member, or step down.
 - Board vehicles and static weapons, choose seats, control engines/lights and dismount passengers. Send soldiers to unflip a vehicle or repair it with a carried repair kit.
-- Rearm, collect a weapon, heal up or send a squadmate to treat a casualty using real supplies. Ask a soldier with spares to bring you ammunition or bandages.
-- Send an equipped soldier to plant a timed or detonator-controlled demolition charge, lay a mine or disarm mines around a point. Charges can attach to vehicles; DETONATE requires the living placer to carry his detonator within range.
-- Order a squad soldier to fire a nearby mortar: 3 or 6 HE rounds, 3 smoke rounds or 1 illumination round. It needs suitable shells nearby; Cease fire stops the mission.
+- Rearm, collect a weapon, heal up or send a squadmate to treat a casualty using real supplies. Ask for spare ammo or bandages.
+- Send an equipped soldier to plant a timed or detonator-controlled charge, lay a mine or disarm mines around a point.
+- Order a squad soldier to fire a nearby mortar: HE, smoke or illumination. It needs suitable shells nearby.
 - Plan infantry routes and looping patrols. A stalled route keeps its plan: resume or skip a waypoint under More > Routes. Compact status shows progress and blocked soldiers.
 
 GET STARTED
@@ -35,7 +37,7 @@ Requires Arma Reforger, with no other mod dependencies. Load AiO on the server a
 
 AiO commands your existing squad. It does not recruit soldiers or command arbitrary groups from the GM camera. Nearby friendly AI are not automatically yours.
 
-Buildings, doors and vehicle routes depend on Reforger's navigation. Clear building visits sampled reachable positions; it does not guarantee every room or enemy is cleared. Fortify here finds cover; it does not construct fortifications.
+Buildings, doors and vehicle routes depend on Reforger's navigation. Clear building does not guarantee every room or enemy is cleared. Fortify here finds cover; it does not construct fortifications.
 
 Bounding needs ready cover and can pause under suppression, casualties or blocked movement. Use Attack > Resume bound / peel when requested; Follow or a new movement order regroups the men. Specialist orders require the right carried kit, available ammunition and a reachable target; repairs follow the kit's limits.
 
