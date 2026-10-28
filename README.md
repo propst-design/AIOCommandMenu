@@ -7,7 +7,7 @@
 > testing and pull requests. No direct repository access is needed.
 
 [![Game: Arma Reforger](https://img.shields.io/badge/Arma-Reforger-556b2f?style=flat-square)](https://reforger.armaplatform.com/)
-[![Workshop release: 0.3.2](https://img.shields.io/badge/Workshop-0.3.2-blue?style=flat-square)](https://reforger.armaplatform.com/workshop/629405AEFC950C12)
+[![Workshop release: 0.3.3](https://img.shields.io/badge/Workshop-0.3.3-blue?style=flat-square)](https://reforger.armaplatform.com/workshop/629405AEFC950C12)
 [![Standalone addon](https://img.shields.io/badge/Addon-Standalone-teal?style=flat-square)](#version-and-installation)
 [![License: GPL v3 or later](https://img.shields.io/badge/License-GPL--3.0--or--later-orange?style=flat-square)](LICENSE.md)
 
@@ -24,8 +24,8 @@ create a squad, or command arbitrary groups from the Game Master camera.
 
 ## Version and installation
 
-The current Workshop version is **0.3.2**. It adds behaviour modes, demolition
-and mine orders, field repairs, mortar fire missions and squadmate resupply. See [CHANGELOG.md](CHANGELOG.md) for the version history.
+The current Workshop version is **0.3.3**. It adds Become leader, grenade and smoke orders,
+window posts when garrisoning and smoke cover when falling back. See [CHANGELOG.md](CHANGELOG.md) for the version history.
 
 Get the mod from the [Arma Reforger Workshop](https://reforger.armaplatform.com/workshop/629405AEFC950C12)
 and enable it for your scenario. Multiplayer requires the mod on the server and
