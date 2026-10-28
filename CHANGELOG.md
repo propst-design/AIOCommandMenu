@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.3.3 — unreleased
+## 0.3.4 — unreleased
+
+## 0.3.3 — released
 
 - More > Become leader / Step down as leader changes leadership in your own squad, including taking over from an AI leader while possessing a squad member. Another player cannot be displaced.
 - Defense > Grenades & smoke: Frag there, Smoke there and Smoke screen there (up to three men) use the grenades your soldiers carry. Men throw from their posts or move up when the target is beyond throwing range, and frags are refused when a friendly is within 15 m of the target.
