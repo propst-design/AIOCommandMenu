@@ -2,7 +2,7 @@
 
 ## 0.3.4 — unreleased
 
-- Aim marker: while the command menu is open, a ring on the ground shows where an aimed order will land, with the distance. On Defense it outlines the building Garrison and Clear would use, and on the vehicle pages the vehicle your men would get into, unflip or repair. It turns red when there is nothing to act on (no building, no vehicle, water). More > Aim marker on/off hides it.
+- Aim marker: while the command menu is open, a crosshair marks where an aimed order will land, with the distance. Its colour and shape show the kind of order (move, attack, defend, vehicle, supply), and it shrinks with distance like a real object. On Defense it outlines the building Garrison and Clear would use, and on the vehicle pages the vehicle your men would get into, unflip or repair. It turns grey with a red note when there is nothing to act on (no building, no vehicle, water). More > Aim marker switches between crosshair, a ring lying flat on the surface you aim at, or off, and sets the distance display and size.
 
 ## 0.3.3 — released
 

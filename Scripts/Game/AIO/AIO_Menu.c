@@ -433,14 +433,10 @@ class AIO_Menu
 			Close();
 			return;
 		}
-		if (item.m_eOrder == AIO_EOrder.TOGGLE_AIM_MARKER)
+		if (AIO_AimMarker.IsOption(item.m_eOrder))
 		{
-			if (AIO_AimMarker.Get().Toggle())
-				ShowFeedback("Aim marker on");
-			else
-				ShowFeedback("Aim marker off");
-			Close();
-			return;
+			ShowFeedback(AIO_AimMarker.Get().Option(item.m_eOrder));
+			return; // keep the page open to see the change
 		}
 		array<RplId> members = {};
 		members.Copy(m_aSelected);
@@ -639,6 +635,14 @@ class AIO_Menu
 	// Where the player is looking (camera ray, 1.5 km), and what entity is there if any.
 	static bool LookPoint(SCR_PlayerController pc, out vector point, out IEntity hitEntity)
 	{
+		vector normal;
+		return LookSurface(pc, point, hitEntity, normal);
+	}
+
+	// LookPoint plus the normal of the surface hit (straight up on the map).
+	static bool LookSurface(SCR_PlayerController pc, out vector point, out IEntity hitEntity, out vector normal)
+	{
+		normal = Vector(0, 1, 0);
 		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
 		if (mapEntity && mapEntity.IsOpen())
 		{
@@ -649,8 +653,8 @@ class AIO_Menu
 			point = Vector(x, GetGame().GetWorld().GetSurfaceY(x, z), z);
 			// Resolve the entity under the map cursor for building/vehicle/supply orders.
 			// The destination itself remains the cursor's terrain position.
-			vector hitPoint;
-			TracePoint(pc.GetControlledEntity(), point + Vector(0, 500, 0), point - Vector(0, 50, 0), hitPoint, hitEntity);
+			vector hitPoint, hitNormal;
+			TraceSurface(pc.GetControlledEntity(), point + Vector(0, 500, 0), point - Vector(0, 50, 0), hitPoint, hitEntity, hitNormal);
 			return true;
 		}
 		CameraManager cameras = GetGame().GetCameraManager();
@@ -661,10 +665,16 @@ class AIO_Menu
 			return false;
 		vector transform[4];
 		camera.GetTransform(transform);
-		return TracePoint(pc.GetControlledEntity(), transform[3], transform[3] + transform[2] * 1500, point, hitEntity);
+		return TraceSurface(pc.GetControlledEntity(), transform[3], transform[3] + transform[2] * 1500, point, hitEntity, normal);
 	}
 
 	static bool TracePoint(IEntity body, vector start, vector end, out vector point, out IEntity hitEntity)
+	{
+		vector normal;
+		return TraceSurface(body, start, end, point, hitEntity, normal);
+	}
+
+	static bool TraceSurface(IEntity body, vector start, vector end, out vector point, out IEntity hitEntity, out vector normal)
 	{
 		TraceParam trace = new TraceParam();
 		trace.Start = start;
@@ -682,6 +692,7 @@ class AIO_Menu
 			return false;
 		point = trace.Start + (trace.End - trace.Start) * fraction;
 		hitEntity = trace.TraceEnt;
+		normal = trace.TraceNorm;
 		return true;
 	}
 

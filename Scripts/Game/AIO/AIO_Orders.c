@@ -113,7 +113,11 @@ enum AIO_EOrder
 	GREN_FRAG,
 	GREN_SMOKE,
 	GREN_SMOKE_SCREEN,
-	TOGGLE_AIM_MARKER // client only, never sent
+	AIM_OFF, // AIM_*: client only, never sent
+	AIM_CROSSHAIR,
+	AIM_RING,
+	AIM_DISTANCE,
+	AIM_SIZE
 }
 
 // What an order needs from the player's side.
@@ -319,7 +323,12 @@ class AIO_MenuTree
 
 		more.Order("Become leader", AIO_EOrder.BECOME_LEADER);
 		more.Order("Step down as leader", AIO_EOrder.STEP_DOWN_LEADER);
-		more.Order("Aim marker on/off", AIO_EOrder.TOGGLE_AIM_MARKER);
+		AIO_MenuItem aim = more.Page("Aim marker");
+		aim.Order("Crosshair", AIO_EOrder.AIM_CROSSHAIR);
+		aim.Order("Ring on the surface", AIO_EOrder.AIM_RING);
+		aim.Order("Off", AIO_EOrder.AIM_OFF);
+		aim.Order("Distance on/off", AIO_EOrder.AIM_DISTANCE);
+		aim.Order("Size: small / medium / large", AIO_EOrder.AIM_SIZE);
 
 		root.Order("HALT", AIO_EOrder.HALT);
 		return root;
