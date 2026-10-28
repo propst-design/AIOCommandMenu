@@ -112,7 +112,8 @@ enum AIO_EOrder
 	STEP_DOWN_LEADER,
 	GREN_FRAG,
 	GREN_SMOKE,
-	GREN_SMOKE_SCREEN
+	GREN_SMOKE_SCREEN,
+	TOGGLE_AIM_MARKER // client only, never sent
 }
 
 // What an order needs from the player's side.
@@ -318,6 +319,7 @@ class AIO_MenuTree
 
 		more.Order("Become leader", AIO_EOrder.BECOME_LEADER);
 		more.Order("Step down as leader", AIO_EOrder.STEP_DOWN_LEADER);
+		more.Order("Aim marker on/off", AIO_EOrder.TOGGLE_AIM_MARKER);
 
 		root.Order("HALT", AIO_EOrder.HALT);
 		return root;

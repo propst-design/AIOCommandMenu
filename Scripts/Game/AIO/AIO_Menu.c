@@ -135,6 +135,7 @@ class AIO_Menu
 				Close();
 			UpdateFeedback(now);
 			AIO_SquadBar.Get().Hide();
+			AIO_AimMarker.Get().Hide();
 			if (m_wStatus) m_wStatus.SetVisible(false);
 			return;
 		}
@@ -192,6 +193,7 @@ class AIO_Menu
 		}
 		if (m_bOpen)
 			Render();
+		UpdateAim(pc);
 		UpdateFeedback(now);
 	}
 
@@ -237,8 +239,20 @@ class AIO_Menu
 		m_bOpen = false;
 		m_iSwallowUntil = System.GetTickCount() + SWALLOW_MS;
 		SetVisible(false);
+		AIO_AimMarker.Get().Hide();
 		if (!m_aSelected.IsEmpty() && m_iSelectionClearAt == 0)
 			m_iSelectionClearAt = System.GetTickCount() + SELECTION_KEEP_MS;
+	}
+
+	// The aim preview follows the page shown (Orders pages only; Select/Teams have no aimed orders).
+	protected void UpdateAim(SCR_PlayerController pc)
+	{
+		if (!m_bOpen || m_eMode != AIO_EMenuMode.ORDERS)
+		{
+			AIO_AimMarker.Get().Hide();
+			return;
+		}
+		AIO_AimMarker.Get().Update(pc, m_aStack[m_aStack.Count() - 1], m_aStack.Count() == 1);
 	}
 
 	// ------------------------------------------------------------------ keys
@@ -416,6 +430,15 @@ class AIO_Menu
 				ShowFeedback("Squad bar on");
 			else
 				ShowFeedback("Squad bar off");
+			Close();
+			return;
+		}
+		if (item.m_eOrder == AIO_EOrder.TOGGLE_AIM_MARKER)
+		{
+			if (AIO_AimMarker.Get().Toggle())
+				ShowFeedback("Aim marker on");
+			else
+				ShowFeedback("Aim marker off");
 			Close();
 			return;
 		}
@@ -936,6 +959,7 @@ class AIO_Menu
 	static void Cleanup()
 	{
 		AIO_SquadBar.Cleanup();
+		AIO_AimMarker.Cleanup();
 		if (!s_Instance)
 			return;
 		foreach (Widget widget : s_Instance.m_aWidgets)

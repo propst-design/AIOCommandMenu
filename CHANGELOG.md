@@ -2,6 +2,8 @@
 
 ## 0.3.4 — unreleased
 
+- Aim marker: while the command menu is open, a ring on the ground shows where an aimed order will land, with the distance. On Defense it outlines the building Garrison and Clear would use, and on the vehicle pages the vehicle your men would get into, unflip or repair. It turns red when there is nothing to act on (no building, no vehicle, water). More > Aim marker on/off hides it.
+
 ## 0.3.3 — released
 
 - More > Become leader / Step down as leader changes leadership in your own squad, including taking over from an AI leader while possessing a squad member. Another player cannot be displaced.
