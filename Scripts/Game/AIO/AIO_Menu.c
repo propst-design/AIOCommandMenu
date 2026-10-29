@@ -63,6 +63,7 @@ class AIO_Menu
 	protected string m_sHighlightPage;        // which page the highlight belongs to (reset on change)
 	protected int m_iWheelDirection; // last frame's scroll sign
 	protected int m_iWheelLogs;
+	protected float m_fHeldSpeed = -1; // movement speed when the menu opened; the wheel also sets it
 	protected ImageWidget m_wHighlight;
 
 	// Input self-check, logged once ~5 s after the player controller starts updating.
@@ -149,6 +150,7 @@ class AIO_Menu
 			if (m_wStatus) m_wStatus.SetVisible(false);
 			return;
 		}
+		HoldSpeed(pc, (m_bOpen || now < m_iSwallowUntil) && MouseActive());
 		// Keep owner feedback current even while the command menu is closed.
 		if (now >= m_iNextRosterAsk)
 		{
@@ -242,6 +244,27 @@ class AIO_Menu
 		// Takes the mouse buttons and wheel from the weapon while the menu is open.
 		if (MouseActive())
 			input.ActivateContext("AIO_MouseMenuContext");
+	}
+
+	// The wheel also changes the character's movement speed (native, outside our input context):
+	// while the menu has the wheel, put back the speed he had when it opened.
+	protected void HoldSpeed(SCR_PlayerController pc, bool hold)
+	{
+		if (!hold)
+		{
+			m_fHeldSpeed = -1;
+			return;
+		}
+		ChimeraCharacter character = ChimeraCharacter.Cast(pc.GetControlledEntity());
+		if (!character)
+			return;
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (!controller)
+			return;
+		if (m_fHeldSpeed < 0)
+			m_fHeldSpeed = controller.GetDynamicSpeed();
+		else if (controller.GetDynamicSpeed() != m_fHeldSpeed)
+			controller.SetDynamicSpeed(m_fHeldSpeed);
 	}
 
 	static bool MouseActive()
