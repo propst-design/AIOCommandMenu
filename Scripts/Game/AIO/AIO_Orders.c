@@ -117,7 +117,8 @@ enum AIO_EOrder
 	AIM_CROSSHAIR,
 	AIM_RING,
 	AIM_DISTANCE,
-	AIM_SIZE
+	AIM_SIZE,
+	MOUSE_CONTROL // client only, never sent
 }
 
 // What an order needs from the player's side.
@@ -329,6 +330,7 @@ class AIO_MenuTree
 		aim.Order("Off", AIO_EOrder.AIM_OFF);
 		aim.Order("Distance on/off", AIO_EOrder.AIM_DISTANCE);
 		aim.Order("Size: small / medium / large", AIO_EOrder.AIM_SIZE);
+		more.Order("Mouse control on/off (wheel, left click, right click)", AIO_EOrder.MOUSE_CONTROL);
 
 		root.Order("HALT", AIO_EOrder.HALT);
 		return root;

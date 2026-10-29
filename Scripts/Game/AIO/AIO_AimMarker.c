@@ -17,6 +17,14 @@ enum AIO_EAimStyle
 	OFF
 }
 
+// What an aimed order acts on: the point itself, a building or a vehicle.
+enum AIO_EAimNeed
+{
+	POINT,
+	BUILDING,
+	VEHICLE
+}
+
 enum AIO_EAimType
 {
 	MOVE,
@@ -84,10 +92,12 @@ class AIO_AimMarker
 	}
 
 	// Whether a page gets a marker: the root (every aimed order starts there), pages with at least
-	// one "look at" order, and the options page (to see the change). Which kind of order it is.
-	static bool TypeOf(AIO_MenuItem page, bool onRoot, out AIO_EAimType type)
+	// one "look at" order, and the options page (to see the change). The page's kind of order and
+	// what its orders act on.
+	static bool TypeOf(AIO_MenuItem page, bool onRoot, out AIO_EAimType type, out AIO_EAimNeed need)
 	{
 		type = AIO_EAimType.MOVE;
+		need = AIO_EAimNeed.POINT;
 		bool aimed = onRoot;
 		foreach (AIO_MenuItem item : page.m_aChildren)
 		{
@@ -98,17 +108,48 @@ class AIO_AimMarker
 			aimed = true;
 			AIO_EOrder order = item.m_eOrder;
 			if (order == AIO_EOrder.DEF_GARRISON)
-				type = AIO_EAimType.DEFEND;
+				need = AIO_EAimNeed.BUILDING;
 			else if (order == AIO_EOrder.VEH_GET_IN_ANY || order == AIO_EOrder.VEH_UNFLIP)
-				type = AIO_EAimType.VEHICLE;
-			else if (order == AIO_EOrder.ATK_ADVANCE || order == AIO_EOrder.GREN_FRAG || order == AIO_EOrder.FIRE_HE_3)
-				type = AIO_EAimType.ATTACK;
-			else if (order == AIO_EOrder.REARM_FROM || order == AIO_EOrder.EXP_PLACE_TIMED)
-				type = AIO_EAimType.SUPPLY;
-			else if (order == AIO_EOrder.ADMIN_TELEPORT_ME)
-				type = AIO_EAimType.ADMIN;
+				need = AIO_EAimNeed.VEHICLE;
+			if (type == AIO_EAimType.MOVE)
+				type = OrderType(order);
 		}
 		return aimed;
+	}
+
+	// The kind of a single order (colour and shape).
+	static AIO_EAimType OrderType(AIO_EOrder order)
+	{
+		switch (order)
+		{
+			case AIO_EOrder.ATK_ADVANCE: case AIO_EOrder.ATK_FLANK_LEFT: case AIO_EOrder.ATK_FLANK_RIGHT:
+			case AIO_EOrder.ASSAULT: case AIO_EOrder.SUPPRESS: case AIO_EOrder.BOUND:
+			case AIO_EOrder.GREN_FRAG: case AIO_EOrder.GREN_SMOKE: case AIO_EOrder.GREN_SMOKE_SCREEN:
+			case AIO_EOrder.FIRE_HE_3: case AIO_EOrder.FIRE_HE_6: case AIO_EOrder.FIRE_SMOKE: case AIO_EOrder.FIRE_ILLUM:
+			case AIO_EOrder.ADMIN_KILL_TARGET:
+				return AIO_EAimType.ATTACK;
+			case AIO_EOrder.DEF_GARRISON: case AIO_EOrder.DEF_CLEAR: case AIO_EOrder.DEF_FORTIFY: case AIO_EOrder.WATCH_DIRECTION:
+				return AIO_EAimType.DEFEND;
+			case AIO_EOrder.VEH_GET_IN_ANY: case AIO_EOrder.VEH_GET_IN_DRIVER: case AIO_EOrder.VEH_GET_IN_GUNNER:
+			case AIO_EOrder.VEH_GET_IN_CARGO: case AIO_EOrder.VEH_UNFLIP: case AIO_EOrder.VEH_REPAIR:
+				return AIO_EAimType.VEHICLE;
+			case AIO_EOrder.REARM_FROM: case AIO_EOrder.TAKE_WEAPON: case AIO_EOrder.TREAT_TARGET:
+			case AIO_EOrder.EXP_PLACE_TIMED: case AIO_EOrder.EXP_PLACE_REMOTE: case AIO_EOrder.EXP_LAY_MINE: case AIO_EOrder.EXP_DISARM_MINES:
+				return AIO_EAimType.SUPPLY;
+			case AIO_EOrder.ADMIN_TELEPORT_ME: case AIO_EOrder.ADMIN_TELEPORT_GROUP: case AIO_EOrder.ADMIN_TELEPORT_VEHICLE:
+				return AIO_EAimType.ADMIN;
+		}
+		return AIO_EAimType.MOVE;
+	}
+
+	// What a single order acts on.
+	static AIO_EAimNeed OrderNeed(AIO_EOrder order)
+	{
+		if (order == AIO_EOrder.DEF_GARRISON || order == AIO_EOrder.DEF_CLEAR)
+			return AIO_EAimNeed.BUILDING;
+		if (OrderType(order) == AIO_EAimType.VEHICLE)
+			return AIO_EAimNeed.VEHICLE;
+		return AIO_EAimNeed.POINT;
 	}
 
 	static int TypeColor(AIO_EAimType type)
@@ -134,11 +175,25 @@ class AIO_AimMarker
 		return ARGB(200, 255, 80, 70);
 	}
 
-	void Update(SCR_PlayerController pc, AIO_MenuItem page, bool onRoot)
+	// focus: the order under the mouse highlight, if any; the marker then shows that order alone
+	// (hidden for an order that doesn't use the look point).
+	void Update(SCR_PlayerController pc, AIO_MenuItem page, bool onRoot, AIO_MenuItem focus = null)
 	{
 		AIO_EAimType type;
+		AIO_EAimNeed need;
 		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
-		if (s_eStyle == AIO_EAimStyle.OFF || !page || (mapEntity && mapEntity.IsOpen()) || !TypeOf(page, onRoot, type))
+		bool aimed = page && TypeOf(page, onRoot, type, need);
+		string name = "";
+		if (page && !onRoot)
+			name = page.m_sLabel;
+		if (focus && !AIO_AimMarker.IsOption(focus.m_eOrder))
+		{
+			aimed = focus.m_eTarget == AIO_ETarget.POINT;
+			type = OrderType(focus.m_eOrder);
+			need = OrderNeed(focus.m_eOrder);
+			name = focus.m_sLabel;
+		}
+		if (s_eStyle == AIO_EAimStyle.OFF || !aimed || (mapEntity && mapEntity.IsOpen()))
 		{
 			Hide();
 			return;
@@ -158,31 +213,30 @@ class AIO_AimMarker
 		// The order carries the nearest replicated parent of what the ray hit (AIO_Menu.Give).
 		while (hit && !hit.FindComponent(RplComponent))
 			hit = hit.GetParent();
-		string text = "";
-		if (!onRoot)
-			text = page.m_sLabel;
+		string dist = "";
 		if (!s_bNoDistance)
-			text += string.Format("  %1 m", Math.Round(vector.Distance(player.GetOrigin(), point)));
+			dist = string.Format("  %1 m", Math.Round(vector.Distance(player.GetOrigin(), point)));
+		string text = name + dist;
 		int color = TypeColor(type);
 		bool valid = true;
 		IEntity target;
 
-		if (type == AIO_EAimType.DEFEND)
+		if (need == AIO_EAimNeed.BUILDING)
 		{
 			target = AIO_Maneuvers.BuildingOf(hit);
 			if (!target)
 			{
 				valid = false;
-				text = "No building (Garrison, Clear)" + text;
+				text = "No building here" + dist;
 			}
 		}
-		else if (type == AIO_EAimType.VEHICLE)
+		else if (need == AIO_EAimNeed.VEHICLE)
 		{
 			target = AIO_Vehicles.TargetVehicle(hit, player, point);
 			if (!target)
 			{
 				valid = false;
-				text = "No vehicle" + text;
+				text = "No vehicle here" + dist;
 			}
 			else if (target == AIO_Vehicles.VehicleOf(player))
 			{
@@ -192,7 +246,7 @@ class AIO_AimMarker
 		else if (point[1] < GetGame().GetWorld().GetOceanBaseHeight() + 0.3)
 		{
 			valid = false;
-			text = "Water" + text;
+			text = "Water" + dist;
 		}
 		if (!valid)
 			color = Grey();

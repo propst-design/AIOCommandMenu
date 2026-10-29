@@ -56,6 +56,15 @@ class AIO_Menu
 	protected int m_iNextRosterAsk;
 	protected int m_iSwallowUntil; // tick count until which closed-menu key releases are swallowed
 
+	// Mouse control (old Arma style, More > Mouse control): wheel moves a highlight over the lines,
+	// left click gives it, right click goes back. Not with the map open (the map needs the mouse).
+	protected static bool s_bMouse;
+	protected ref array<int> m_aLineKeys = {}; // the key each drawn line stands for; -1 = not selectable
+	protected int m_iHighlight;               // index into the selectable lines
+	protected string m_sHighlightPage;        // which page the highlight belongs to (reset on change)
+	protected int m_iNextWheel;
+	protected ImageWidget m_wHighlight;
+
 	// Input self-check, logged once ~5 s after the player controller starts updating.
 	protected bool m_bDiagnosed;
 	protected int m_iDiagnoseAt;
@@ -156,6 +165,9 @@ class AIO_Menu
 		{
 			// Just closed: the key that closed the menu is still being released. Keep our
 			// context on so that release can't reach the weapon/quick-slot keys.
+			// A click that gave an order must not reach the weapon while the button is still down.
+			if (MouseActive() && input.GetActionValue("AIO_MouseHeld") > 0)
+				m_iSwallowUntil = Math.Max(m_iSwallowUntil, now + 100);
 			if (now < m_iSwallowUntil)
 			{
 				ActivateMenuContext(input);
@@ -176,12 +188,21 @@ class AIO_Menu
 			Close();
 			return;
 		}
-		if (input.GetActionTriggered("AIO_Back"))
+		bool mouse = MouseActive();
+		if (input.GetActionTriggered("AIO_Back") || (mouse && input.GetActionTriggered("AIO_MouseBack")))
 		{
 			OnBack();
 		}
+		else if (mouse && input.GetActionTriggered("AIO_MouseSelect"))
+		{
+			int clicked = HighlightedKey();
+			if (clicked >= 0)
+				OnKey(pc, clicked);
+		}
 		else
 		{
+			if (mouse)
+				Wheel(input, now);
 			for (int key = 0; key <= 9; key++)
 			{
 				if (input.GetActionTriggered("AIO_Key" + key.ToString()))
@@ -217,6 +238,74 @@ class AIO_Menu
 			input.ActivateContext("AIO_MapMenuContext");
 		else
 			input.ActivateContext("AIO_MenuContext");
+		// Takes the mouse buttons and wheel from the weapon while the menu is open.
+		if (MouseActive())
+			input.ActivateContext("AIO_MouseMenuContext");
+	}
+
+	static bool MouseActive()
+	{
+		if (!s_bMouse)
+			return false;
+		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
+		return !mapEntity || !mapEntity.IsOpen();
+	}
+
+	// One highlight step per wheel notch (a short gap so one notch read over two frames counts once).
+	protected void Wheel(InputManager input, int now)
+	{
+		float value = input.GetActionValue("AIO_MouseWheel");
+		if (value == 0 || now < m_iNextWheel)
+			return;
+		m_iNextWheel = now + 60;
+		int count = SelectableCount();
+		if (count == 0)
+			return;
+		if (value > 0)
+			m_iHighlight = (m_iHighlight + count - 1) % count;
+		else
+			m_iHighlight = (m_iHighlight + 1) % count;
+	}
+
+	protected int SelectableCount()
+	{
+		int count;
+		foreach (int key : m_aLineKeys)
+		{
+			if (key >= 0)
+				count++;
+		}
+		return count;
+	}
+
+	// The key the highlighted line stands for, or -1.
+	protected int HighlightedKey()
+	{
+		int index;
+		foreach (int key : m_aLineKeys)
+		{
+			if (key < 0)
+				continue;
+			if (index == m_iHighlight)
+				return key;
+			index++;
+		}
+		return -1;
+	}
+
+	// The order under the highlight on an Orders page (null for pages, Back and other modes).
+	protected AIO_MenuItem HighlightedItem()
+	{
+		if (m_eMode != AIO_EMenuMode.ORDERS)
+			return null;
+		int key = HighlightedKey();
+		if (key <= 0)
+			return null;
+		array<AIO_MenuItem> items = {};
+		VisibleItems(m_aStack[m_aStack.Count() - 1], items);
+		if (key > items.Count() || items[key - 1].IsPage())
+			return null;
+		return items[key - 1];
 	}
 
 	// ------------------------------------------------------------------ open / close
@@ -252,7 +341,10 @@ class AIO_Menu
 			AIO_AimMarker.Get().Hide();
 			return;
 		}
-		AIO_AimMarker.Get().Update(pc, m_aStack[m_aStack.Count() - 1], m_aStack.Count() == 1);
+		AIO_MenuItem focus = null;
+		if (MouseActive())
+			focus = HighlightedItem();
+		AIO_AimMarker.Get().Update(pc, m_aStack[m_aStack.Count() - 1], m_aStack.Count() == 1, focus);
 	}
 
 	// ------------------------------------------------------------------ keys
@@ -432,6 +524,15 @@ class AIO_Menu
 				ShowFeedback("Squad bar off");
 			Close();
 			return;
+		}
+		if (item.m_eOrder == AIO_EOrder.MOUSE_CONTROL)
+		{
+			s_bMouse = !s_bMouse;
+			if (s_bMouse)
+				ShowFeedback("Mouse control on: wheel to choose, left click to give, right click back");
+			else
+				ShowFeedback("Mouse control off");
+			return; // keep the menu open to try it
 		}
 		if (AIO_AimMarker.IsOption(item.m_eOrder))
 		{
@@ -761,6 +862,8 @@ class AIO_Menu
 
 		array<string> texts = {};
 		array<int> colors = {};
+		array<int> keys = m_aLineKeys;
+		keys.Clear();
 		int white = ARGB(255, 255, 255, 255);
 		int dim = ARGB(255, 160, 160, 160);
 		int head = ARGB(255, 255, 210, 127);
@@ -776,6 +879,7 @@ class AIO_Menu
 				targetText = m_sRouteTarget + " (draft members)";
 			texts.Insert(title + "  ->  " + targetText);
 			colors.Insert(head);
+			keys.Insert(-1);
 			array<AIO_MenuItem> items = {};
 			VisibleItems(page, items);
 			for (int i = 0; i < items.Count(); i++)
@@ -787,21 +891,25 @@ class AIO_Menu
 					label += "  >";
 				texts.Insert(string.Format("%1   %2", i + 1, label));
 				colors.Insert(white);
+				keys.Insert(i + 1);
 			}
 			if (m_aStack.Count() == 1)
 				texts.Insert("0   Select members  >");
 			else
 				texts.Insert("0   Back");
 			colors.Insert(dim);
+			keys.Insert(0);
 		}
 		else if (m_eMode == AIO_EMenuMode.SELECT)
 		{
 			texts.Insert(string.Format("Select members (page %1/%2)", m_iSelectPage + 1, PageCount()));
 			colors.Insert(head);
+			keys.Insert(-1);
 			if (m_aMembers.IsEmpty())
 			{
 				texts.Insert("    No soldiers under your command");
 				colors.Insert(dim);
+				keys.Insert(-1);
 			}
 			int first = m_iSelectPage * MEN_PER_PAGE;
 			for (int m = 0; m < MEN_PER_PAGE; m++)
@@ -815,33 +923,52 @@ class AIO_Menu
 					mark = "[x]";
 				texts.Insert(string.Format("%1   %2 %3   %4%", m + 1, mark, member.m_sName, member.m_iHealth));
 				colors.Insert(TeamColor(member.m_iTeam));
+				keys.Insert(m + 1);
 			}
 			texts.Insert("8   Next page");
 			colors.Insert(dim);
+			keys.Insert(8);
 			texts.Insert("9   Teams  >");
 			colors.Insert(white);
+			keys.Insert(9);
 			texts.Insert("0   Done        Backspace: clear (whole squad)");
 			colors.Insert(dim);
+			keys.Insert(0);
 		}
 		else
 		{
 			texts.Insert("Teams  ->  " + TargetText());
 			colors.Insert(head);
+			keys.Insert(-1);
 			for (int t = 1; t <= 4; t++)
 			{
 				texts.Insert(string.Format("%1   Select %2", t, TeamName(t)));
 				colors.Insert(TeamColor(t));
+				keys.Insert(t);
 			}
 			for (int a = 1; a <= 4; a++)
 			{
 				texts.Insert(string.Format("%1   Assign selected -> %2", a + 4, TeamName(a)));
 				colors.Insert(TeamColor(a));
+				keys.Insert(a + 4);
 			}
 			texts.Insert("9   Unassign (White)");
 			colors.Insert(white);
+			keys.Insert(9);
 			texts.Insert("0   Back");
 			colors.Insert(dim);
+			keys.Insert(0);
 		}
+		// A new page starts the highlight on its first line; toggling men keeps it in place.
+		string pageId = string.Format("%1/%2/%3", m_eMode, m_aStack.Count(), m_iSelectPage);
+		if (m_eMode == AIO_EMenuMode.ORDERS)
+			pageId += "/" + m_aStack[m_aStack.Count() - 1].m_sLabel;
+		if (pageId != m_sHighlightPage)
+		{
+			m_sHighlightPage = pageId;
+			m_iHighlight = 0;
+		}
+		m_iHighlight = Math.Clamp(m_iHighlight, 0, Math.Max(SelectableCount() - 1, 0));
 		Draw(texts, colors);
 	}
 
@@ -894,6 +1021,13 @@ class AIO_Menu
 			FrameSlot.SetSize(m_wBack, 460, 100);
 			m_wBack.SetZOrder(900);
 			m_aWidgets.Insert(m_wBack);
+		}
+		m_wHighlight = ImageWidget.Cast(ws.CreateWidget(WidgetType.ImageWidgetTypeID, WidgetFlags.IGNORE_CURSOR | WidgetFlags.BLEND, Color.FromRGBA(255, 210, 127, 56), 0, ws));
+		if (m_wHighlight)
+		{
+			m_wHighlight.SetZOrder(900);
+			m_wHighlight.SetVisible(false);
+			m_aWidgets.Insert(m_wHighlight);
 		}
 		m_wFeedback = TextWidget.Cast(ws.CreateWidgets("{B537936D5B7E2BA1}UI/layouts/WidgetLibrary/TextWidgets/Text_BodySmall.layout", ws));
 		if (m_wFeedback)
@@ -956,12 +1090,32 @@ class AIO_Menu
 			m_aLines[j].SetVisible(false);
 		FrameSlot.SetSize(m_wBack, 460, texts.Count() * lineHeight + 16);
 		m_wBack.SetVisible(true);
+		if (!m_wHighlight)
+			return;
+		int line = -1;
+		int index;
+		for (int k = 0; k < m_aLineKeys.Count(); k++)
+		{
+			if (m_aLineKeys[k] < 0)
+				continue;
+			if (index == m_iHighlight)
+				line = k;
+			index++;
+		}
+		m_wHighlight.SetVisible(MouseActive() && line >= 0);
+		if (line >= 0)
+		{
+			FrameSlot.SetPos(m_wHighlight, 34, 186 + line * lineHeight);
+			FrameSlot.SetSize(m_wHighlight, 452, lineHeight);
+		}
 	}
 
 	protected void SetVisible(bool visible)
 	{
 		if (m_wBack)
 			m_wBack.SetVisible(visible);
+		if (m_wHighlight && !visible)
+			m_wHighlight.SetVisible(false);
 		foreach (TextWidget line : m_aLines)
 			line.SetVisible(visible && line.IsVisible());
 	}
