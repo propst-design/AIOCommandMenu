@@ -9,7 +9,7 @@
 // AIO_Maneuvers.BuildingOf, AIO_Vehicles.TargetVehicle). The marker has a fixed size in the world,
 // so it shrinks with distance; the ring style lies flat on the surface hit (ground, slope, wall).
 // Client only; hidden with the map open (the map cursor is the point there).
-// More > Aim marker: crosshair / ring / off, distance on/off, size. Not saved across missions.
+// More > Aim marker: crosshair / ring / off, distance on/off, size (kept by AIO_Settings).
 enum AIO_EAimStyle
 {
 	CROSSHAIR,
@@ -42,9 +42,6 @@ class AIO_AimMarker
 	static const int ALPHA = 160; // see-through, so the marker doesn't hide what it marks
 
 	protected static ref AIO_AimMarker s_Instance;
-	protected static AIO_EAimStyle s_eStyle = AIO_EAimStyle.CROSSHAIR;
-	protected static bool s_bNoDistance;
-	protected static int s_iSize = 1; // 0 small, 1 medium, 2 large
 
 	protected ref array<ImageWidget> m_aRing = {};
 	protected ref array<ImageWidget> m_aArms = {};    // crosshair: up, down, left, right
@@ -66,19 +63,19 @@ class AIO_AimMarker
 	{
 		switch (order)
 		{
-			case AIO_EOrder.AIM_CROSSHAIR: s_eStyle = AIO_EAimStyle.CROSSHAIR; return "Aim marker: crosshair";
-			case AIO_EOrder.AIM_RING: s_eStyle = AIO_EAimStyle.RING; return "Aim marker: ring on the surface";
-			case AIO_EOrder.AIM_OFF: s_eStyle = AIO_EAimStyle.OFF; Hide(); return "Aim marker off";
+			case AIO_EOrder.AIM_CROSSHAIR: AIO_Settings.s_eAimStyle = AIO_EAimStyle.CROSSHAIR; return "Aim marker: crosshair";
+			case AIO_EOrder.AIM_RING: AIO_Settings.s_eAimStyle = AIO_EAimStyle.RING; return "Aim marker: ring on the surface";
+			case AIO_EOrder.AIM_OFF: AIO_Settings.s_eAimStyle = AIO_EAimStyle.OFF; Hide(); return "Aim marker off";
 			case AIO_EOrder.AIM_DISTANCE:
-				s_bNoDistance = !s_bNoDistance;
-				if (s_bNoDistance)
+				AIO_Settings.s_bAimNoDistance = !AIO_Settings.s_bAimNoDistance;
+				if (AIO_Settings.s_bAimNoDistance)
 					return "Aim marker distance hidden";
 				return "Aim marker distance shown";
 			case AIO_EOrder.AIM_SIZE:
-				s_iSize = (s_iSize + 1) % 3;
-				if (s_iSize == 0)
+				AIO_Settings.s_iAimSize = (AIO_Settings.s_iAimSize + 1) % 3;
+				if (AIO_Settings.s_iAimSize == 0)
 					return "Aim marker size: small";
-				if (s_iSize == 1)
+				if (AIO_Settings.s_iAimSize == 1)
 					return "Aim marker size: medium";
 				return "Aim marker size: large";
 		}
@@ -193,7 +190,7 @@ class AIO_AimMarker
 			need = OrderNeed(focus.m_eOrder);
 			name = focus.m_sLabel;
 		}
-		if (s_eStyle == AIO_EAimStyle.OFF || !aimed || (mapEntity && mapEntity.IsOpen()))
+		if (AIO_Settings.s_eAimStyle == AIO_EAimStyle.OFF || !aimed || (mapEntity && mapEntity.IsOpen()))
 		{
 			Hide();
 			return;
@@ -214,7 +211,7 @@ class AIO_AimMarker
 		while (hit && !hit.FindComponent(RplComponent))
 			hit = hit.GetParent();
 		string dist = "";
-		if (!s_bNoDistance)
+		if (!AIO_Settings.s_bAimNoDistance)
 			dist = string.Format("  %1 m", Math.Round(vector.Distance(player.GetOrigin(), point)));
 		string text = name + dist;
 		int color = TypeColor(type);
@@ -280,9 +277,9 @@ class AIO_AimMarker
 			return false;
 		}
 		float metres = 0.3;
-		if (s_iSize == 1)
+		if (AIO_Settings.s_iAimSize == 1)
 			metres = 0.6;
-		else if (s_iSize == 2)
+		else if (AIO_Settings.s_iAimSize == 2)
 			metres = 1.2;
 		// Pixels per metre at the point, from a sideways step along the camera's right axis.
 		vector camera[4];
@@ -298,7 +295,7 @@ class AIO_AimMarker
 		bool arms = type != AIO_EAimType.DEFEND;
 		bool box = type == AIO_EAimType.ATTACK || type == AIO_EAimType.DEFEND;
 		bool centreDot = type != AIO_EAimType.MOVE;
-		if (s_eStyle == AIO_EAimStyle.RING)
+		if (AIO_Settings.s_eAimStyle == AIO_EAimStyle.RING)
 		{
 			Ring(point, normal, metres * 1.5, dot, color);
 			m_fHalf = half * 1.5;

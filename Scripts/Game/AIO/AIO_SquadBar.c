@@ -3,7 +3,7 @@
 
 // The squad bar: a strip at the bottom of the screen while the menu is open and you lead AI. One box per man:
 // his number (the Select members key), name, health, team colour, what he's doing.
-// Selected men are highlighted. More > "Squad bar on/off" hides it (remembered per game).
+// Selected men are highlighted. More > "Squad bar on/off" hides it (kept by AIO_Settings).
 class AIO_SquadBar
 {
 	static const int BOX_W = 128;
@@ -13,7 +13,6 @@ class AIO_SquadBar
 	static const int REDRAW_MS = 250;
 
 	protected static ref AIO_SquadBar s_Instance;
-	protected static bool s_bOff;
 
 	protected ref array<ImageWidget> m_aBacks = {};
 	protected ref array<TextWidget> m_aNames = {};
@@ -30,15 +29,15 @@ class AIO_SquadBar
 
 	bool Toggle()
 	{
-		s_bOff = !s_bOff;
-		if (s_bOff)
+		AIO_Settings.s_bSquadBarOff = !AIO_Settings.s_bSquadBarOff;
+		if (AIO_Settings.s_bSquadBarOff)
 			Hide();
-		return !s_bOff;
+		return !AIO_Settings.s_bSquadBarOff;
 	}
 
 	void Update(int now, array<ref AIO_Member> members, array<RplId> selected)
 	{
-		if (s_bOff || members.IsEmpty())
+		if (AIO_Settings.s_bSquadBarOff || members.IsEmpty())
 		{
 			Hide();
 			return;

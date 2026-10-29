@@ -58,7 +58,6 @@ class AIO_Menu
 
 	// Mouse control (old Arma style, More > Mouse control): wheel moves a highlight over the lines,
 	// left click gives it, right click goes back. Not with the map open (the map needs the mouse).
-	protected static bool s_bMouse;
 	protected ref array<int> m_aLineKeys = {}; // the key each drawn line stands for; -1 = not selectable
 	protected int m_iHighlight;               // index into the selectable lines
 	protected string m_sHighlightPage;        // which page the highlight belongs to (reset on change)
@@ -111,6 +110,7 @@ class AIO_Menu
 	void AIO_Menu()
 	{
 		m_Root = AIO_MenuTree.Build();
+		AIO_Settings.Load();
 		m_iDiagnoseAt = System.GetTickCount() + 5000;
 	}
 
@@ -245,7 +245,7 @@ class AIO_Menu
 
 	static bool MouseActive()
 	{
-		if (!s_bMouse)
+		if (!AIO_Settings.s_bMouse)
 			return false;
 		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
 		return !mapEntity || !mapEntity.IsOpen();
@@ -522,21 +522,24 @@ class AIO_Menu
 				ShowFeedback("Squad bar on");
 			else
 				ShowFeedback("Squad bar off");
+			AIO_Settings.Save();
 			Close();
 			return;
 		}
 		if (item.m_eOrder == AIO_EOrder.MOUSE_CONTROL)
 		{
-			s_bMouse = !s_bMouse;
-			if (s_bMouse)
+			AIO_Settings.s_bMouse = !AIO_Settings.s_bMouse;
+			if (AIO_Settings.s_bMouse)
 				ShowFeedback("Mouse control on: wheel to choose, left click to give, right click back");
 			else
 				ShowFeedback("Mouse control off");
+			AIO_Settings.Save();
 			return; // keep the menu open to try it
 		}
 		if (AIO_AimMarker.IsOption(item.m_eOrder))
 		{
 			ShowFeedback(AIO_AimMarker.Get().Option(item.m_eOrder));
+			AIO_Settings.Save();
 			return; // keep the page open to see the change
 		}
 		array<RplId> members = {};
