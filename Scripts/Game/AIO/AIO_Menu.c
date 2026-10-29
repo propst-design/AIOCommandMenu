@@ -61,7 +61,8 @@ class AIO_Menu
 	protected ref array<int> m_aLineKeys = {}; // the key each drawn line stands for; -1 = not selectable
 	protected int m_iHighlight;               // index into the selectable lines
 	protected string m_sHighlightPage;        // which page the highlight belongs to (reset on change)
-	protected int m_iNextWheel;
+	protected int m_iWheelDirection; // last frame's scroll sign
+	protected int m_iWheelLogs;
 	protected ImageWidget m_wHighlight;
 
 	// Input self-check, logged once ~5 s after the player controller starts updating.
@@ -251,13 +252,26 @@ class AIO_Menu
 		return !mapEntity || !mapEntity.IsOpen();
 	}
 
-	// One highlight step per wheel notch (a short gap so one notch read over two frames counts once).
+	// One highlight step per notch: the game's MouseWheel action (also in our mouse context) reads
+	// the scroll this frame. Step only when scrolling starts or turns round, so a notch read over
+	// several frames, or a value that stays set, can't keep the highlight running.
 	protected void Wheel(InputManager input, int now)
 	{
-		float value = input.GetActionValue("AIO_MouseWheel");
-		if (value == 0 || now < m_iNextWheel)
+		float value = input.GetActionValue("MouseWheel");
+		int direction = 0;
+		if (value > 0)
+			direction = 1;
+		else if (value < 0)
+			direction = -1;
+		bool step = direction != 0 && direction != m_iWheelDirection;
+		m_iWheelDirection = direction;
+		if (!step)
 			return;
-		m_iNextWheel = now + 60;
+		if (m_iWheelLogs < 5)
+		{
+			m_iWheelLogs++;
+			Print(string.Format("[AIO] mouse wheel %1", value)); // what one notch reads, for tuning
+		}
 		int count = SelectableCount();
 		if (count == 0)
 			return;
