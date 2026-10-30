@@ -1,0 +1,53 @@
+name: Feature request
+description: Suggest a new order or a change to the command menu.
+title: '[Feature]: '
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues first. Describe one idea per request and the situation it would help with.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would this help with?
+      description: Give a concrete example of what you wanted your squad to do and couldn't, or what was awkward.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed order or change
+      description: What it should do, who gets it (whole squad, selected men, a colour team) and where it points (camera, map cursor or no place). Suggest a menu spot if you have one in mind.
+      placeholder: |
+        Menu: 4 Defense > ...
+        Who: selected men
+        What they do: ...
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Game mode you'd use it in
+      options:
+        - Conflict
+        - Game Master
+        - Arma Commander Actual (ACA)
+        - Any / all
+        - Other (say which above)
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or workarounds
+      description: Anything you've tried, or other ways it could work.
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Examples
+      description: Screenshots, video links, or how another game or mod does it.
+    validations:
+      required: false
