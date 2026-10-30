@@ -929,6 +929,23 @@ class AIO_Test
 			Finish();
 			return;
 		}
+		// The frag step can leave men wounded; with BBB's safer healing (ACA runs) they stop to heal and
+		// the cover smoke never goes (#6). Heal the squad so this step measures the Fall back smoke.
+		array<IEntity> squad = {};
+		AIO_Server.Members(s_Group, squad);
+		foreach (IEntity body : squad)
+		{
+			SCR_CharacterDamageManagerComponent damage = SCR_CharacterDamageManagerComponent.Cast(SCR_DamageManagerComponent.GetDamageManager(body));
+			if (damage)
+				damage.FullHeal();
+		}
+		GetGame().GetCallqueue().CallLater(GrenFallBack, 2000, false);
+	}
+
+	protected static void GrenFallBack()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
 		s_iGrenThrown = AIO_Grenades.s_iThrown;
 		// The screen faces the enemies the men know about (on ACA's range that can be the range's own fight).
 		vector east = s_vGrenEnemy;
