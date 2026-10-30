@@ -214,7 +214,7 @@ class AIO_Test
 		{
 			for (int k = 0; k < 8; k++)
 			{
-				float angle = k * 0.785;
+				float angle = 0.785 * k;
 				float radius = minDistance + ring * 25;
 				float x = near[0] + Math.Cos(angle) * radius;
 				float z = near[2] + Math.Sin(angle) * radius;
@@ -2246,7 +2246,9 @@ class AIO_Test
 		// Use the selected-men / possessed-group route that failed in the live GM check.
 		s_vTarget = FindSpot(s_Vehicle.GetOrigin(), 35);
 		array<IEntity> one = {driver};
-		Print("[AIO] TEST mounted move: " + AIO_Server.ExecuteBodies(s_Group, AIO_EOrder.MOVE_HERE, one, s_vTarget, null, RplId.Invalid(), 0));
+		// The gunner stands in for the ordering player (alive, in the squad, not the driver): a null player
+		// made the arrival observer drop the order as unauthorized on its first tick.
+		Print("[AIO] TEST mounted move: " + AIO_Server.ExecuteBodies(s_Group, AIO_EOrder.MOVE_HERE, one, s_vTarget, s_Gunner, RplId.Invalid(), 0));
 		GetGame().GetCallqueue().CallLater(VehMoved, 35000, false);
 	}
 

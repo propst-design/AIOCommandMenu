@@ -271,7 +271,9 @@ class AIO_Routes
 			{
 				IEntity man = route.m_aMen[i];
 				AIO_HoldBehavior actual = AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(man)));
-				bool replaced = !actual || actual != route.m_aHolds[i] || CompartmentAccessComponent.GetVehicleIn(man);
+				// Routes need soldiers on foot; a notify-only observer (selected Move here) also watches seated men,
+				// so a driver keeps his order and drives instead of being released on the first tick.
+				bool replaced = !actual || actual != route.m_aHolds[i] || (!route.m_bNotifyOnly && CompartmentAccessComponent.GetVehicleIn(man));
 				if (route.m_bNativeMove)
 					replaced = route.m_aCancelled.Contains(man);
 				if (!authorized || !squad.Contains(man) || replaced)
