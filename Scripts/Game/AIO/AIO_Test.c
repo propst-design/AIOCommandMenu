@@ -2179,7 +2179,12 @@ class AIO_Test
 	{
 		EntitySpawnParams params = new EntitySpawnParams();
 		params.TransformMode = ETransformMode.WORLD;
-		params.Transform[3] = FindSpot(s_vStart, 15) + Vector(0, 0.5, 0);
+		// A spot with nothing standing within a Humvee's length: the first one sat on a pine, which pinned
+		// the vehicle so mounted Move here could never drive (#5).
+		vector spot = FindSpot(s_vStart, 15);
+		for (int tries = 1; tries < 12 && !SpotClear(spot); tries++)
+			spot = FindSpot(s_vStart, 15 + tries * 6);
+		params.Transform[3] = spot + Vector(0, 0.5, 0);
 		s_Vehicle = GetGame().SpawnEntityPrefab(Resource.Load(HUMVEE), GetGame().GetWorld(), params);
 		Check("vehicle-spawn", s_Vehicle != null, string.Format("M1025 at %1", params.Transform[3]));
 		if (!s_Vehicle)
@@ -2188,6 +2193,24 @@ class AIO_Test
 			return;
 		}
 		GetGame().GetCallqueue().CallLater(VehBoard, 4000, false);
+	}
+
+	// Eight 5 m rays at waist height from 'spot': false if any hits something other than the ground.
+	protected static bool SpotClear(vector spot)
+	{
+		vector mid = spot + Vector(0, 1, 0);
+		for (int k = 0; k < 8; k++)
+		{
+			float angle = 0.785 * k;
+			TraceParam trace = new TraceParam();
+			trace.Start = mid;
+			trace.End = mid + Vector(Math.Cos(angle) * 5, 0, Math.Sin(angle) * 5);
+			trace.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
+			float fraction = GetGame().GetWorld().TraceMove(trace, null);
+			if (fraction < 1 && trace.TraceEnt && !GenericTerrainEntity.Cast(trace.TraceEnt))
+				return false;
+		}
+		return true;
 	}
 
 	protected static void VehBoard()
