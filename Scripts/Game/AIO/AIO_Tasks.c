@@ -888,7 +888,7 @@ class AIO_Tasks
 	{
 		if (index == 0)
 			return center;
-		float ring = 4 * (1 + (index - 1) / 6);
+		float ring = 4 * (1 + (index - 1) / 6); // int-math ok: whole rings of 6
 		float angle = (index - 1) * 1.047; // 60 degrees
 		vector spot = center + Vector(Math.Cos(angle) * ring, 0, Math.Sin(angle) * ring);
 		spot[1] = GetGame().GetWorld().GetSurfaceY(spot[0], spot[2]);
