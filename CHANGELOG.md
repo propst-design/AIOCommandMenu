@@ -12,6 +12,7 @@
 - Fixed: men keeping station on a player (Advance, Flank) stood at his last position for good if he disconnected; they now rejoin the squad, as they already did when he died.
 - Fixed: a soldier killed while in cover (Take cover, Fortify) left that spot reserved for the rest of the mission, so no other AI, friend or foe, would use it.
 - Fixed: a soldier given a new order while disarming mines, or who couldn't reach the next mine, stayed crouched until you gave him a stance order.
+- The game's own command wheel now overrides AiO: a wheel order to move, follow, stop or get in releases men you'd told to hold, and a wheel fire order ends per-man fire orders (Hold fire on selected men, Fire on my lead). Before, those men ignored the wheel.
 
 ## 0.3.3 — released
 
