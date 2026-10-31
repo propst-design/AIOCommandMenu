@@ -46,6 +46,17 @@ class AIO_HoldBehavior : SCR_AIBehaviorBase
 	int m_iCoverTileX = -1; // cover point reserved for him (Take cover)
 	int m_iCoverTileY;
 	int m_iCoverId;
+
+	// Release frees the cover point; a man killed in it never got there, and the point stayed
+	// "occupied" for every AI's cover search until the mission ended.
+	void ~AIO_HoldBehavior()
+	{
+		if (m_iCoverTileX < 0 || !GetGame())
+			return;
+		ChimeraCoverManagerComponent covers = AIO_Tasks.Covers();
+		if (covers)
+			covers.SetOccupiedCover(m_iCoverTileX, m_iCoverTileY, m_iCoverId, false);
+	}
 	ref array<vector> m_aLegs; // further points of a route (flanking): walked one after another
 	vector m_vLook;            // keeps looking there (360 defense, fortify); zero = his own choice
 	bool m_bInterior;          // bounded movement to a building post/room
