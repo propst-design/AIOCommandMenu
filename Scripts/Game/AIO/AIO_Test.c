@@ -214,7 +214,7 @@ class AIO_Test
 		{
 			for (int k = 0; k < 8; k++)
 			{
-				float angle = k * 0.785;
+				float angle = 0.785 * k;
 				float radius = minDistance + ring * 25;
 				float x = near[0] + Math.Cos(angle) * radius;
 				float z = near[2] + Math.Sin(angle) * radius;
@@ -929,6 +929,23 @@ class AIO_Test
 			Finish();
 			return;
 		}
+		// The frag step can leave men wounded; with BBB's safer healing (ACA runs) they stop to heal and
+		// the cover smoke never goes (#6). Heal the squad so this step measures the Fall back smoke.
+		array<IEntity> squad = {};
+		AIO_Server.Members(s_Group, squad);
+		foreach (IEntity body : squad)
+		{
+			SCR_CharacterDamageManagerComponent damage = SCR_CharacterDamageManagerComponent.Cast(SCR_DamageManagerComponent.GetDamageManager(body));
+			if (damage)
+				damage.FullHeal();
+		}
+		GetGame().GetCallqueue().CallLater(GrenFallBack, 2000, false);
+	}
+
+	protected static void GrenFallBack()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
 		s_iGrenThrown = AIO_Grenades.s_iThrown;
 		// The screen faces the enemies the men know about (on ACA's range that can be the range's own fight).
 		vector east = s_vGrenEnemy;
@@ -2179,7 +2196,12 @@ class AIO_Test
 	{
 		EntitySpawnParams params = new EntitySpawnParams();
 		params.TransformMode = ETransformMode.WORLD;
-		params.Transform[3] = FindSpot(s_vStart, 15) + Vector(0, 0.5, 0);
+		// A spot with nothing standing within a Humvee's length: the first one sat on a pine, which pinned
+		// the vehicle so mounted Move here could never drive (#5).
+		vector spot = FindSpot(s_vStart, 15);
+		for (int tries = 1; tries < 12 && !SpotClear(spot); tries++)
+			spot = FindSpot(s_vStart, 15 + tries * 6);
+		params.Transform[3] = spot + Vector(0, 0.5, 0);
 		s_Vehicle = GetGame().SpawnEntityPrefab(Resource.Load(HUMVEE), GetGame().GetWorld(), params);
 		Check("vehicle-spawn", s_Vehicle != null, string.Format("M1025 at %1", params.Transform[3]));
 		if (!s_Vehicle)
@@ -2188,6 +2210,24 @@ class AIO_Test
 			return;
 		}
 		GetGame().GetCallqueue().CallLater(VehBoard, 4000, false);
+	}
+
+	// Eight 5 m rays at waist height from 'spot': false if any hits something other than the ground.
+	protected static bool SpotClear(vector spot)
+	{
+		vector mid = spot + Vector(0, 1, 0);
+		for (int k = 0; k < 8; k++)
+		{
+			float angle = 0.785 * k;
+			TraceParam trace = new TraceParam();
+			trace.Start = mid;
+			trace.End = mid + Vector(Math.Cos(angle) * 5, 0, Math.Sin(angle) * 5);
+			trace.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
+			float fraction = GetGame().GetWorld().TraceMove(trace, null);
+			if (fraction < 1 && trace.TraceEnt && !GenericTerrainEntity.Cast(trace.TraceEnt))
+				return false;
+		}
+		return true;
 	}
 
 	protected static void VehBoard()
@@ -2246,7 +2286,9 @@ class AIO_Test
 		// Use the selected-men / possessed-group route that failed in the live GM check.
 		s_vTarget = FindSpot(s_Vehicle.GetOrigin(), 35);
 		array<IEntity> one = {driver};
-		Print("[AIO] TEST mounted move: " + AIO_Server.ExecuteBodies(s_Group, AIO_EOrder.MOVE_HERE, one, s_vTarget, null, RplId.Invalid(), 0));
+		// The gunner stands in for the ordering player (alive, in the squad, not the driver): a null player
+		// made the arrival observer drop the order as unauthorized on its first tick.
+		Print("[AIO] TEST mounted move: " + AIO_Server.ExecuteBodies(s_Group, AIO_EOrder.MOVE_HERE, one, s_vTarget, s_Gunner, RplId.Invalid(), 0));
 		GetGame().GetCallqueue().CallLater(VehMoved, 35000, false);
 	}
 
