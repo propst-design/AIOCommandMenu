@@ -720,11 +720,21 @@ class AIO_Vehicles
 
 	protected static void EndUnflip(AIO_UnflipJob job)
 	{
-		foreach (IEntity helper : job.m_aHelpers)
+		array<IEntity> helpers = {};
+		helpers.Copy(job.m_aHelpers);
+		job.m_aHelpers.Clear();
+		foreach (IEntity helper : helpers)
 		{
 			if (helper)
 				AIO_Tasks.Release(helper);
 		}
+	}
+
+	// A new order takes a man off the push (AIO_Tasks.Release): he is no longer released when it ends.
+	static void CancelUnflip(IEntity body)
+	{
+		foreach (AIO_UnflipJob job : s_aUnflips)
+			job.m_aHelpers.RemoveItem(body);
 	}
 
 	static bool IsPushing(IEntity body)

@@ -60,7 +60,7 @@ modded class SCR_PlayerController
 			m_iAIO_InWindow = 0;
 		}
 		m_iAIO_InWindow++;
-		if (m_iAIO_InWindow > 10)
+		if (m_iAIO_InWindow > 10 || (members && members.Count() > 64))
 			return;
 		string feedback = AIO_Server.Execute(this, order, members, point, target);
 		if (!feedback.IsEmpty())
@@ -106,7 +106,7 @@ modded class SCR_PlayerController
 	protected void AIO_RpcTeam(array<RplId> ids, int team)
 	{
 		SCR_AIGroup slave = AIO_Server.Slave(GetPlayerId());
-		if (!slave)
+		if (!slave || !ids || ids.Count() > 64) // a squad, not an unbounded list (as AIO_RpcRoute)
 			return;
 		array<IEntity> bodies = {};
 		AIO_Tasks.Resolve(slave, ids, bodies);

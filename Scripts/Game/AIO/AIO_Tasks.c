@@ -40,11 +40,23 @@ class AIO_HoldBehavior : SCR_AIBehaviorBase
 {
 	vector m_vSpot;
 	IEntity m_Anchor;  // when set, the spot moves with him: m_Anchor's position + m_vOffset
+	bool m_bAnchored;  // it had one: a deleted anchor (player disconnected) reads as null, not as dead
 	vector m_vOffset;
 	bool m_bCrouched;       // Take cover set a crouch stance: undone on release
 	int m_iCoverTileX = -1; // cover point reserved for him (Take cover)
 	int m_iCoverTileY;
 	int m_iCoverId;
+
+	// Release frees the cover point; a man killed in it never got there, and the point stayed
+	// "occupied" for every AI's cover search until the mission ended.
+	void ~AIO_HoldBehavior()
+	{
+		if (m_iCoverTileX < 0 || !GetGame())
+			return;
+		ChimeraCoverManagerComponent covers = AIO_Tasks.Covers();
+		if (covers)
+			covers.SetOccupiedCover(m_iCoverTileX, m_iCoverTileY, m_iCoverId, false);
+	}
 	ref array<vector> m_aLegs; // further points of a route (flanking): walked one after another
 	vector m_vLook;            // keeps looking there (360 defense, fortify); zero = his own choice
 	bool m_bInterior;          // bounded movement to a building post/room
@@ -83,7 +95,10 @@ class AIO_HoldBehavior : SCR_AIBehaviorBase
 		if (!utility || !utility.m_OwnerEntity || !CompartmentAccessComponent.GetVehicleIn(utility.m_OwnerEntity))
 			SetPriorityLevel(PRIORITY_LEVEL_PLAYER);
 		if (utility)
+		{
 			utility.AIO_SetOrderHold(this);
+			AIO_Tasks.TrackHold(utility.GetAIAgent());
+		}
 	}
 
 	override float CustomEvaluate()
@@ -193,6 +208,7 @@ class AIO_Tasks
 		AIO_Repair.Cancel(agent);
 		AIO_Logistics.Cancel(agent);
 		AIO_Support.Cancel(body);
+		AIO_Vehicles.CancelUnflip(body);
 		AIO_Maneuvers.Leave(agent); // ...and takes him out of a bound / peel
 		array<ref AIActionBase> holds = {};
 		utility.FindActionsOfType(AIO_HoldBehavior, holds);
@@ -280,6 +296,7 @@ class AIO_Tasks
 		Release(body);
 		AIO_HoldBehavior hold = new AIO_HoldBehavior(utility, null, anchor.GetOrigin() + offset);
 		hold.m_Anchor = anchor;
+		hold.m_bAnchored = anchor != null;
 		hold.m_vOffset = offset;
 		vector spot = hold.Spot();
 		hold.m_vSpot = spot;
@@ -708,6 +725,14 @@ class AIO_Tasks
 	}
 
 	protected static ref array<AIAgent> s_aCopyAgents = {};
+	// Men given a hold: the watchdog checks these, not every AI in the world each second.
+	protected static ref array<AIAgent> s_aHoldAgents = {};
+
+	static void TrackHold(AIAgent agent)
+	{
+		if (agent && !s_aHoldAgents.Contains(agent))
+			s_aHoldAgents.Insert(agent);
+	}
 	protected static ref array<IEntity> s_aCopyLeaders = {};
 
 	// The man copies the leader's stance until told otherwise (Stance > Auto or another stance).
@@ -909,25 +934,26 @@ class AIO_Tasks
 			}
 			ApplyCopiedStance(copier, leader);
 		}
+		// Copy: a release below can give a man a new hold (tracked again at the end).
 		array<AIAgent> agents = {};
-		AIWorld world = GetGame().GetAIWorld();
-		if (!world)
-			return;
-		world.GetAIAgents(agents);
+		agents.Copy(s_aHoldAgents);
 		foreach (AIAgent agent : agents)
 		{
 			SCR_AIUtilityComponent utility = UtilityOf(agent);
-			if (!utility)
-				continue;
-			AIO_HoldBehavior hold = ActiveHold(utility);
+			AIO_HoldBehavior hold;
+			if (utility)
+				hold = ActiveHold(utility);
 			if (!hold)
+			{
+				s_aHoldAgents.RemoveItem(agent); // no hold any more (or gone): stop checking him
 				continue;
+			}
 			IEntity body = agent.GetControlledEntity();
 			if (!body || !AIO_Server.IsAlive(body))
 				continue;
 			if (hold.m_bInterior && !CheckInterior(body, utility, hold))
 				continue;
-			if (hold.m_Anchor && !AIO_Server.IsAlive(hold.m_Anchor))
+			if (hold.m_bAnchored && (!hold.m_Anchor || !AIO_Server.IsAlive(hold.m_Anchor)))
 			{
 				Release(body); // the player he was keeping station on is gone: back to formation
 				continue;

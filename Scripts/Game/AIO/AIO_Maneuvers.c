@@ -463,6 +463,9 @@ class AIO_Maneuvers
 	{
 		if (AIO_Bounding.IsIssuing() || !agent)
 			return;
+		// Fire on my lead set a per-man hold fire: hand his fire back, or he never shoots again
+		if (IsWaitingForLead(agent) && agent.GetControlledEntity())
+			SetROE(agent.GetControlledEntity(), -1);
 		StopLead(agent);
 		for (int i = s_aApproaches.Count() - 1; i >= 0; i--)
 		{
@@ -831,6 +834,8 @@ class AIO_Maneuvers
 	{
 		for (int i = s_aApproaches.Count() - 1; i >= 0; i--)
 		{
+			if (i >= s_aApproaches.Count())
+				continue; // a Rejoin below (Release -> Leave) can drop other approaches
 			AIO_Approach approach = s_aApproaches[i];
 			approach.m_iTicks++;
 			if (approach.m_bPosted)

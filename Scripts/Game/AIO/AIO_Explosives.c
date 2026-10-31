@@ -393,7 +393,11 @@ class AIO_Explosives
 		for (int i = s_aJobs.Count() - 1; i >= 0; i--)
 		{
 			if (s_aJobs[i].m_Agent == agent && !s_aJobs[i].m_bEnding && s_aJobs[i].m_iStage != 1)
+			{
+				if (s_aJobs[i].m_iKind == KIND_DISARM && s_aJobs[i].m_iStage == 3)
+					AIO_Tasks.SetStance(agent, -1); // he crouched to disarm: kept forever otherwise
 				s_aJobs.Remove(i);
+			}
 		}
 	}
 
@@ -463,7 +467,7 @@ class AIO_Explosives
 				if (!job.m_aMines.IsEmpty())
 				{
 					mine = job.m_aMines[0];
-					job.m_aMines.Remove(0);
+					job.m_aMines.RemoveOrdered(0); // ordered: the chain is nearest-first
 				}
 				SCR_PressureTriggerComponent trigger = null;
 				if (mine)
@@ -475,7 +479,7 @@ class AIO_Explosives
 				}
 				// Mines that were set off or taken meanwhile drop out of the list.
 				while (!job.m_aMines.IsEmpty() && !job.m_aMines[0])
-					job.m_aMines.Remove(0);
+					job.m_aMines.RemoveOrdered(0); // ordered: the chain is nearest-first
 				if (job.m_aMines.IsEmpty())
 				{
 					AIO_Tasks.SetStance(job.m_Agent, -1);
@@ -675,6 +679,8 @@ class AIO_Explosives
 	protected static void End(AIO_Demolition job, IEntity body, string problem)
 	{
 		job.m_bEnding = true;
+		if (job.m_iKind == KIND_DISARM)
+			AIO_Tasks.SetStance(job.m_Agent, -1); // any end of a disarm (unreached spot, timeout) stands him up
 		AIO_Tasks.Rejoin(body, GetGame().GetPlayerManager().GetPlayerControlledEntity(job.m_iPlayerId));
 		if (job.m_bHadHold)
 		{

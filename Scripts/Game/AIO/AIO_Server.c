@@ -693,6 +693,36 @@ class AIO_Server
 		return "Not built yet for selected men: " + typename.EnumToString(AIO_EOrder, order);
 	}
 
+	static bool s_bIssuingVanilla;
+
+	// The player gave his squad an order from the game's own command wheel (Jacob, 31 Oct: it
+	// cancels what AiO left behind). A move-type order releases every man's AiO hold, errand and
+	// route; a combat-mode order ends per-man fire overrides (Fire on my lead, per-man ROE).
+	static void OnWheelCommand(SCR_BaseRadialCommand command, int playerId)
+	{
+		if (s_bIssuingVanilla || !command)
+			return;
+		SCR_AIGroup slave = Slave(playerId);
+		if (!slave)
+			return;
+		if (SCR_SetCombatModeGroupCommand.Cast(command))
+		{
+			array<IEntity> everyone = {};
+			Members(slave, everyone);
+			foreach (IEntity soldier : everyone)
+			{
+				AIO_Maneuvers.StopLead(AIO_Tasks.AgentOf(soldier));
+				AIO_Maneuvers.SetROE(soldier, -1);
+			}
+			return;
+		}
+		if (SCR_WaypointGroupCommand.Cast(command) || SCR_StopMovementGroupCommand.Cast(command))
+		{
+			AIO_Tasks.ReleaseGroup(slave);
+			Print(string.Format("[AIO] player %1: wheel order %2 releases AiO orders", playerId, command.GetCommandName()));
+		}
+	}
+
 	// Runs one of the game's own commanding-menu commands for the player (voice reply,
 	// gesture and all). False when the scenario has no commanding or no such command.
 	static bool Vanilla(int playerId, SCR_AIGroup slave, string command, vector point)
@@ -704,7 +734,9 @@ class AIO_Server
 		if (index < 0)
 			return false;
 		RplId groupId = Replication.FindItemId(slave);
+		s_bIssuingVanilla = true; // our own order: the wheel hook below leaves our men alone
 		commanding.RequestCommandExecution(index, RplId.Invalid(), groupId, point, playerId, Math.RandomFloatInclusive(0, 1));
+		s_bIssuingVanilla = false;
 		Print(string.Format("[AIO] player %1: %2 at %3", playerId, command, point));
 		return true;
 	}
@@ -1042,6 +1074,8 @@ class AIO_Server
 					}
 				}
 
+				if (dest == vector.Zero)
+					continue; // no free slot: leave him where he is, not at the map origin
 				if (TeleportCharacterEntity(soldier, dest, forward))
 				{
 					placedPositions.Insert(dest);
@@ -1062,5 +1096,15 @@ class AIO_Server
 		SCR_DamageManagerComponent damage = SCR_DamageManagerComponent.GetDamageManager(entity);
 		if (damage)
 			damage.FullHeal();
+	}
+}
+
+// The game's command wheel reaches the server here (SCR_PlayerControllerCommandingComponent's RPC).
+modded class SCR_CommandingManagerComponent
+{
+	override void RequestCommandExecution(int commandIndex, RplId cursorTargetID, RplId groupRplID, vector targetPosition, int playerID, float seed)
+	{
+		AIO_Server.OnWheelCommand(FindCommand(FindCommandNameFromIndex(commandIndex)), playerID);
+		super.RequestCommandExecution(commandIndex, cursorTargetID, groupRplID, targetPosition, playerID, seed);
 	}
 }
