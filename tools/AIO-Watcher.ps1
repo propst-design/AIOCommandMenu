@@ -104,7 +104,10 @@ function Get-Pack($guid) {
     }
     $sigFile = "$target.sig"
     $sigText = $sig.ToString()
-    if ((Test-Path -LiteralPath (Join-Path $target 'data.pak')) -and (Test-Path -LiteralPath $sigFile) -and ([IO.File]::ReadAllText($sigFile) -eq $sigText)) { return $null }
+    # Download manifests in the folder: the server's backend swapped our pack for a Workshop release.
+    # A pack folder inside the old one: the last swap couldn't remove it, so it is stale too.
+    $swapped = @(Get-ChildItem -LiteralPath $target -Filter '*_manifest.json' -ErrorAction SilentlyContinue).Count -gt 0 -or (Test-Path -LiteralPath (Join-Path $target "$guid.packing"))
+    if (!$swapped -and (Test-Path -LiteralPath (Join-Path $target 'data.pak')) -and (Test-Path -LiteralPath $sigFile) -and ([IO.File]::ReadAllText($sigFile) -eq $sigText)) { return $null }
     $wb = Find-Workbench
     if (!$wb) { return 'Arma Reforger Tools (Workbench) not found' }
     $gameAddons = Join-Path (Split-Path (Find-Server) -Parent) '..\Arma Reforger\addons'
@@ -117,7 +120,13 @@ function Get-Pack($guid) {
     $proc = Start-Process -FilePath $wb -ArgumentList $wbArgs -WindowStyle Hidden -PassThru
     if (!$proc.WaitForExit(900000)) { Stop-Process -Id $proc.Id -ErrorAction SilentlyContinue; return "packing $($PakFolders[$guid]) timed out" }
     if (!(Test-Path -LiteralPath (Join-Path $fresh 'data.pak'))) { return "packing $($PakFolders[$guid]) failed (Workbench logs in $wbProfile\logs)" }
-    if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Recurse -Force }
+    # A server that just stopped can hold the old data.pak for a moment: the removal failed
+    # silently and Move-Item put the new pack inside the old folder (30 Oct). Retry, then give up.
+    for ($try = 0; $try -lt 10 -and (Test-Path -LiteralPath $target); $try++) {
+        Remove-Item -LiteralPath $target -Recurse -Force -ErrorAction SilentlyContinue
+        if (Test-Path -LiteralPath $target) { Start-Sleep -Seconds 2 }
+    }
+    if (Test-Path -LiteralPath $target) { return "couldn't replace the old $($PakFolders[$guid]) pack in $target (still in use?)" }
     Move-Item -LiteralPath $fresh -Destination $target
     [IO.File]::WriteAllText($sigFile, $sigText)
     return $null
@@ -131,7 +140,17 @@ function Get-PakArgs($config, $serverProfile) {
     # ACA needs BBB, its dependency.
     if ($guids -contains 'AC230926A0010001' -and $guids -notcontains 'BBB0261015000001') { $guids = @('BBB0261015000001') + $guids }
     foreach ($guid in $guids) { $err = Get-Pack $guid; if ($err) { return @{ Error = $err } } }
-    $mods = @($guids | ForEach-Object { @{ modId = $_; name = $PakFolders[$_] } })
+    # Ask for the version the profile already holds (its first run downloaded it): asking for the
+    # latest made the backend "update" our packs to a newer Workshop release, and pak: runs then
+    # tested the published build instead of the source (30 Oct).
+    $mods = @($guids | ForEach-Object {
+        $mod = @{ modId = $_; name = $PakFolders[$_] }
+        $held = Get-ChildItem -LiteralPath (Join-Path $serverProfile 'addons') -Directory -Filter "*_$_" -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($held -and (Test-Path -LiteralPath (Join-Path $held.FullName 'ServerData.json'))) {
+            try { $mod.version = [string]((Get-Content -LiteralPath (Join-Path $held.FullName 'ServerData.json') -Raw | ConvertFrom-Json).revision.version) } catch {}
+        }
+        $mod
+    })
     $serverConfig = @{
         bindAddress = '0.0.0.0'; bindPort = $PakPort; publicAddress = '127.0.0.1'; publicPort = $PakPort
         a2s = @{ address = '127.0.0.1'; port = 17779 }
