@@ -1042,6 +1042,8 @@ class AIO_Server
 					}
 				}
 
+				if (dest == vector.Zero)
+					continue; // no free slot: leave him where he is, not at the map origin
 				if (TeleportCharacterEntity(soldier, dest, forward))
 				{
 					placedPositions.Insert(dest);
