@@ -9,6 +9,7 @@
 - Fixed: a soldier you sent off elsewhere while he was pushing a vehicle upright was pulled back to formation when the push ended, cancelling your new order.
 - Fixed: Disarm mines now walks the mines nearest-first instead of zig-zagging to the far end of the line after the first one.
 - Fixed: admin Teleport with group could put a soldier at the corner of the map when there was no free spot near you; he now stays where he is.
+- Fixed: men keeping station on a player (Advance, Flank) stood at his last position for good if he disconnected; they now rejoin the squad, as they already did when he died.
 
 ## 0.3.3 — released
 
