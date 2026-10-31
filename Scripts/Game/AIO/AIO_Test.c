@@ -690,6 +690,64 @@ class AIO_Test
 	protected static vector s_vFragSpot;
 	protected static vector s_vGrenEnemy;
 
+	// A point about 'distance' from him for a frag: flat ground (a burst on a slope rolls away) and a
+	// clear lob (a frag that hits a branch or a fence bursts short, 19.6 m off on ACA's test range).
+	// East first, as before: the later smokes are placed away from the burst (west) and south.
+	protected static vector ThrowSpot(IEntity body, float distance)
+	{
+		BaseWorld world = GetGame().GetWorld();
+		vector from = body.GetOrigin();
+		array<int> turns = {0, 1, -1, 2, -2, 3, -3, 4, -4};
+		for (int ring = 0; ring < 3; ring++)
+		{
+			foreach (int turn : turns)
+			{
+				float angle = 0.3927 * turn;
+				float radius = distance + ring * 3;
+				float x = from[0] + Math.Cos(angle) * radius;
+				float z = from[2] + Math.Sin(angle) * radius;
+				float y = world.GetSurfaceY(x, z);
+				if (y < world.GetOceanBaseHeight() + 2)
+					continue;
+				float slope = Math.AbsFloat(world.GetSurfaceY(x + 3, z) - y) + Math.AbsFloat(world.GetSurfaceY(x, z + 3) - y);
+				vector point = Vector(x, y, z);
+				if (slope <= 0.5 && AIO_Grenades.Blocked(body, point) < 0)
+					return point;
+			}
+		}
+		return FindSpot(from, distance);
+	}
+
+	// A spot about 'distance' from the men, south first, that they can see at eye level (no trees,
+	// walls or rises in between). The earlier smokes drift east and north-west, so not there.
+	protected static vector SeenSpot(vector men, float distance)
+	{
+		BaseWorld world = GetGame().GetWorld();
+		array<float> bearings = {-90, -120, -60, -150, -30, 180};
+		foreach (float bearing : bearings)
+		{
+			float a = bearing * Math.DEG2RAD;
+			vector dir = Vector(Math.Cos(a), 0, Math.Sin(a));
+			// from a few metres out, so the men's own bodies don't block the line
+			vector eye = AIO_Maneuvers.Ground(men + dir * 3) + "0 1.6 0";
+			for (int step = 0; step < 3; step++)
+			{
+				float radius = distance - 10 + step * 10;
+				vector point = AIO_Maneuvers.Ground(men + dir * radius);
+				if (point[1] < world.GetOceanBaseHeight() + 2)
+					continue;
+				TraceParam trace = new TraceParam();
+				trace.Start = eye;
+				trace.End = point + "0 1.4 0";
+				trace.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
+				if (world.TraceMove(trace, null) >= 1)
+					return point;
+			}
+		}
+		Print("[AIO] TEST grenades: no spot in clear view of the men, enemies placed south anyway");
+		return FindSpot(men + Vector(0, 0, -distance), 0);
+	}
+
 	protected static void GrenStart()
 	{
 		array<IEntity> men = {};
@@ -729,7 +787,10 @@ class AIO_Test
 		{
 			SCR_AIUtilityComponent utility = AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(body));
 			bool healing = utility && utility.HasActionOfType(SCR_AIHealBehavior);
-			Print(string.Format("[AIO] TEST grenades health %1: %2 health %3, %4 m from the frag point, healing %5", when, AIO_Server.NameOf(body), Health(body), Math.Round(vector.Distance(body.GetOrigin(), s_vFragSpot)), healing));
+			string doing = "none";
+			if (utility && utility.GetCurrentAction())
+				doing = utility.GetCurrentAction().ClassName();
+			Print(string.Format("[AIO] TEST grenades health %1: %2 health %3, %4 m from the frag point, healing %5, doing %6", when, AIO_Server.NameOf(body), Health(body), Math.Round(vector.Distance(body.GetOrigin(), s_vFragSpot)), healing, doing));
 		}
 	}
 
@@ -747,7 +808,7 @@ class AIO_Test
 	{
 		array<IEntity> men = {};
 		NonLeaders(men);
-		s_vGrenSpot = FindSpot(men[0].GetOrigin(), 24);
+		s_vGrenSpot = ThrowSpot(men[0], 24);
 		s_vFragSpot = s_vGrenSpot;
 		s_iGrenThrown = AIO_Grenades.s_iThrown;
 		s_iGrenCarried = AIO_Grenades.Count(men[0], EWeaponType.WT_FRAGGRENADE);
@@ -871,8 +932,9 @@ class AIO_Test
 		}
 		EntitySpawnParams enemyParams = new EntitySpawnParams();
 		enemyParams.TransformMode = ETransformMode.WORLD;
-		// South: the earlier smoke (screen east, walk-up throw north-west) would hide them.
-		s_vGrenEnemy = FindSpot(AIO_Maneuvers.Centroid(men) + Vector(0, 0, -60), 0);
+		// South: the earlier smoke (screen east, walk-up throw north-west) would hide them. On ACA's
+		// test range trees and buildings can stand in the way, so they go where the men can see.
+		s_vGrenEnemy = SeenSpot(AIO_Maneuvers.Centroid(men), 60);
 		enemyParams.Transform[3] = s_vGrenEnemy;
 		s_Enemy = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(Resource.Load(ENEMY), GetGame().GetWorld(), enemyParams));
 		// Like the contact test: the enemy team under a USSR playable group, as real opposing squads are.
@@ -931,6 +993,23 @@ class AIO_Test
 		}
 		// The frag step can leave men wounded; with BBB's safer healing (ACA runs) they stop to heal and
 		// the cover smoke never goes (#6). Heal the squad so this step measures the Fall back smoke.
+		// The enemy team holds its fire from here for the same reason: once seen, it wounded a thrower
+		// before he got his smoke off (a wounded man heals first, by design). Its frags go too: an
+		// AI grenade mod (BBB at ACA's pin) still threw them on hold fire, and the men ducked them.
+		array<IEntity> shooters = {};
+		AIO_Server.Members(s_Enemy, shooters);
+		foreach (IEntity shooter : shooters)
+		{
+			AIO_Maneuvers.SetROE(shooter, EAIGroupCombatMode.HOLD_FIRE);
+			array<IEntity> frags = {};
+			AIO_Grenades.Count(shooter, EWeaponType.WT_FRAGGRENADE, frags);
+			SCR_InventoryStorageManagerComponent pockets = AIO_Supplies.InventoryOf(shooter);
+			foreach (IEntity frag : frags)
+			{
+				if (pockets)
+					pockets.TryDeleteItem(frag);
+			}
+		}
 		array<IEntity> squad = {};
 		AIO_Server.Members(s_Group, squad);
 		foreach (IEntity body : squad)
