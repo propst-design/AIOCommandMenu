@@ -40,6 +40,7 @@ class AIO_HoldBehavior : SCR_AIBehaviorBase
 {
 	vector m_vSpot;
 	IEntity m_Anchor;  // when set, the spot moves with him: m_Anchor's position + m_vOffset
+	bool m_bAnchored;  // it had one: a deleted anchor (player disconnected) reads as null, not as dead
 	vector m_vOffset;
 	bool m_bCrouched;       // Take cover set a crouch stance: undone on release
 	int m_iCoverTileX = -1; // cover point reserved for him (Take cover)
@@ -281,6 +282,7 @@ class AIO_Tasks
 		Release(body);
 		AIO_HoldBehavior hold = new AIO_HoldBehavior(utility, null, anchor.GetOrigin() + offset);
 		hold.m_Anchor = anchor;
+		hold.m_bAnchored = anchor != null;
 		hold.m_vOffset = offset;
 		vector spot = hold.Spot();
 		hold.m_vSpot = spot;
@@ -928,7 +930,7 @@ class AIO_Tasks
 				continue;
 			if (hold.m_bInterior && !CheckInterior(body, utility, hold))
 				continue;
-			if (hold.m_Anchor && !AIO_Server.IsAlive(hold.m_Anchor))
+			if (hold.m_bAnchored && (!hold.m_Anchor || !AIO_Server.IsAlive(hold.m_Anchor)))
 			{
 				Release(body); // the player he was keeping station on is gone: back to formation
 				continue;
