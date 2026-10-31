@@ -5,6 +5,10 @@
 - Aim marker: while the command menu is open, a crosshair marks where an aimed order will land, with the distance. Its colour and shape show the kind of order (move, attack, defend, vehicle, supply), and it shrinks with distance like a real object. On Defense it outlines the building Garrison and Clear would use, and on the vehicle pages the vehicle your men would get into, unflip or repair. It turns grey with a red note when there is nothing to act on (no building, no vehicle, water). More > Aim marker switches between crosshair, a ring lying flat on the surface you aim at, or off, and sets the distance display and size.
 - Mouse control, old Arma style (More > Mouse control on/off): with the menu open, the mouse wheel moves a highlight over the lines, left click gives the highlighted order and right click goes back or closes the menu. The aim marker then previews the highlighted order itself. Shooting and aiming down sights are blocked only while the menu is open; the number keys keep working. Not with the map open, where the mouse works the map.
 - Your menu options (aim marker style, distance, size, mouse control and the squad bar) are now remembered across missions and restarts.
+- Fixed: men told to Fire on my lead held their fire for good if you gave them any other order (Follow, Halt, Move here...) before you fired. A new order now hands their fire back.
+- Fixed: a soldier you sent off elsewhere while he was pushing a vehicle upright was pulled back to formation when the push ended, cancelling your new order.
+- Fixed: Disarm mines now walks the mines nearest-first instead of zig-zagging to the far end of the line after the first one.
+- Fixed: admin Teleport with group could put a soldier at the corner of the map when there was no free spot near you; he now stays where he is.
 
 ## 0.3.3 — released
 
