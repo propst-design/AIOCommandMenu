@@ -95,7 +95,10 @@ class AIO_HoldBehavior : SCR_AIBehaviorBase
 		if (!utility || !utility.m_OwnerEntity || !CompartmentAccessComponent.GetVehicleIn(utility.m_OwnerEntity))
 			SetPriorityLevel(PRIORITY_LEVEL_PLAYER);
 		if (utility)
+		{
 			utility.AIO_SetOrderHold(this);
+			AIO_Tasks.TrackHold(utility.GetAIAgent());
+		}
 	}
 
 	override float CustomEvaluate()
@@ -722,6 +725,14 @@ class AIO_Tasks
 	}
 
 	protected static ref array<AIAgent> s_aCopyAgents = {};
+	// Men given a hold: the watchdog checks these, not every AI in the world each second.
+	protected static ref array<AIAgent> s_aHoldAgents = {};
+
+	static void TrackHold(AIAgent agent)
+	{
+		if (agent && !s_aHoldAgents.Contains(agent))
+			s_aHoldAgents.Insert(agent);
+	}
 	protected static ref array<IEntity> s_aCopyLeaders = {};
 
 	// The man copies the leader's stance until told otherwise (Stance > Auto or another stance).
@@ -923,19 +934,20 @@ class AIO_Tasks
 			}
 			ApplyCopiedStance(copier, leader);
 		}
+		// Copy: a release below can give a man a new hold (tracked again at the end).
 		array<AIAgent> agents = {};
-		AIWorld world = GetGame().GetAIWorld();
-		if (!world)
-			return;
-		world.GetAIAgents(agents);
+		agents.Copy(s_aHoldAgents);
 		foreach (AIAgent agent : agents)
 		{
 			SCR_AIUtilityComponent utility = UtilityOf(agent);
-			if (!utility)
-				continue;
-			AIO_HoldBehavior hold = ActiveHold(utility);
+			AIO_HoldBehavior hold;
+			if (utility)
+				hold = ActiveHold(utility);
 			if (!hold)
+			{
+				s_aHoldAgents.RemoveItem(agent); // no hold any more (or gone): stop checking him
 				continue;
+			}
 			IEntity body = agent.GetControlledEntity();
 			if (!body || !AIO_Server.IsAlive(body))
 				continue;
