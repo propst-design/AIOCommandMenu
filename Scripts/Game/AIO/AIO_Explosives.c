@@ -463,7 +463,7 @@ class AIO_Explosives
 				if (!job.m_aMines.IsEmpty())
 				{
 					mine = job.m_aMines[0];
-					job.m_aMines.Remove(0);
+					job.m_aMines.RemoveOrdered(0); // ordered: the chain is nearest-first
 				}
 				SCR_PressureTriggerComponent trigger = null;
 				if (mine)
@@ -475,7 +475,7 @@ class AIO_Explosives
 				}
 				// Mines that were set off or taken meanwhile drop out of the list.
 				while (!job.m_aMines.IsEmpty() && !job.m_aMines[0])
-					job.m_aMines.Remove(0);
+					job.m_aMines.RemoveOrdered(0); // ordered: the chain is nearest-first
 				if (job.m_aMines.IsEmpty())
 				{
 					AIO_Tasks.SetStance(job.m_Agent, -1);

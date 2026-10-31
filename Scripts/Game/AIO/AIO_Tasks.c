@@ -193,6 +193,7 @@ class AIO_Tasks
 		AIO_Repair.Cancel(agent);
 		AIO_Logistics.Cancel(agent);
 		AIO_Support.Cancel(body);
+		AIO_Vehicles.CancelUnflip(body);
 		AIO_Maneuvers.Leave(agent); // ...and takes him out of a bound / peel
 		array<ref AIActionBase> holds = {};
 		utility.FindActionsOfType(AIO_HoldBehavior, holds);
