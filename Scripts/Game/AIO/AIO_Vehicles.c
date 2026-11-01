@@ -35,6 +35,16 @@ class AIO_Vehicles
 	protected static ref array<ref AIO_UnflipJob> s_aUnflips = {};
 	protected static ref array<ref AIO_DismountWatch> s_aDismounts = {};
 
+	// Mission end (AIO_Game.c): the jobs belong to the world being torn down.
+	static void Cleanup()
+	{
+		s_aDismounts.Clear();
+		s_aUnflips.Clear();
+		GetGame().GetCallqueue().Remove(Unreserve);
+		s_aReservedSeats.Clear();
+		s_aReservedStamps.Clear();
+	}
+
 	static bool IsVehicleOrder(int order)
 	{
 		return order >= AIO_EOrder.VEH_GET_IN_ANY && order <= AIO_EOrder.VEH_LIGHTS_AUTO;
@@ -253,7 +263,7 @@ class AIO_Vehicles
 		AIO_Tasks.Release(body);
 		utility.SetStateAllActionsOfType(SCR_AIGetInVehicle, EAIActionState.FAILED);
 		utility.SetStateAllActionsOfType(SCR_AIGetOutVehicle, EAIActionState.FAILED);
-		seat.SetReserved(body);
+		int stamp = Reserve(seat, body);
 		IEntity inside = VehicleOf(body);
 		if (inside)
 		{
@@ -264,7 +274,7 @@ class AIO_Vehicles
 				CompartmentAccessComponent access = character.GetCompartmentAccessComponent();
 				if (access && access.GetInVehicle(seat.GetOwner(), seat, false, -1, ECloseDoorAfterActions.RETURN_TO_PREVIOUS_STATE, false))
 				{
-					GetGame().GetCallqueue().CallLater(Unreserve, 5000, false, seat, body);
+					GetGame().GetCallqueue().CallLater(Unreserve, 5000, false, seat, body, Reserve(seat, body));
 					Print(string.Format("[AIO] VEHICLE %1 switches to %2", AIO_Server.NameOf(body), SeatName(seat.GetType())));
 					return true;
 				}
@@ -273,12 +283,42 @@ class AIO_Vehicles
 			utility.AddAction(new SCR_AIGetOutVehicle(utility, null, inside, priority: SCR_AIActionBase.PRIORITY_BEHAVIOR_GET_IN_VEHICLE + 10));
 		}
 		utility.AddAction(new SCR_AIGetInVehicle(utility, null, vehicle, seat, seat.GetType(), SCR_AIActionBase.PRIORITY_BEHAVIOR_GET_IN_VEHICLE));
+		// If he never gets there (killed, new order, path blocked) the seat must not stay held for him.
+		GetGame().GetCallqueue().CallLater(Unreserve, BOARD_RESERVE_MS, false, seat, body, stamp);
 		Print(string.Format("[AIO] VEHICLE %1 boards %2 as %3", AIO_Server.NameOf(body), vehicle, SeatName(seat.GetType())));
 		return true;
 	}
 
-	protected static void Unreserve(BaseCompartmentSlot seat, IEntity body)
+	static const int BOARD_RESERVE_MS = 120000;
+
+	// Each reservation gets a number, so a timer from an earlier boarding of the same seat (in,
+	// out, sent back within the timeout) doesn't end the newer one.
+	protected static int s_iReservation;
+	protected static ref array<BaseCompartmentSlot> s_aReservedSeats = {};
+	protected static ref array<int> s_aReservedStamps = {};
+
+	protected static int Reserve(BaseCompartmentSlot seat, IEntity body)
 	{
+		seat.SetReserved(body);
+		s_iReservation++;
+		int at = s_aReservedSeats.Find(seat);
+		if (at < 0)
+		{
+			s_aReservedSeats.Insert(seat);
+			s_aReservedStamps.Insert(s_iReservation);
+		}
+		else
+			s_aReservedStamps[at] = s_iReservation;
+		return s_iReservation;
+	}
+
+	protected static void Unreserve(BaseCompartmentSlot seat, IEntity body, int stamp)
+	{
+		int at = s_aReservedSeats.Find(seat);
+		if (at < 0 || s_aReservedStamps[at] != stamp)
+			return; // reserved again since: that boarding's own timer ends it
+		s_aReservedSeats.Remove(at);
+		s_aReservedStamps.Remove(at);
 		if (seat && seat.IsReservedBy(body))
 			seat.SetReserved(null);
 	}
@@ -415,14 +455,23 @@ class AIO_Vehicles
 
 	// ---------------------------------------------------------------- controls
 
-	static string Controls(notnull array<IEntity> bodies, int order)
+	// group: the commanding squad. A vehicle driven by someone outside it (another player, another
+	// group's AI driver) carrying one of our men as a passenger is not ours to switch.
+	static string Controls(notnull array<IEntity> bodies, int order, IEntity player = null, SCR_AIGroup group = null)
 	{
+		array<IEntity> squad = {};
+		if (group)
+			AIO_Server.Members(group, squad);
 		array<IEntity> vehicles = {};
 		foreach (IEntity body : bodies)
 		{
 			IEntity vehicle = VehicleOf(body);
-			if (vehicle && !vehicles.Contains(vehicle))
-				vehicles.Insert(vehicle);
+			if (!vehicle || vehicles.Contains(vehicle))
+				continue;
+			IEntity driver = Driver(vehicle);
+			if (group && driver && driver != player && !squad.Contains(driver))
+				continue;
+			vehicles.Insert(vehicle);
 		}
 		if (vehicles.IsEmpty())
 			return "Nobody is in a vehicle";
@@ -551,6 +600,7 @@ class AIO_Vehicles
 		{
 			if (other.m_Vehicle == vehicle)
 			{
+				EndUnflip(other); // its men not in the new order would hold at their push spots forever
 				s_aUnflips.RemoveItem(other);
 				break;
 			}
@@ -765,6 +815,6 @@ class AIO_Vehicles
 			case AIO_EOrder.VEH_EJECT: return GetOut(bodies, group, order);
 			case AIO_EOrder.VEH_UNFLIP: return Unflip(bodies, TargetVehicle(looked, null, point));
 		}
-		return Controls(bodies, order);
+		return Controls(bodies, order, player, group);
 	}
 }

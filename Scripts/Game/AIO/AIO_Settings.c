@@ -27,7 +27,7 @@ class AIO_Settings
 		if (!file)
 			return;
 		string line;
-		while (file.ReadLine(line) > 0)
+		while (file.ReadLine(line) > -1) // 0 = an empty line, -1 = end of file
 		{
 			int split = line.IndexOf("=");
 			if (split <= 0)

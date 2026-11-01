@@ -29,6 +29,7 @@ class AIO_Fetch
 	bool m_bHadHold;
 	vector m_vSpot;
 	IEntity m_Anchor;
+	bool m_bAnchored; // a deleted anchor (player disconnected) reads as null, not dead
 	vector m_vOffset;
 	bool m_bEnding; // being finished: Cancel leaves it alone (it's removed right after)
 }
@@ -43,6 +44,12 @@ class AIO_Supplies
 	static const int FETCH_MS = 90000;
 
 	protected static ref array<ref AIO_Fetch> s_aFetches = {};
+
+	// Mission end (AIO_Game.c): the jobs belong to the world being torn down.
+	static void Cleanup()
+	{
+		s_aFetches.Clear();
+	}
 
 	// ---------------------------------------------------------------- what he lacks
 
@@ -617,6 +624,7 @@ class AIO_Supplies
 			fetch.m_bHadHold = true;
 			fetch.m_vSpot = hold.m_vSpot;
 			fetch.m_Anchor = hold.m_Anchor;
+			fetch.m_bAnchored = hold.m_bAnchored;
 			fetch.m_vOffset = hold.m_vOffset;
 		}
 		AIO_Tasks.Release(body);
@@ -714,9 +722,9 @@ class AIO_Supplies
 		AIO_Tasks.Rejoin(body, GetGame().GetPlayerManager().GetPlayerControlledEntity(fetch.m_iPlayerId));
 		if (fetch.m_bHadHold)
 		{
-			if (fetch.m_Anchor && AIO_Server.IsAlive(fetch.m_Anchor))
+			if (fetch.m_Anchor && AIO_Server.IsAlive(fetch.m_Anchor) && AIO_Server.StillCommands(fetch.m_Anchor, body))
 				AIO_Tasks.KeepOffset(body, fetch.m_Anchor, fetch.m_vOffset);
-			else if (!fetch.m_Anchor)
+			else if (!fetch.m_bAnchored)
 				AIO_Tasks.MoveTo(body, fetch.m_vSpot);
 		}
 		Report(fetch.m_iPlayerId, string.Format("%1 %2", AIO_Server.NameOf(body), result));

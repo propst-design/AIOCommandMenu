@@ -16,6 +16,7 @@ class AIO_Delivery
 	bool m_bHadHold;
 	vector m_vSpot;
 	IEntity m_Anchor;
+	bool m_bAnchored; // a deleted anchor (player disconnected) reads as null, not dead
 	vector m_vOffset;
 	bool m_bEnding;
 }
@@ -48,6 +49,13 @@ class AIO_Logistics
 
 	protected static ref array<ref AIO_Delivery> s_aDeliveries = {};
 	protected static ref array<ref AIO_HandOverCallback> s_aHandOvers = {}; // keeps callbacks alive
+
+	// Mission end (AIO_Game.c): the jobs belong to the world being torn down.
+	static void Cleanup()
+	{
+		s_aDeliveries.Clear();
+		s_aHandOvers.Clear();
+	}
 
 	static bool IsOrder(int order)
 	{
@@ -200,6 +208,7 @@ class AIO_Logistics
 			delivery.m_bHadHold = true;
 			delivery.m_vSpot = hold.m_vSpot;
 			delivery.m_Anchor = hold.m_Anchor;
+			delivery.m_bAnchored = hold.m_bAnchored;
 			delivery.m_vOffset = hold.m_vOffset;
 		}
 		AIO_Tasks.Release(giver);
@@ -287,9 +296,9 @@ class AIO_Logistics
 		AIO_Tasks.Rejoin(giver, GetGame().GetPlayerManager().GetPlayerControlledEntity(delivery.m_iPlayerId));
 		if (delivery.m_bHadHold)
 		{
-			if (delivery.m_Anchor && AIO_Server.IsAlive(delivery.m_Anchor))
+			if (delivery.m_Anchor && AIO_Server.IsAlive(delivery.m_Anchor) && AIO_Server.StillCommands(delivery.m_Anchor, giver))
 				AIO_Tasks.KeepOffset(giver, delivery.m_Anchor, delivery.m_vOffset);
-			else if (!delivery.m_Anchor)
+			else if (!delivery.m_bAnchored)
 				AIO_Tasks.MoveTo(giver, delivery.m_vSpot);
 		}
 		AIO_Supplies.Report(delivery.m_iPlayerId, string.Format("%1 %2", AIO_Server.NameOf(giver), result));

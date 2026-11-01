@@ -60,6 +60,29 @@ class AIO_Server
 		}
 	}
 
+	// False once the player controlling 'leader' no longer commands the man's group (he stepped
+	// down, changed squads, the man was moved). True when no player controls 'leader' (tests).
+	static bool StillCommands(IEntity leader, IEntity body)
+	{
+		int leaderId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(leader);
+		if (leaderId <= 0)
+			return true;
+		SCR_AIGroup squad = Slave(leaderId);
+		AIAgent agent = AIO_Tasks.AgentOf(body);
+		return squad && agent && agent.GetParentGroup() == squad;
+	}
+
+	// A job one of the men runs belongs to whoever commands his group now (the leader who ordered
+	// it may have stepped down or left); without a squad to check, to the player who ordered it.
+	static bool OwnsJob(int playerId, IEntity man, int orderedBy)
+	{
+		SCR_AIGroup squad = Slave(playerId);
+		AIAgent agent = AIO_Tasks.AgentOf(man);
+		if (squad && agent)
+			return agent.GetParentGroup() == squad;
+		return orderedBy == playerId;
+	}
+
 	static bool IsAlive(IEntity entity)
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(entity);
@@ -124,6 +147,9 @@ class AIO_Server
 	static string Execute(SCR_PlayerController pc, int order, array<RplId> members, vector point, RplId target)
 	{
 		int playerId = pc.GetPlayerId();
+		// The point is the client's look ray or map cursor: a NaN one would reach every order (as Routes checks).
+		if (point[0] != point[0] || point[1] != point[1] || point[2] != point[2])
+			return "Invalid position";
 		if ((order >= AIO_EOrder.ADMIN_HEAL_ME && order <= AIO_EOrder.ADMIN_KILL_TARGET)
 			|| order == AIO_EOrder.ADMIN_TELEPORT_MAP
 			|| order == AIO_EOrder.ADMIN_TELEPORT_GROUP
@@ -134,6 +160,11 @@ class AIO_Server
 
 		if (order == AIO_EOrder.BECOME_LEADER || order == AIO_EOrder.STEP_DOWN_LEADER)
 			return AIO_Leadership.Execute(pc, order == AIO_EOrder.BECOME_LEADER);
+		// The menu closes for a dead or unconscious leader (AIO_Menu.CanUse); an order sent
+		// anyway (late packet, modified client) is refused like the game's own commanding.
+		ChimeraCharacter caller = ChimeraCharacter.Cast(pc.GetControlledEntity());
+		if (caller && caller.GetCharacterController() && (caller.GetCharacterController().IsDead() || caller.GetCharacterController().IsUnconscious()))
+			return "You can't give orders now";
 
 		SCR_AIGroup slave = Slave(playerId);
 		if (!slave)
@@ -753,14 +784,43 @@ class AIO_Server
 		}
 	}
 
+	// Waypoints we spawned: a completed one leaves the group's list but the entity stays, so the
+	// next one for that group (or mission end) deletes it.
+	protected static ref array<IEntity> s_aOurWaypoints = {};
+	protected static ref array<SCR_AIGroup> s_aOurWaypointGroups = {};
+
+	static void Cleanup()
+	{
+		s_aOurWaypoints.Clear();
+		s_aOurWaypointGroups.Clear();
+	}
+
 	static void AddWaypoint(SCR_AIGroup group, ResourceName prefab, vector point)
 	{
+		array<AIWaypoint> current = {};
+		group.GetWaypoints(current);
+		for (int i = s_aOurWaypoints.Count() - 1; i >= 0; i--)
+		{
+			IEntity old = s_aOurWaypoints[i];
+			if (old && s_aOurWaypointGroups[i] != group && s_aOurWaypointGroups[i])
+				continue;
+			if (old && current.Contains(AIWaypoint.Cast(old)))
+				continue;
+			if (old)
+				SCR_EntityHelper.DeleteEntityAndChildren(old);
+			s_aOurWaypoints.Remove(i);
+			s_aOurWaypointGroups.Remove(i);
+		}
 		EntitySpawnParams params = new EntitySpawnParams();
 		params.TransformMode = ETransformMode.WORLD;
 		params.Transform[3] = point;
 		AIWaypoint waypoint = AIWaypoint.Cast(GetGame().SpawnEntityPrefab(Resource.Load(prefab), GetGame().GetWorld(), params));
 		if (waypoint)
+		{
 			group.AddWaypoint(waypoint);
+			s_aOurWaypoints.Insert(waypoint);
+			s_aOurWaypointGroups.Insert(group);
+		}
 	}
 
 	// ---------------------------------------------------------------- admin page

@@ -43,6 +43,8 @@ class AIO_HoldBehavior : SCR_AIBehaviorBase
 	bool m_bAnchored;  // it had one: a deleted anchor (player disconnected) reads as null, not as dead
 	vector m_vOffset;
 	bool m_bCrouched;       // Take cover set a crouch stance: undone on release
+	int m_iRetries;              // walks back that ended short of an outdoor spot without getting closer
+	float m_fRetryBest = 1e10;   // closest he got to it since the spot last moved
 	int m_iCoverTileX = -1; // cover point reserved for him (Take cover)
 	int m_iCoverTileY;
 	int m_iCoverId;
@@ -207,6 +209,7 @@ class AIO_Tasks
 		AIO_Grenades.Cancel(agent);
 		AIO_Repair.Cancel(agent);
 		AIO_Logistics.Cancel(agent);
+		AIO_FireSupport.Stop(agent); // a gunner given another order stops firing (Order() starts it after this)
 		AIO_Support.Cancel(body);
 		AIO_Vehicles.CancelUnflip(body);
 		AIO_Maneuvers.Leave(agent); // ...and takes him out of a bound / peel
@@ -686,6 +689,7 @@ class AIO_Tasks
 			ChimeraCharacter freed = ChimeraCharacter.Cast(agent.GetControlledEntity());
 			if (freed && freed.GetCharacterController() && freed.GetCharacterController().GetStance() == ECharacterStance.PRONE)
 				SCR_AIStanceHandling.SetStance(freed.GetCharacterController(), ECharacterStance.CROUCH);
+			AIO_Behaviour.RestoreStance(agent, settings);
 			return;
 		}
 		s_aStanceAgents.Insert(agent);
@@ -905,6 +909,22 @@ class AIO_Tasks
 		GetGame().GetCallqueue().CallLater(WatchTick, WATCH_MS, true);
 	}
 
+	// Mission end (AIO_Game.c): stop the watchdog and forget the men, so the next mission's
+	// first order starts it again (a stale s_bWatching would leave every hold unwatched).
+	static void Cleanup()
+	{
+		GetGame().GetCallqueue().Remove(WatchTick);
+		s_bWatching = false;
+		s_aStanceAgents.Clear();
+		s_aStances.Clear();
+		s_aCopyAgents.Clear();
+		s_aCopyLeaders.Clear();
+		s_aHoldAgents.Clear();
+		s_DoorBody = null;
+		s_DoorBuilding = null;
+		s_bDoorOpened = false;
+	}
+
 	// Men holding a spot who drifted away (a fight, a push) walk back to it.
 	protected static void WatchTick()
 	{
@@ -924,7 +944,8 @@ class AIO_Tasks
 		{
 			AIAgent copier = s_aCopyAgents[c];
 			IEntity leader = s_aCopyLeaders[c];
-			if (!copier || !copier.GetControlledEntity() || !AIO_Server.IsAlive(copier.GetControlledEntity()) || !leader || !AIO_Server.IsAlive(leader))
+			if (!copier || !copier.GetControlledEntity() || !AIO_Server.IsAlive(copier.GetControlledEntity()) || !leader || !AIO_Server.IsAlive(leader)
+				|| !AIO_Server.StillCommands(leader, copier.GetControlledEntity()))
 			{
 				if (copier)
 					SetStance(copier, -1);
@@ -950,12 +971,19 @@ class AIO_Tasks
 			}
 			IEntity body = agent.GetControlledEntity();
 			if (!body || !AIO_Server.IsAlive(body))
+			{
+				// Dead: free his post and cover point now, not when the body is cleaned up (if ever).
+				if (body)
+					Release(body);
+				s_aHoldAgents.RemoveItem(agent);
 				continue;
+			}
 			if (hold.m_bInterior && !CheckInterior(body, utility, hold))
 				continue;
-			if (hold.m_bAnchored && (!hold.m_Anchor || !AIO_Server.IsAlive(hold.m_Anchor)))
+			if (hold.m_bAnchored && (!hold.m_Anchor || !AIO_Server.IsAlive(hold.m_Anchor) || !AIO_Server.StillCommands(hold.m_Anchor, body)))
 			{
-				Release(body); // the player he was keeping station on is gone: back to formation
+				// The player he was keeping station on is gone or no longer leads him: back to formation.
+				Release(body);
 				continue;
 			}
 			// Keep facing out (360 defense, fortify); enemies and danger still win (higher priority).
@@ -972,6 +1000,8 @@ class AIO_Tasks
 			{
 				hold.m_vSpot = hold.m_aLegs[0];
 				hold.m_aLegs.RemoveOrdered(0);
+				hold.m_iRetries = 0; // a new leg: the back-off below starts over
+				hold.m_fRetryBest = 1e10;
 				if (hold.m_bInterior)
 					GuardInterior(body, hold, hold.m_iPlayerId);
 				StopMoves(utility);
@@ -984,13 +1014,39 @@ class AIO_Tasks
 			if (hold.m_bInterior)
 				settled = InteriorArrived(body, hold);
 			if (!spotMoved && settled)
+			{
+				hold.m_iRetries = 0; // he got there: a later push away starts the back-off over
+				hold.m_fRetryBest = 1e10;
 				continue;
+			}
 			if (ActiveMove(utility))
 			{
 				if (!spotMoved)
 					continue;
 				// The anchor moved on: drop the walk to the old spot.
 				StopMoves(utility);
+			}
+			// An outdoor spot the navmesh can't reach (a roof, across water): his move ends short every
+			// time. After 10 walks that got no closer, try only every 30 s instead of every second.
+			if (spotMoved)
+			{
+				hold.m_iRetries = 0;
+				hold.m_fRetryBest = 1e10;
+			}
+			else if (!hold.m_bInterior)
+			{
+				float gap = vector.Distance(body.GetOrigin(), spot);
+				if (gap < hold.m_fRetryBest - 1)
+				{
+					hold.m_fRetryBest = gap;
+					hold.m_iRetries = 0;
+				}
+				else
+				{
+					hold.m_iRetries++;
+					if (hold.m_iRetries > 10 && hold.m_iRetries % 30 != 0)
+						continue;
+				}
 			}
 			hold.m_vSpot = spot;
 			AIO_MoveBehavior retry = new AIO_MoveBehavior(utility, null, spot, radius: radius);

@@ -256,7 +256,7 @@ class AIO_Bounding
 			bool selected;
 			foreach (AIO_BoundMember member : job.m_aMembers)
 			{
-				if (bodies.Contains(member.m_Agent.GetControlledEntity())) selected = true;
+				if (member.m_Agent && bodies.Contains(member.m_Agent.GetControlledEntity())) selected = true;
 			}
 			if (!selected) continue;
 			job.m_bManualPause = false;
@@ -322,7 +322,8 @@ class AIO_Bounding
 		for (int j = s_aJobs.Count() - 1; j >= 0; j--)
 		{
 			AIO_Bound job = s_aJobs[j];
-			bool authorized = (!job.m_Leader || AIO_Server.IsAlive(job.m_Leader)) && (job.m_iPlayerId <= 0 || AIO_Server.Slave(job.m_iPlayerId) == job.m_Group);
+			bool commanded = job.m_iPlayerId <= 0 || AIO_Server.Slave(job.m_iPlayerId) == job.m_Group;
+			bool authorized = (!job.m_Leader || AIO_Server.IsAlive(job.m_Leader)) && commanded;
 			int a, b;
 			for (int i = job.m_aMembers.Count() - 1; i >= 0; i--)
 			{
@@ -335,8 +336,27 @@ class AIO_Bounding
 					job.m_aMembers.RemoveOrdered(i);
 					continue;
 				}
+				if (member.m_Agent.GetParentGroup() != job.m_Group)
+				{
+					// Moved to another group (Game Master): his bound post goes too (Leave only flags).
+					job.m_aMembers.RemoveOrdered(i);
+					AIO_Tasks.Release(body);
+					continue;
+				}
 				if (member.m_bA) a++;
 				else b++;
+			}
+			if (!commanded)
+			{
+				// He stepped down or left the squad: no posts for a chain of command that never
+				// gave them (Routes does the same). The new leader's orders start from formation.
+				s_aJobs.RemoveOrdered(j);
+				foreach (AIO_BoundMember lost : job.m_aMembers)
+					AIO_Tasks.Release(lost.m_Agent.GetControlledEntity());
+				job.m_bFinished = true;
+				job.m_bFailed = true;
+				Report(job, "stopped: you no longer command these men", true);
+				continue;
 			}
 			if (!authorized || a == 0 || b == 0)
 			{

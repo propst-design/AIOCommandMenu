@@ -24,6 +24,14 @@ class AIO_Behaviour
 	protected static ref array<int> s_aModes = {};
 	protected static ref array<bool> s_aOwnROE = {}; // Stealth set his ROE; leaving Stealth gives it back
 
+	// Mission end (AIO_Game.c): the jobs belong to the world being torn down.
+	static void Cleanup()
+	{
+		s_aAgents.Clear();
+		s_aModes.Clear();
+		s_aOwnROE.Clear();
+	}
+
 	static bool IsOrder(int order)
 	{
 		return order == AIO_EOrder.BEH_SAFE || order == AIO_EOrder.BEH_AWARE
@@ -128,10 +136,7 @@ class AIO_Behaviour
 		{
 			// Crouch or prone for travel and waiting; Stealth also for the first reactions to
 			// gunshots. Real combat behaviours above that still choose their own stance.
-			SCR_EAIBehaviorCause cause = SCR_EAIBehaviorCause.GROUP_GOAL;
-			if (mode == AIO_EBehaviour.STEALTH)
-				cause = SCR_EAIBehaviorCause.DANGER_LOW;
-			settings.AddCharacterSetting(SCR_AICharacterStanceSetting_Range.Create(SCR_EAISettingOrigin.COMMANDING, cause, ECharacterStance.PRONE, ECharacterStance.CROUCH), false, true);
+			AddStanceRange(settings, mode);
 			if (mode == AIO_EBehaviour.COMBAT)
 				AIO_Tasks.SetSpeed(agent, EMovementType.RUN);
 			else
@@ -157,6 +162,24 @@ class AIO_Behaviour
 		ApplyPosture(agent, character, mode);
 		AIO_Tasks.Watch();
 		return true;
+	}
+
+	protected static void AddStanceRange(SCR_AICharacterSettingsComponent settings, int mode)
+	{
+		SCR_EAIBehaviorCause cause = SCR_EAIBehaviorCause.GROUP_GOAL;
+		if (mode == AIO_EBehaviour.STEALTH)
+			cause = SCR_EAIBehaviorCause.DANGER_LOW;
+		settings.RemoveSettingsOfTypeAndOrigin(SCR_AICharacterStanceSetting_Range, SCR_EAISettingOrigin.COMMANDING);
+		settings.AddCharacterSetting(SCR_AICharacterStanceSetting_Range.Create(SCR_EAISettingOrigin.COMMANDING, cause, ECharacterStance.PRONE, ECharacterStance.CROUCH), false, true);
+	}
+
+	// AIO_Tasks.SetStance(-1) clears every commanded stance, the mode's low range included (an
+	// errand, a repair or a crouched hold ending): Combat and Stealth men get theirs back.
+	static void RestoreStance(AIAgent agent, SCR_AICharacterSettingsComponent settings)
+	{
+		int mode = ModeOf(agent);
+		if (settings && (mode == AIO_EBehaviour.COMBAT || mode == AIO_EBehaviour.STEALTH))
+			AddStanceRange(settings, mode);
 	}
 
 	// Called by the watchdog once a second.

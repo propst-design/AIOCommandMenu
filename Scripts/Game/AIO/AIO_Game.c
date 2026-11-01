@@ -18,6 +18,18 @@ modded class ArmaReforgerScripted
 		AIO_Routes.Cleanup();
 		AIO_Bounding.Cleanup();
 		AIO_Support.Cleanup();
+		// Server jobs and the watchdog: statics outlive the world (e.g. an admin #restart).
+		AIO_Tasks.Cleanup();
+		AIO_Maneuvers.Cleanup();
+		AIO_Behaviour.Cleanup();
+		AIO_Explosives.Cleanup();
+		AIO_Grenades.Cleanup();
+		AIO_Repair.Cleanup();
+		AIO_FireSupport.Cleanup();
+		AIO_Logistics.Cleanup();
+		AIO_Supplies.Cleanup();
+		AIO_Vehicles.Cleanup();
+		AIO_Server.Cleanup();
 		super.OnBeforeWorldCleanup();
 	}
 }

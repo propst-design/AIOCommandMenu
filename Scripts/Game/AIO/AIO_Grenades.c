@@ -36,6 +36,7 @@ class AIO_Throw
 	bool m_bHadHold;
 	vector m_vSpot;
 	IEntity m_Anchor;
+	bool m_bAnchored; // a deleted anchor (player disconnected) reads as null, not dead
 	vector m_vOffset;
 	bool m_bEnding;
 	bool m_bCover;             // smoke added to a maneuver
@@ -69,6 +70,13 @@ class AIO_Grenades
 	protected static ref array<ref AIO_Throw> s_aThrows = {};
 	protected static ref array<IEntity> s_aQueryHits;
 	protected static ref array<ref AIO_Burst> s_aBursts = {};
+
+	// Mission end (AIO_Game.c): the jobs belong to the world being torn down.
+	static void Cleanup()
+	{
+		s_aThrows.Clear();
+		s_aBursts.Clear();
+	}
 	static int s_iThrown; // grenades that left a thrower's inventory (tests)
 	static float s_fLastMiss = -1; // last frag burst's distance from its point (tests)
 	static vector s_vLastCover;    // centre of the last cover screen (tests)
@@ -425,6 +433,7 @@ class AIO_Grenades
 				job.m_bHadHold = true;
 				job.m_vSpot = hold.m_vSpot;
 				job.m_Anchor = hold.m_Anchor;
+				job.m_bAnchored = hold.m_bAnchored;
 				job.m_vOffset = hold.m_vOffset;
 			}
 			AIO_Tasks.Release(body);
@@ -685,9 +694,9 @@ class AIO_Grenades
 			AIO_Tasks.Rejoin(body, GetGame().GetPlayerManager().GetPlayerControlledEntity(job.m_iPlayerId));
 			if (job.m_bHadHold)
 			{
-				if (job.m_Anchor && AIO_Server.IsAlive(job.m_Anchor))
+				if (job.m_Anchor && AIO_Server.IsAlive(job.m_Anchor) && AIO_Server.StillCommands(job.m_Anchor, body))
 					AIO_Tasks.KeepOffset(body, job.m_Anchor, job.m_vOffset);
-				else if (!job.m_Anchor)
+				else if (!job.m_bAnchored)
 					AIO_Tasks.MoveTo(body, job.m_vSpot);
 			}
 		}

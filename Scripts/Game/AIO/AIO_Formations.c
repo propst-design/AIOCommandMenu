@@ -60,7 +60,11 @@ class AIO_Formations
 		}
 		SCR_AIGroupSettingsComponent settings = SCR_AIGroupSettingsComponent.Cast(group.FindComponent(SCR_AIGroupSettingsComponent));
 		if (settings)
+		{
+			// One formation setting: each order otherwise added another (as speed/stance remove first).
+			settings.RemoveSettingsOfTypeAndOrigin(SCR_AIGroupFormationSetting, SCR_EAISettingOrigin.COMMANDING);
 			settings.AddSetting(SCR_AIGroupFormationSetting.Create(SCR_EAISettingOrigin.COMMANDING, formation), false, true);
+		}
 		bool applied = Apply(group, formation);
 		Print(string.Format("[AIO] formation %1 for %2 (setting %3, applied %4)", NameOf(formation), group, settings != null, applied));
 		if (!applied)
