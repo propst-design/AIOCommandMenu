@@ -1000,6 +1000,8 @@ class AIO_Tasks
 			{
 				hold.m_vSpot = hold.m_aLegs[0];
 				hold.m_aLegs.RemoveOrdered(0);
+				hold.m_iRetries = 0; // a new leg: the back-off below starts over
+				hold.m_fRetryBest = 1e10;
 				if (hold.m_bInterior)
 					GuardInterior(body, hold, hold.m_iPlayerId);
 				StopMoves(utility);
@@ -1012,7 +1014,11 @@ class AIO_Tasks
 			if (hold.m_bInterior)
 				settled = InteriorArrived(body, hold);
 			if (!spotMoved && settled)
+			{
+				hold.m_iRetries = 0; // he got there: a later push away starts the back-off over
+				hold.m_fRetryBest = 1e10;
 				continue;
+			}
 			if (ActiveMove(utility))
 			{
 				if (!spotMoved)

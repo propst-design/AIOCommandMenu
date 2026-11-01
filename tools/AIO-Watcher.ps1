@@ -283,8 +283,8 @@ function Invoke-Request($file) {
     while ($true) {
         Start-Sleep -Seconds 3
         if (!$log -and (Test-Path -LiteralPath $logs)) {
-            $dir = Get-ChildItem -LiteralPath $logs -Directory | Where-Object { $_.CreationTime -ge $started.AddSeconds(-5) } |
-                   Sort-Object CreationTime -Descending | Select-Object -First 1
+            $dir = Get-ChildItem -LiteralPath $logs -Directory | Where-Object { $_.CreationTimeUtc -ge $started.ToUniversalTime().AddSeconds(-5) } |
+                   Sort-Object CreationTimeUtc -Descending | Select-Object -First 1
             if ($dir) { $log = Join-Path $dir.FullName 'console.log' }
         }
         if ($proc.HasExited) { $outcome = 'server exited'; break }
@@ -331,8 +331,8 @@ function Invoke-Client($id, $preset, $config) {
     while ($true) {
         Start-Sleep -Seconds 3
         if (!$log -and (Test-Path -LiteralPath $logs)) {
-            $dir = Get-ChildItem -LiteralPath $logs -Directory | Where-Object { $_.CreationTime -ge $started.AddSeconds(-5) } |
-                   Sort-Object CreationTime -Descending | Select-Object -First 1
+            $dir = Get-ChildItem -LiteralPath $logs -Directory | Where-Object { $_.CreationTimeUtc -ge $started.ToUniversalTime().AddSeconds(-5) } |
+                   Sort-Object CreationTimeUtc -Descending | Select-Object -First 1
             if ($dir) { $log = Join-Path $dir.FullName 'console.log' }
         }
         if ($proc.HasExited) { $outcome = 'game exited'; break }
