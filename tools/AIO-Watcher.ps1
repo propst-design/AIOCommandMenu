@@ -312,6 +312,23 @@ function Invoke-Request($file) {
     Write-Host "[$(Get-Date -Format 'HH:mm:ss')] '$label' finished: $outcome" -ForegroundColor Green
 }
 
+# A client test opens the game on the developer's screen: say so on screen (1 Nov). The banner is a
+# separate click-through window (tools\Show-TestBanner.ps1) that closes with the game.
+function Start-TestBanner($id, $preset, $config, $gamePid, $started) {
+    try {
+        $spec = Join-Path $RequestDir "$id.banner.json"
+        $lines = @("Run '$id' | started $($started.ToString('HH:mm'))", 'Requested by an agent. Closes by itself; leave mouse and keyboard alone until then.')
+        @{ title = "AUTOMATED TEST: AiO Command Menu '$preset'"; lines = $lines; timeoutSec = $config.TimeoutSec; started = $started.ToString('o') } |
+            ConvertTo-Json | Set-Content -LiteralPath $spec -Encoding UTF8
+        $script = Join-Path $PSScriptRoot 'Show-TestBanner.ps1'
+        $bannerArgs = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $script + '" -SpecFile "' + $spec + '" -WatchPid ' + $gamePid
+        return Start-Process -FilePath 'powershell.exe' -ArgumentList $bannerArgs -WindowStyle Hidden -PassThru
+    } catch {
+        Write-Host "Banner not shown: $($_.Exception.Message)" -ForegroundColor Yellow
+        return $null
+    }
+}
+
 # Runs the game client (own profile) and reads its console.log; refuses if a game is already open.
 function Invoke-Client($id, $preset, $config) {
     if (Get-Process -Name 'ArmaReforgerSteam', 'ArmaReforger_BE' -ErrorAction SilentlyContinue) {
@@ -325,6 +342,7 @@ function Invoke-Client($id, $preset, $config) {
     Write-Host "[$(Get-Date -Format 'HH:mm:ss')] Running '$preset' (game window)..." -ForegroundColor Cyan
     $started = Get-Date
     $proc = Start-Process -FilePath $game -ArgumentList $gameArgs -WorkingDirectory (Split-Path $game -Parent) -PassThru
+    $banner = Start-TestBanner $id $preset $config $proc.Id $started
     $logs = Join-Path $gameProfile 'logs'
     $outcome = 'timeout'
     $log = $null
@@ -345,6 +363,7 @@ function Invoke-Client($id, $preset, $config) {
     }
     if (!$proc.HasExited) { Stop-Process -Id $proc.Id -ErrorAction SilentlyContinue }
     Get-Process -Name 'ArmaReforgerSteam', 'ArmaReforger_BE' -ErrorAction SilentlyContinue | Where-Object { $_.StartTime -ge $started } | Stop-Process -ErrorAction SilentlyContinue
+    if ($banner -and !$banner.HasExited) { Stop-Process -Id $banner.Id -ErrorAction SilentlyContinue }
     $result = @("status=$outcome", "preset=$preset", "started=$($started.ToString('s'))", "seconds=$([int]((Get-Date) - $started).TotalSeconds)", "log=$log", '---')
     if ($log -and (Test-Path -LiteralPath $log)) {
         $result += Get-Content -LiteralPath $log | Where-Object { $_ -match "\[AIO\]|SCRIPT\s+\(E\)|Can't compile|AIOCommandMenu|chimeraInputCommon|keyBindingMenu|ResourceDB" } | Select-Object -First 200
