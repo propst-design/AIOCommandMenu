@@ -69,6 +69,13 @@ class AIO_Grenades
 	protected static ref array<ref AIO_Throw> s_aThrows = {};
 	protected static ref array<IEntity> s_aQueryHits;
 	protected static ref array<ref AIO_Burst> s_aBursts = {};
+
+	// Mission end (AIO_Game.c): the jobs belong to the world being torn down.
+	static void Cleanup()
+	{
+		s_aThrows.Clear();
+		s_aBursts.Clear();
+	}
 	static int s_iThrown; // grenades that left a thrower's inventory (tests)
 	static float s_fLastMiss = -1; // last frag burst's distance from its point (tests)
 	static vector s_vLastCover;    // centre of the last cover screen (tests)

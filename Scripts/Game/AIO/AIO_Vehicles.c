@@ -35,6 +35,13 @@ class AIO_Vehicles
 	protected static ref array<ref AIO_UnflipJob> s_aUnflips = {};
 	protected static ref array<ref AIO_DismountWatch> s_aDismounts = {};
 
+	// Mission end (AIO_Game.c): the jobs belong to the world being torn down.
+	static void Cleanup()
+	{
+		s_aDismounts.Clear();
+		s_aUnflips.Clear();
+	}
+
 	static bool IsVehicleOrder(int order)
 	{
 		return order >= AIO_EOrder.VEH_GET_IN_ANY && order <= AIO_EOrder.VEH_LIGHTS_AUTO;
@@ -415,14 +422,23 @@ class AIO_Vehicles
 
 	// ---------------------------------------------------------------- controls
 
-	static string Controls(notnull array<IEntity> bodies, int order)
+	// group: the commanding squad. A vehicle driven by someone outside it (another player, another
+	// group's AI driver) carrying one of our men as a passenger is not ours to switch.
+	static string Controls(notnull array<IEntity> bodies, int order, IEntity player = null, SCR_AIGroup group = null)
 	{
+		array<IEntity> squad = {};
+		if (group)
+			AIO_Server.Members(group, squad);
 		array<IEntity> vehicles = {};
 		foreach (IEntity body : bodies)
 		{
 			IEntity vehicle = VehicleOf(body);
-			if (vehicle && !vehicles.Contains(vehicle))
-				vehicles.Insert(vehicle);
+			if (!vehicle || vehicles.Contains(vehicle))
+				continue;
+			IEntity driver = Driver(vehicle);
+			if (group && driver && driver != player && !squad.Contains(driver))
+				continue;
+			vehicles.Insert(vehicle);
 		}
 		if (vehicles.IsEmpty())
 			return "Nobody is in a vehicle";
@@ -551,6 +567,7 @@ class AIO_Vehicles
 		{
 			if (other.m_Vehicle == vehicle)
 			{
+				EndUnflip(other); // its men not in the new order would hold at their push spots forever
 				s_aUnflips.RemoveItem(other);
 				break;
 			}
@@ -765,6 +782,6 @@ class AIO_Vehicles
 			case AIO_EOrder.VEH_EJECT: return GetOut(bodies, group, order);
 			case AIO_EOrder.VEH_UNFLIP: return Unflip(bodies, TargetVehicle(looked, null, point));
 		}
-		return Controls(bodies, order);
+		return Controls(bodies, order, player, group);
 	}
 }

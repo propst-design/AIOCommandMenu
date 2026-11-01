@@ -222,7 +222,7 @@ class AIO_Maneuvers
 			IEntity body = null;
 			if (agent)
 				body = agent.GetControlledEntity();
-			if (!body || !player || !AIO_Server.IsAlive(body) || !AIO_Server.IsAlive(player))
+			if (!body || !player || !AIO_Server.IsAlive(body) || !AIO_Server.IsAlive(player) || !AIO_Server.StillCommands(player, body))
 			{
 				if (body)
 					SetROE(body, -1);
@@ -513,7 +513,9 @@ class AIO_Maneuvers
 		return order == AIO_EOrder.DEF_GARRISON || order == AIO_EOrder.DEF_CLEAR || Is360Order(order) || order == AIO_EOrder.DEF_FORTIFY;
 	}
 
-	static string Defense(array<IEntity> bodies, IEntity player, int order, vector point, IEntity looked)
+	// playerId: who reports go to; 0 = the player controlling 'player' (a garrison walk-up passes the
+	// id from order time, when that body may be dead or respawned).
+	static string Defense(array<IEntity> bodies, IEntity player, int order, vector point, IEntity looked, int playerId = 0)
 	{
 		if (Is360Order(order))
 		{
@@ -565,8 +567,7 @@ class AIO_Maneuvers
 		vector mins, maxs;
 		building.GetWorldBounds(mins, maxs);
 		vector middle = (mins + maxs) * 0.5;
-		int playerId;
-		if (player)
+		if (playerId <= 0 && player)
 			playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(player);
 		if (order == AIO_EOrder.DEF_GARRISON)
 		{
@@ -700,6 +701,18 @@ class AIO_Maneuvers
 
 	static const float MEMORY_MS = 600000;
 	static ref array<ref AIO_BuildingMemory> s_aMemories = {};
+
+	// Mission end (AIO_Game.c): world time restarts at 0, so old deadlines would outlive the world.
+	static void Cleanup()
+	{
+		s_aTeamAgents.Clear();
+		s_aTeamValues.Clear();
+		s_aLeadAgents.Clear();
+		s_aLeadPlayers.Clear();
+		s_aLeadAmmo.Clear();
+		s_aApproaches.Clear();
+		s_aMemories.Clear();
+	}
 
 	static AIO_BuildingMemory MemoryOf(IEntity building, bool create)
 	{
@@ -846,6 +859,30 @@ class AIO_Maneuvers
 			}
 			array<IEntity> men = {};
 			Bodies(approach.m_aMen, men);
+			// Men no longer in the ordering player's squad (he stepped down, left, a Game Master moved
+			// them): they get no posts, as Routes and Bounding.
+			if (approach.m_iPlayerId > 0)
+			{
+				SCR_AIGroup squad = AIO_Server.Slave(approach.m_iPlayerId);
+				array<IEntity> lost = {};
+				foreach (IEntity walker : men)
+				{
+					AIAgent walkerAgent = AIO_Tasks.AgentOf(walker);
+					if (!squad || !walkerAgent || walkerAgent.GetParentGroup() != squad)
+					{
+						lost.Insert(walker);
+						approach.m_aMen.RemoveItem(walkerAgent);
+					}
+				}
+				if (!lost.IsEmpty())
+				{
+					if (approach.m_aMen.IsEmpty())
+						s_aApproaches.RemoveItem(approach);
+					foreach (IEntity stray : lost)
+						AIO_Tasks.Rejoin(stray, null);
+					return; // lists may have changed; the rest carry on next tick
+				}
+			}
 			if (men.IsEmpty() || !approach.m_Building)
 			{
 				s_aApproaches.Remove(i);
@@ -879,7 +916,7 @@ class AIO_Maneuvers
 					AIO_Tasks.Rejoin(man, approach.m_Player);
 			}
 			else
-				result = Defense(men, approach.m_Player, approach.m_iOrder, vector.Zero, approach.m_Building);
+				result = Defense(men, approach.m_Player, approach.m_iOrder, vector.Zero, approach.m_Building, approach.m_iPlayerId);
 			AIO_Supplies.Report(approach.m_iPlayerId, result);
 			Print("[AIO] " + result);
 			return; // lists may have changed

@@ -192,7 +192,11 @@ class AIO_Menu
 			return;
 		}
 		bool mouse = MouseActive();
-		if (input.GetActionTriggered("AIO_Back") || (mouse && input.GetActionTriggered("AIO_MouseBack")))
+		if (mouse && input.GetActionTriggered("AIO_MouseBack") && m_eMode == AIO_EMenuMode.SELECT)
+		{
+			OnSelectKey(0); // right click is "back"; Backspace on this page clears the selection
+		}
+		else if (input.GetActionTriggered("AIO_Back") || (mouse && input.GetActionTriggered("AIO_MouseBack")))
 		{
 			OnBack();
 		}
@@ -229,7 +233,8 @@ class AIO_Menu
 		if (!character)
 			return false;
 		CharacterControllerComponent controller = character.GetCharacterController();
-		if (controller && controller.IsDead())
+		// Unconscious too: the game's own commanding is closed then, and our contexts would hold the keys.
+		if (controller && (controller.IsDead() || controller.IsUnconscious()))
 			return false;
 		return true;
 	}

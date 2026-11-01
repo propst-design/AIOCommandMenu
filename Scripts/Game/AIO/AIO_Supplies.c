@@ -44,6 +44,12 @@ class AIO_Supplies
 
 	protected static ref array<ref AIO_Fetch> s_aFetches = {};
 
+	// Mission end (AIO_Game.c): the jobs belong to the world being torn down.
+	static void Cleanup()
+	{
+		s_aFetches.Clear();
+	}
+
 	// ---------------------------------------------------------------- what he lacks
 
 	static int Target(BaseWeaponComponent weapon, BaseMuzzleComponent muzzle)

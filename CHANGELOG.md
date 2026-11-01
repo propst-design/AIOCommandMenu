@@ -12,6 +12,18 @@
 - Fixed: men keeping station on a player (Advance, Flank) stood at his last position for good if he disconnected; they now rejoin the squad, as they already did when he died.
 - Fixed: a soldier killed while in cover (Take cover, Fortify) left that spot reserved for the rest of the mission, so no other AI, friend or foe, would use it.
 - Fixed: a soldier given a new order while disarming mines, or who couldn't reach the next mine, stayed crouched until you gave him a stance order.
+- Fixed: after a mission restart on the same server (admin #restart), orders and jobs from the previous mission could carry over, and holds might not be watched. Everything AiO tracks now starts fresh with each mission.
+- Fixed: men in Combat or Stealth mode stood up for good after a repair, a disarm or a crouched hold ended; they now go back to the mode's low stance.
+- Fixed: ordering Unflip a second time on the same vehicle with other men left the first helpers standing at their push spots forever.
+- Fixed: Lights and Engine orders switched vehicles driven by someone outside your squad (another player, another group's driver) when one of your men rode along as a passenger.
+- Fixed: Disarm mines could send a man anywhere on the map and told you whether mines lay there; it now has the same 400 m limit as placing charges and mines.
+- Fixed: Garrison and Clear on a distant building lost their reports if you died or respawned while the men walked up, and still posted the men if you stepped down or left the squad meanwhile.
+- Fixed: a Bound or Peel in progress left the men holding posts nobody owned when you stepped down or left the squad; they now go back to the squad. Men moved to another group drop out of the bound.
+- Fixed: Copy my stance and Fire on my lead kept following you after you stepped down or changed squads.
+- Fixed: Resume bound / peel could stop with a script error if a soldier in it had just been removed.
+- The command menu closes while you are unconscious (as the game's own commanding does) and orders are refused then.
+- Mouse control: right click on the Select members page goes back instead of clearing your selection (Backspace still clears it).
+- A blank line in the saved menu options file no longer drops the options after it.
 - The game's own command wheel now overrides AiO: a wheel order to move, follow, stop or get in releases men you'd told to hold, and a wheel fire order ends per-man fire orders (Hold fire on selected men, Fire on my lead). Before, those men ignored the wheel.
 
 ## 0.3.3 — released

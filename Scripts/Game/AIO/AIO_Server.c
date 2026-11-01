@@ -60,6 +60,18 @@ class AIO_Server
 		}
 	}
 
+	// False once the player controlling 'leader' no longer commands the man's group (he stepped
+	// down, changed squads, the man was moved). True when no player controls 'leader' (tests).
+	static bool StillCommands(IEntity leader, IEntity body)
+	{
+		int leaderId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(leader);
+		if (leaderId <= 0)
+			return true;
+		SCR_AIGroup squad = Slave(leaderId);
+		AIAgent agent = AIO_Tasks.AgentOf(body);
+		return squad && agent && agent.GetParentGroup() == squad;
+	}
+
 	static bool IsAlive(IEntity entity)
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(entity);
@@ -134,6 +146,11 @@ class AIO_Server
 
 		if (order == AIO_EOrder.BECOME_LEADER || order == AIO_EOrder.STEP_DOWN_LEADER)
 			return AIO_Leadership.Execute(pc, order == AIO_EOrder.BECOME_LEADER);
+		// The menu closes for a dead or unconscious leader (AIO_Menu.CanUse); an order sent
+		// anyway (late packet, modified client) is refused like the game's own commanding.
+		ChimeraCharacter caller = ChimeraCharacter.Cast(pc.GetControlledEntity());
+		if (caller && caller.GetCharacterController() && (caller.GetCharacterController().IsDead() || caller.GetCharacterController().IsUnconscious()))
+			return "You can't give orders now";
 
 		SCR_AIGroup slave = Slave(playerId);
 		if (!slave)

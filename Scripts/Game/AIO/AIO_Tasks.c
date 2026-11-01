@@ -686,6 +686,7 @@ class AIO_Tasks
 			ChimeraCharacter freed = ChimeraCharacter.Cast(agent.GetControlledEntity());
 			if (freed && freed.GetCharacterController() && freed.GetCharacterController().GetStance() == ECharacterStance.PRONE)
 				SCR_AIStanceHandling.SetStance(freed.GetCharacterController(), ECharacterStance.CROUCH);
+			AIO_Behaviour.RestoreStance(agent, settings);
 			return;
 		}
 		s_aStanceAgents.Insert(agent);
@@ -905,6 +906,21 @@ class AIO_Tasks
 		GetGame().GetCallqueue().CallLater(WatchTick, WATCH_MS, true);
 	}
 
+	// Mission end (AIO_Game.c): stop the watchdog and forget the men, so the next mission's
+	// first order starts it again (a stale s_bWatching would leave every hold unwatched).
+	static void Cleanup()
+	{
+		GetGame().GetCallqueue().Remove(WatchTick);
+		s_bWatching = false;
+		s_aStanceAgents.Clear();
+		s_aStances.Clear();
+		s_aCopyAgents.Clear();
+		s_aCopyLeaders.Clear();
+		s_aHoldAgents.Clear();
+		s_DoorBody = null;
+		s_DoorBuilding = null;
+	}
+
 	// Men holding a spot who drifted away (a fight, a push) walk back to it.
 	protected static void WatchTick()
 	{
@@ -924,7 +940,8 @@ class AIO_Tasks
 		{
 			AIAgent copier = s_aCopyAgents[c];
 			IEntity leader = s_aCopyLeaders[c];
-			if (!copier || !copier.GetControlledEntity() || !AIO_Server.IsAlive(copier.GetControlledEntity()) || !leader || !AIO_Server.IsAlive(leader))
+			if (!copier || !copier.GetControlledEntity() || !AIO_Server.IsAlive(copier.GetControlledEntity()) || !leader || !AIO_Server.IsAlive(leader)
+				|| !AIO_Server.StillCommands(leader, copier.GetControlledEntity()))
 			{
 				if (copier)
 					SetStance(copier, -1);

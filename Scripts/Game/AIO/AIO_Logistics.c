@@ -49,6 +49,13 @@ class AIO_Logistics
 	protected static ref array<ref AIO_Delivery> s_aDeliveries = {};
 	protected static ref array<ref AIO_HandOverCallback> s_aHandOvers = {}; // keeps callbacks alive
 
+	// Mission end (AIO_Game.c): the jobs belong to the world being torn down.
+	static void Cleanup()
+	{
+		s_aDeliveries.Clear();
+		s_aHandOvers.Clear();
+	}
+
 	static bool IsOrder(int order)
 	{
 		return order == AIO_EOrder.GIVE_AMMO || order == AIO_EOrder.GIVE_BANDAGES;

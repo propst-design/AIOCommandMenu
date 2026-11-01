@@ -79,6 +79,13 @@ class AIO_Explosives
 	protected static ref array<ref AIO_Demolition> s_aJobs = {};
 	protected static ref array<ref AIO_RemoteCharge> s_aRemote = {};
 
+	// Mission end (AIO_Game.c): the jobs belong to the world being torn down.
+	static void Cleanup()
+	{
+		s_aJobs.Clear();
+		s_aRemote.Clear();
+	}
+
 	static bool IsOrder(int order)
 	{
 		return order == AIO_EOrder.EXP_PLACE_TIMED || order == AIO_EOrder.EXP_PLACE_REMOTE || order == AIO_EOrder.EXP_DETONATE
@@ -183,10 +190,6 @@ class AIO_Explosives
 
 	static string DisarmMines(array<IEntity> bodies, vector point, int playerId)
 	{
-		array<IEntity> mines = {};
-		ArmedMinesNear(point, DISARM_RADIUS, mines);
-		if (mines.IsEmpty())
-			return string.Format("No armed mines found within %1 m of that spot", DISARM_RADIUS);
 		IEntity sapper = null;
 		float best = 1000000;
 		foreach (IEntity body : bodies)
@@ -202,6 +205,13 @@ class AIO_Explosives
 		}
 		if (!sapper)
 			return "Nobody on foot to disarm them";
+		if (vector.Distance(sapper.GetOrigin(), point) > 400) // as Place charge / Lay mine
+			return "The nearest soldier who could disarm them is too far away";
+		// After the range check: the reply must not tell what lies in a minefield across the map.
+		array<IEntity> mines = {};
+		ArmedMinesNear(point, DISARM_RADIUS, mines);
+		if (mines.IsEmpty())
+			return string.Format("No armed mines found within %1 m of that spot", DISARM_RADIUS);
 		// Nearest first from where he stands, then each next one from the last.
 		array<IEntity> ordered = {};
 		vector from = sapper.GetOrigin();

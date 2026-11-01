@@ -47,6 +47,12 @@ class AIO_Repair
 
 	protected static ref array<ref AIO_RepairJob> s_aJobs = {};
 
+	// Mission end (AIO_Game.c): the jobs belong to the world being torn down.
+	static void Cleanup()
+	{
+		s_aJobs.Clear();
+	}
+
 	static bool IsOrder(int order)
 	{
 		return order == AIO_EOrder.VEH_REPAIR;

@@ -24,6 +24,12 @@ class AIO_FireSupport
 
 	protected static ref array<ref AIO_FireMission> s_aMissions = {};
 	protected static ref array<IEntity> s_aQueryHits;
+
+	// Mission end (AIO_Game.c): the jobs belong to the world being torn down.
+	static void Cleanup()
+	{
+		s_aMissions.Clear();
+	}
 	static int s_iLastFired = -1; // rounds of the last mission that ended (tests)
 
 	static bool IsOrder(int order)
