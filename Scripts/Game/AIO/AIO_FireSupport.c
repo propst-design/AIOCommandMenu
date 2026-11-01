@@ -185,7 +185,7 @@ class AIO_FireSupport
 		return "";
 	}
 
-	protected static void Stop(AIAgent agent)
+	static void Stop(AIAgent agent)
 	{
 		for (int i = s_aMissions.Count() - 1; i >= 0; i--)
 		{
@@ -202,7 +202,10 @@ class AIO_FireSupport
 		int stopped;
 		for (int i = s_aMissions.Count() - 1; i >= 0; i--)
 		{
-			if (s_aMissions[i].m_iPlayerId != playerId)
+			IEntity gunner = null;
+			if (s_aMissions[i].m_Agent)
+				gunner = s_aMissions[i].m_Agent.GetControlledEntity();
+			if (!AIO_Server.OwnsJob(playerId, gunner, s_aMissions[i].m_iPlayerId))
 				continue;
 			if (s_aMissions[i].m_Behavior)
 				s_aMissions[i].m_Behavior.Fail();

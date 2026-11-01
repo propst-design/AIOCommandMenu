@@ -29,6 +29,7 @@ modded class ArmaReforgerScripted
 		AIO_Logistics.Cleanup();
 		AIO_Supplies.Cleanup();
 		AIO_Vehicles.Cleanup();
+		AIO_Server.Cleanup();
 		super.OnBeforeWorldCleanup();
 	}
 }

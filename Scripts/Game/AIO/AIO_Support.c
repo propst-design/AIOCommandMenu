@@ -191,7 +191,7 @@ class AIO_Support
 			else if (done)
 				result = "Treatment complete";
 			AIO_Supplies.Report(job.m_iPlayerId, string.Format("%1: %2", AIO_Server.NameOf(job.m_Medic), result));
-			if (job.m_Previous && !job.m_Previous.m_aLegs && !job.m_Previous.m_Anchor)
+			if (job.m_Previous && !job.m_Previous.m_aLegs && !job.m_Previous.m_bAnchored)
 			{
 				AIO_Tasks.MoveTo(job.m_Medic, job.m_Previous.m_vSpot);
 				AIO_HoldBehavior restored = AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(job.m_Medic)));

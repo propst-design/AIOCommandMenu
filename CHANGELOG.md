@@ -20,8 +20,15 @@
 - Fixed: Disarm mines could send a man anywhere on the map and told you whether mines lay there; it now has the same 400 m limit as placing charges and mines.
 - Fixed: Garrison and Clear on a distant building lost their reports if you died or respawned while the men walked up, and still posted the men if you stepped down or left the squad meanwhile.
 - Fixed: a Bound or Peel in progress left the men holding posts nobody owned when you stepped down or left the squad; they now go back to the squad. Men moved to another group drop out of the bound.
+- Fixed: a man keeping station on you (Advance, Flank...) who was sent on an errand (rearm, repair, a charge, a grenade, ammo) went back to his old spot and stood there if you disconnected meanwhile; he now rejoins the squad.
+- Fixed: men keeping station on a leader who stepped down or changed squads kept following him; they now rejoin their squad.
+- Fixed: after a change of squad leader, charges waiting for the order and running fire missions belonged to the old leader: the new leader could not detonate or cease them.
 - Fixed: Copy my stance and Fire on my lead kept following you after you stepped down or changed squads.
 - Fixed: Resume bound / peel could stop with a script error if a soldier in it had just been removed.
+- Fixed: a mortar gunner kept firing his mission after you gave him another order (Follow, Halt, Move); a new order now ends it.
+- Fixed: a soldier killed while holding a post or a cover spot kept the cover point reserved until his body was cleaned up; it is freed when he dies.
+- A man told to hold a spot he can't reach (a roof, across water) stops re-planning his walk every second after ten tries and retries every 30 s.
+- Fixed: Move here without the game's commanding left each reached waypoint behind in the world.
 - The command menu closes while you are unconscious (as the game's own commanding does) and orders are refused then.
 - Mouse control: right click on the Select members page goes back instead of clearing your selection (Backspace still clears it).
 - A blank line in the saved menu options file no longer drops the options after it.

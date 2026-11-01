@@ -34,6 +34,7 @@ class AIO_RepairJob
 	bool m_bHadHold;
 	vector m_vSpot;
 	IEntity m_Anchor;
+	bool m_bAnchored; // a deleted anchor (player disconnected) reads as null, not dead
 	vector m_vOffset;
 	bool m_bEnding;
 }
@@ -181,6 +182,7 @@ class AIO_Repair
 			job.m_bHadHold = true;
 			job.m_vSpot = hold.m_vSpot;
 			job.m_Anchor = hold.m_Anchor;
+			job.m_bAnchored = hold.m_bAnchored;
 			job.m_vOffset = hold.m_vOffset;
 		}
 		AIO_Tasks.Release(body);
@@ -310,9 +312,9 @@ class AIO_Repair
 		AIO_Tasks.Rejoin(body, GetGame().GetPlayerManager().GetPlayerControlledEntity(job.m_iPlayerId));
 		if (job.m_bHadHold)
 		{
-			if (job.m_Anchor && AIO_Server.IsAlive(job.m_Anchor))
+			if (job.m_Anchor && AIO_Server.IsAlive(job.m_Anchor) && AIO_Server.StillCommands(job.m_Anchor, body))
 				AIO_Tasks.KeepOffset(body, job.m_Anchor, job.m_vOffset);
-			else if (!job.m_Anchor)
+			else if (!job.m_bAnchored)
 				AIO_Tasks.MoveTo(body, job.m_vSpot);
 		}
 		if (!problem.IsEmpty())

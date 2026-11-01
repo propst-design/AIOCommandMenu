@@ -33,6 +33,7 @@ class AIO_Demolition
 	bool m_bHadHold;
 	vector m_vSpot;
 	IEntity m_Anchor;
+	bool m_bAnchored; // a deleted anchor (player disconnected) reads as null, not dead
 	vector m_vOffset;
 	bool m_bEnding;
 }
@@ -346,6 +347,7 @@ class AIO_Explosives
 			job.m_bHadHold = true;
 			job.m_vSpot = hold.m_vSpot;
 			job.m_Anchor = hold.m_Anchor;
+			job.m_bAnchored = hold.m_bAnchored;
 			job.m_vOffset = hold.m_vOffset;
 		}
 		AIO_Tasks.Release(body);
@@ -694,9 +696,9 @@ class AIO_Explosives
 		AIO_Tasks.Rejoin(body, GetGame().GetPlayerManager().GetPlayerControlledEntity(job.m_iPlayerId));
 		if (job.m_bHadHold)
 		{
-			if (job.m_Anchor && AIO_Server.IsAlive(job.m_Anchor))
+			if (job.m_Anchor && AIO_Server.IsAlive(job.m_Anchor) && AIO_Server.StillCommands(job.m_Anchor, body))
 				AIO_Tasks.KeepOffset(body, job.m_Anchor, job.m_vOffset);
-			else if (!job.m_Anchor)
+			else if (!job.m_bAnchored)
 				AIO_Tasks.MoveTo(body, job.m_vSpot);
 		}
 		if (!problem.IsEmpty())
@@ -714,7 +716,7 @@ class AIO_Explosives
 		for (int i = s_aRemote.Count() - 1; i >= 0; i--)
 		{
 			AIO_RemoteCharge waiting = s_aRemote[i];
-			if (waiting.m_iPlayerId != playerId)
+			if (!AIO_Server.OwnsJob(playerId, waiting.m_Placer, waiting.m_iPlayerId))
 				continue;
 			SCR_ExplosiveChargeComponent charge = null;
 			if (waiting.m_Charge && !waiting.m_Charge.IsDeleted())
@@ -776,7 +778,7 @@ class AIO_Explosives
 		int count;
 		foreach (AIO_RemoteCharge waiting : s_aRemote)
 		{
-			if (waiting.m_iPlayerId == playerId && waiting.m_Charge && !waiting.m_Charge.IsDeleted())
+			if (AIO_Server.OwnsJob(playerId, waiting.m_Placer, waiting.m_iPlayerId) && waiting.m_Charge && !waiting.m_Charge.IsDeleted())
 				count++;
 		}
 		return count;

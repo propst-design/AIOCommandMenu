@@ -72,6 +72,17 @@ class AIO_Server
 		return squad && agent && agent.GetParentGroup() == squad;
 	}
 
+	// A job one of the men runs belongs to whoever commands his group now (the leader who ordered
+	// it may have stepped down or left); without a squad to check, to the player who ordered it.
+	static bool OwnsJob(int playerId, IEntity man, int orderedBy)
+	{
+		SCR_AIGroup squad = Slave(playerId);
+		AIAgent agent = AIO_Tasks.AgentOf(man);
+		if (squad && agent)
+			return agent.GetParentGroup() == squad;
+		return orderedBy == playerId;
+	}
+
 	static bool IsAlive(IEntity entity)
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(entity);
@@ -773,14 +784,43 @@ class AIO_Server
 		}
 	}
 
+	// Waypoints we spawned: a completed one leaves the group's list but the entity stays, so the
+	// next one for that group (or mission end) deletes it.
+	protected static ref array<IEntity> s_aOurWaypoints = {};
+	protected static ref array<SCR_AIGroup> s_aOurWaypointGroups = {};
+
+	static void Cleanup()
+	{
+		s_aOurWaypoints.Clear();
+		s_aOurWaypointGroups.Clear();
+	}
+
 	static void AddWaypoint(SCR_AIGroup group, ResourceName prefab, vector point)
 	{
+		array<AIWaypoint> current = {};
+		group.GetWaypoints(current);
+		for (int i = s_aOurWaypoints.Count() - 1; i >= 0; i--)
+		{
+			IEntity old = s_aOurWaypoints[i];
+			if (old && s_aOurWaypointGroups[i] != group && s_aOurWaypointGroups[i])
+				continue;
+			if (old && current.Contains(AIWaypoint.Cast(old)))
+				continue;
+			if (old)
+				SCR_EntityHelper.DeleteEntityAndChildren(old);
+			s_aOurWaypoints.Remove(i);
+			s_aOurWaypointGroups.Remove(i);
+		}
 		EntitySpawnParams params = new EntitySpawnParams();
 		params.TransformMode = ETransformMode.WORLD;
 		params.Transform[3] = point;
 		AIWaypoint waypoint = AIWaypoint.Cast(GetGame().SpawnEntityPrefab(Resource.Load(prefab), GetGame().GetWorld(), params));
 		if (waypoint)
+		{
 			group.AddWaypoint(waypoint);
+			s_aOurWaypoints.Insert(waypoint);
+			s_aOurWaypointGroups.Insert(group);
+		}
 	}
 
 	// ---------------------------------------------------------------- admin page
