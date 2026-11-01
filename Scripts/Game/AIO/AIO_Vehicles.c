@@ -40,6 +40,7 @@ class AIO_Vehicles
 	{
 		s_aDismounts.Clear();
 		s_aUnflips.Clear();
+		GetGame().GetCallqueue().Remove(Unreserve);
 	}
 
 	static bool IsVehicleOrder(int order)
@@ -280,9 +281,13 @@ class AIO_Vehicles
 			utility.AddAction(new SCR_AIGetOutVehicle(utility, null, inside, priority: SCR_AIActionBase.PRIORITY_BEHAVIOR_GET_IN_VEHICLE + 10));
 		}
 		utility.AddAction(new SCR_AIGetInVehicle(utility, null, vehicle, seat, seat.GetType(), SCR_AIActionBase.PRIORITY_BEHAVIOR_GET_IN_VEHICLE));
+		// If he never gets there (killed, new order, path blocked) the seat must not stay held for him.
+		GetGame().GetCallqueue().CallLater(Unreserve, BOARD_RESERVE_MS, false, seat, body);
 		Print(string.Format("[AIO] VEHICLE %1 boards %2 as %3", AIO_Server.NameOf(body), vehicle, SeatName(seat.GetType())));
 		return true;
 	}
+
+	static const int BOARD_RESERVE_MS = 120000;
 
 	protected static void Unreserve(BaseCompartmentSlot seat, IEntity body)
 	{

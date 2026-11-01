@@ -15,6 +15,7 @@
 - Fixed: after a mission restart on the same server (admin #restart), orders and jobs from the previous mission could carry over, and holds might not be watched. Everything AiO tracks now starts fresh with each mission.
 - Fixed: men in Combat or Stealth mode stood up for good after a repair, a disarm or a crouched hold ended; they now go back to the mode's low stance.
 - Fixed: ordering Unflip a second time on the same vehicle with other men left the first helpers standing at their push spots forever.
+- Fixed: a seat a soldier was sent to stayed reserved for him if he never got there (killed, given another order), so nobody else could take it.
 - Fixed: Lights and Engine orders switched vehicles driven by someone outside your squad (another player, another group's driver) when one of your men rode along as a passenger.
 - Fixed: Disarm mines could send a man anywhere on the map and told you whether mines lay there; it now has the same 400 m limit as placing charges and mines.
 - Fixed: Garrison and Clear on a distant building lost their reports if you died or respawned while the men walked up, and still posted the men if you stepped down or left the squad meanwhile.
