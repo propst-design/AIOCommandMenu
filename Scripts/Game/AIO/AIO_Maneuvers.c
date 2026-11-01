@@ -712,6 +712,7 @@ class AIO_Maneuvers
 		s_aLeadAmmo.Clear();
 		s_aApproaches.Clear();
 		s_aMemories.Clear();
+		s_bTilesLoading = false;
 	}
 
 	static AIO_BuildingMemory MemoryOf(IEntity building, bool create)

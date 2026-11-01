@@ -331,10 +331,16 @@ class AIO_Bounding
 				IEntity body;
 				if (member.m_Agent) body = member.m_Agent.GetControlledEntity();
 				SCR_AIUtilityComponent utility = AIO_Tasks.UtilityOf(member.m_Agent);
-				if (member.m_bReleased || !AIO_Server.IsAlive(body) || !utility || member.m_Hold != AIO_Tasks.ActiveHold(utility)
-					|| member.m_Agent.GetParentGroup() != job.m_Group) // moved to another group (Game Master)
+				if (member.m_bReleased || !AIO_Server.IsAlive(body) || !utility || member.m_Hold != AIO_Tasks.ActiveHold(utility))
 				{
 					job.m_aMembers.RemoveOrdered(i);
+					continue;
+				}
+				if (member.m_Agent.GetParentGroup() != job.m_Group)
+				{
+					// Moved to another group (Game Master): his bound post goes too (Leave only flags).
+					job.m_aMembers.RemoveOrdered(i);
+					AIO_Tasks.Release(body);
 					continue;
 				}
 				if (member.m_bA) a++;

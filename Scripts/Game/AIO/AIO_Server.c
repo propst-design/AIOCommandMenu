@@ -136,6 +136,9 @@ class AIO_Server
 	static string Execute(SCR_PlayerController pc, int order, array<RplId> members, vector point, RplId target)
 	{
 		int playerId = pc.GetPlayerId();
+		// The point is the client's look ray or map cursor: a NaN one would reach every order (as Routes checks).
+		if (point[0] != point[0] || point[1] != point[1] || point[2] != point[2])
+			return "Invalid position";
 		if ((order >= AIO_EOrder.ADMIN_HEAL_ME && order <= AIO_EOrder.ADMIN_KILL_TARGET)
 			|| order == AIO_EOrder.ADMIN_TELEPORT_MAP
 			|| order == AIO_EOrder.ADMIN_TELEPORT_GROUP

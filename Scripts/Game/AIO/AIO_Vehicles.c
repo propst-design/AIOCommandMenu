@@ -41,6 +41,8 @@ class AIO_Vehicles
 		s_aDismounts.Clear();
 		s_aUnflips.Clear();
 		GetGame().GetCallqueue().Remove(Unreserve);
+		s_aReservedSeats.Clear();
+		s_aReservedStamps.Clear();
 	}
 
 	static bool IsVehicleOrder(int order)
@@ -261,7 +263,7 @@ class AIO_Vehicles
 		AIO_Tasks.Release(body);
 		utility.SetStateAllActionsOfType(SCR_AIGetInVehicle, EAIActionState.FAILED);
 		utility.SetStateAllActionsOfType(SCR_AIGetOutVehicle, EAIActionState.FAILED);
-		seat.SetReserved(body);
+		int stamp = Reserve(seat, body);
 		IEntity inside = VehicleOf(body);
 		if (inside)
 		{
@@ -272,7 +274,7 @@ class AIO_Vehicles
 				CompartmentAccessComponent access = character.GetCompartmentAccessComponent();
 				if (access && access.GetInVehicle(seat.GetOwner(), seat, false, -1, ECloseDoorAfterActions.RETURN_TO_PREVIOUS_STATE, false))
 				{
-					GetGame().GetCallqueue().CallLater(Unreserve, 5000, false, seat, body);
+					GetGame().GetCallqueue().CallLater(Unreserve, 5000, false, seat, body, Reserve(seat, body));
 					Print(string.Format("[AIO] VEHICLE %1 switches to %2", AIO_Server.NameOf(body), SeatName(seat.GetType())));
 					return true;
 				}
@@ -282,15 +284,41 @@ class AIO_Vehicles
 		}
 		utility.AddAction(new SCR_AIGetInVehicle(utility, null, vehicle, seat, seat.GetType(), SCR_AIActionBase.PRIORITY_BEHAVIOR_GET_IN_VEHICLE));
 		// If he never gets there (killed, new order, path blocked) the seat must not stay held for him.
-		GetGame().GetCallqueue().CallLater(Unreserve, BOARD_RESERVE_MS, false, seat, body);
+		GetGame().GetCallqueue().CallLater(Unreserve, BOARD_RESERVE_MS, false, seat, body, stamp);
 		Print(string.Format("[AIO] VEHICLE %1 boards %2 as %3", AIO_Server.NameOf(body), vehicle, SeatName(seat.GetType())));
 		return true;
 	}
 
 	static const int BOARD_RESERVE_MS = 120000;
 
-	protected static void Unreserve(BaseCompartmentSlot seat, IEntity body)
+	// Each reservation gets a number, so a timer from an earlier boarding of the same seat (in,
+	// out, sent back within the timeout) doesn't end the newer one.
+	protected static int s_iReservation;
+	protected static ref array<BaseCompartmentSlot> s_aReservedSeats = {};
+	protected static ref array<int> s_aReservedStamps = {};
+
+	protected static int Reserve(BaseCompartmentSlot seat, IEntity body)
 	{
+		seat.SetReserved(body);
+		s_iReservation++;
+		int at = s_aReservedSeats.Find(seat);
+		if (at < 0)
+		{
+			s_aReservedSeats.Insert(seat);
+			s_aReservedStamps.Insert(s_iReservation);
+		}
+		else
+			s_aReservedStamps[at] = s_iReservation;
+		return s_iReservation;
+	}
+
+	protected static void Unreserve(BaseCompartmentSlot seat, IEntity body, int stamp)
+	{
+		int at = s_aReservedSeats.Find(seat);
+		if (at < 0 || s_aReservedStamps[at] != stamp)
+			return; // reserved again since: that boarding's own timer ends it
+		s_aReservedSeats.Remove(at);
+		s_aReservedStamps.Remove(at);
 		if (seat && seat.IsReservedBy(body))
 			seat.SetReserved(null);
 	}

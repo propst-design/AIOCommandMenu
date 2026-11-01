@@ -919,6 +919,7 @@ class AIO_Tasks
 		s_aHoldAgents.Clear();
 		s_DoorBody = null;
 		s_DoorBuilding = null;
+		s_bDoorOpened = false;
 	}
 
 	// Men holding a spot who drifted away (a fight, a push) walk back to it.
