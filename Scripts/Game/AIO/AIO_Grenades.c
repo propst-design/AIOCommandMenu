@@ -4,7 +4,8 @@
 // Defense > Grenades & smoke: men carrying hand grenades throw them at the point (map cursor when
 // the map is open). Uses the game's own throw (SCR_AIThrowGrenadeToBehavior, the behaviour its smoke
 // cover for medics uses) at player priority: it outranks AiO moves and holds, so a man keeps his
-// post and throws from it, while native danger, melee and high-priority attack still come first.
+// post and throws from it, while native danger and melee still come first. A frag also yields to
+// high-priority attack (a man with an enemy on top of him fights); smoke outranks it (AIO_AIThrow).
 // The game's throw goes wherever he faces if its aim hasn't caught up (an ACA range test threw
 // 90 degrees off, 8 m out, into the squad), so he turns to the point first; a frag is called off
 // if he can't face it within TURN_MS, smoke is thrown anyway.
@@ -30,7 +31,7 @@ class AIO_Throw
 	int m_iGiveUp;             // tick count: self-aid pauses the deadline up to here
 	int m_iCarried;            // grenades of that type when the throw began
 	ref array<IEntity> m_aHeld = {}; // ...and which ones
-	ref SCR_AIThrowGrenadeToBehavior m_Behavior;
+	ref AIO_AIThrow m_Behavior;
 	// walked up: what he was doing before (restored afterwards)
 	bool m_bMoved;
 	bool m_bHadHold;
@@ -40,6 +41,26 @@ class AIO_Throw
 	vector m_vOffset;
 	bool m_bEnding;
 	bool m_bCover;             // smoke added to a maneuver
+}
+
+// The ordered throw. Vanilla attack on a close, high-scoring enemy (1120) outranks a player-level
+// throw (1112), so in a close fight an ordered smoke, the Fall back screen above all, often never
+// went in (#6). Smoke does no harm and takes seconds, so it goes above that attack; a frag keeps the
+// game's priority. Critical self-aid (1115) still comes first: while he has a heal queued the
+// smoke drops back to the game's priority, as before (Tick pauses the clock meanwhile).
+class AIO_AIThrow : SCR_AIThrowGrenadeToBehavior
+{
+	static const float SMOKE_PRIORITY = 121; // + PRIORITY_LEVEL_PLAYER: above attack-high 1120, below danger 1160
+
+	override float CustomEvaluate()
+	{
+		float priority = super.CustomEvaluate();
+		if (priority <= 0 || e_WeaponType.m_Value != EWeaponType.WT_SMOKEGRENADE)
+			return priority;
+		if (m_Utility && m_Utility.HasActionOfType(SCR_AIHealBehavior))
+			return priority;
+		return SMOKE_PRIORITY;
+	}
 }
 
 // A thrown frag in flight: where it bursts, for the log.
@@ -481,7 +502,7 @@ class AIO_Grenades
 			Blocked(body, job.m_vPoint); // logged only: a smoke landing short does no harm
 		job.m_aHeld.Clear();
 		job.m_iCarried = Count(body, job.m_eType, job.m_aHeld);
-		job.m_Behavior = new SCR_AIThrowGrenadeToBehavior(utility, null, job.m_vPoint, job.m_eType, job.m_fDelay,
+		job.m_Behavior = new AIO_AIThrow(utility, null, job.m_vPoint, job.m_eType, job.m_fDelay,
 			SCR_AIActionBase.PRIORITY_BEHAVIOR_THROW_GRENADE, SCR_AIActionBase.PRIORITY_LEVEL_PLAYER);
 		utility.AddAction(job.m_Behavior);
 		job.m_iStage = 1;
@@ -651,7 +672,7 @@ class AIO_Grenades
 				s_aThrows.Remove(i);
 				continue;
 			}
-			SCR_AIThrowGrenadeToBehavior behavior = job.m_Behavior;
+			AIO_AIThrow behavior = job.m_Behavior;
 			bool ended = !behavior || behavior.GetActionState() == EAIActionState.FAILED || behavior.GetActionState() == EAIActionState.COMPLETED;
 			if (ended || now > job.m_iDeadline)
 			{
