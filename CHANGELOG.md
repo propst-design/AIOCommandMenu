@@ -7,6 +7,7 @@
 - Your menu options (aim marker style, distance, size, mouse control and the squad bar) are now remembered across missions and restarts.
 - Fixed: men told to Fire on my lead held their fire for good if you gave them any other order (Follow, Halt, Move here...) before you fired. A new order now hands their fire back.
 - Fixed: a soldier you sent off elsewhere while he was pushing a vehicle upright was pulled back to formation when the push ended, cancelling your new order.
+- Fixed: in a close fight, men ordered to throw smoke (Smoke there, Smoke screen, or the cover smoke on Fall back, Peel back and Flank) often kept shooting instead. Your smoke order now comes before fighting a nearby enemy; a wounded man still treats himself first, and frags still wait while he fights off an enemy close to him.
 - Fixed: Disarm mines now walks the mines nearest-first instead of zig-zagging to the far end of the line after the first one.
 - Fixed: admin Teleport with group could put a soldier at the corner of the map when there was no free spot near you; he now stays where he is.
 - Fixed: men keeping station on a player (Advance, Flank) stood at his last position for good if he disconnected; they now rejoin the squad, as they already did when he died.
