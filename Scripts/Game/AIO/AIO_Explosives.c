@@ -20,6 +20,7 @@ class AIO_Demolition
 	IEntity m_Charge;          // charge or mine, in his inventory until placed
 	ref array<IEntity> m_aMines = {}; // disarm: mines still to do, nearest first
 	int m_iDisarmed;
+	bool m_bCrouched;          // disarm: crouched at a mine (kept on the walk to the next one)
 	IEntity m_Detonator;       // remote only
 	IEntity m_Target;          // vehicle the charge sticks to (null: wall or ground)
 	vector m_vPoint;
@@ -406,8 +407,8 @@ class AIO_Explosives
 		{
 			if (s_aJobs[i].m_Agent == agent && !s_aJobs[i].m_bEnding && s_aJobs[i].m_iStage != 1)
 			{
-				if (s_aJobs[i].m_iKind == KIND_DISARM && s_aJobs[i].m_iStage == 3)
-					AIO_Tasks.SetStance(agent, -1); // he crouched to disarm: kept forever otherwise
+				if (s_aJobs[i].m_iKind == KIND_DISARM && s_aJobs[i].m_bCrouched)
+					AIO_Tasks.SetStance(agent, -1); // he crouched to disarm, also while walking to the next mine: kept forever otherwise
 				s_aJobs.Remove(i);
 			}
 		}
@@ -450,6 +451,7 @@ class AIO_Explosives
 				{
 					job.m_iStage = 3;
 					job.m_iDeadline = now + DISARM_MS;
+					job.m_bCrouched = true;
 					AIO_Tasks.SetStance(job.m_Agent, ECharacterStance.CROUCH);
 					continue;
 				}
