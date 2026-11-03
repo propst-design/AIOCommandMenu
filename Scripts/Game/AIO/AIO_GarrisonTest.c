@@ -12,8 +12,14 @@ class AIO_GarrisonTest
 	static const int BUILDINGS = 3;
 	static const float WAIT_MS = 120000;
 
-	protected static ref array<IEntity> s_aBuildings = {};
-	protected static ref array<string> s_aKinds = {};
+	protected static ref array<IEntity> s_aBuildings;
+	protected static ref array<string> s_aKinds;
+	// Called by AIO_StaticInit at game start (static initializer budget: tools/check_static_init.py).
+	static void AIO_InitStatics()
+	{
+		s_aBuildings = {};
+		s_aKinds = {};
+	}
 	protected static SCR_AIGroup s_Group;
 	protected static IEntity s_Building;
 	protected static int s_iIndex = -1;

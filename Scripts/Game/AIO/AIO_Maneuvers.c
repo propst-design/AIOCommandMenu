@@ -111,8 +111,8 @@ class AIO_Maneuvers
 
 	// ---------------------------------------------------------------- teams
 
-	protected static ref array<AIAgent> s_aTeamAgents = {};
-	protected static ref array<int> s_aTeamValues = {};
+	protected static ref array<AIAgent> s_aTeamAgents;
+	protected static ref array<int> s_aTeamValues;
 
 	static void SetTeam(IEntity body, int team)
 	{
@@ -172,9 +172,9 @@ class AIO_Maneuvers
 	}
 
 	// Fire on my lead: hold fire until the player fires.
-	protected static ref array<AIAgent> s_aLeadAgents = {};
-	protected static ref array<IEntity> s_aLeadPlayers = {};
-	protected static ref array<int> s_aLeadAmmo = {};
+	protected static ref array<AIAgent> s_aLeadAgents;
+	protected static ref array<IEntity> s_aLeadPlayers;
+	protected static ref array<int> s_aLeadAmmo;
 
 	static int PlayerAmmo(IEntity player)
 	{
@@ -640,7 +640,7 @@ class AIO_Maneuvers
 		return string.Format("%1 men clearing the building (%2 rooms)", bodies.Count(), sweep.Count());
 	}
 
-	static ref array<ref AIO_Approach> s_aApproaches = {};
+	static ref array<ref AIO_Approach> s_aApproaches;
 
 	// No inside found (yet): walk the men to the side of the building facing them, then try again.
 	static string Approach(array<IEntity> bodies, IEntity player, int order, IEntity building)
@@ -700,7 +700,18 @@ class AIO_Maneuvers
 	}
 
 	static const float MEMORY_MS = 600000;
-	static ref array<ref AIO_BuildingMemory> s_aMemories = {};
+	static ref array<ref AIO_BuildingMemory> s_aMemories;
+	// Called by AIO_StaticInit at game start (static initializer budget: tools/check_static_init.py).
+	static void AIO_InitStatics()
+	{
+		s_aTeamAgents = {};
+		s_aTeamValues = {};
+		s_aLeadAgents = {};
+		s_aLeadPlayers = {};
+		s_aLeadAmmo = {};
+		s_aApproaches = {};
+		s_aMemories = {};
+	}
 
 	// Mission end (AIO_Game.c): world time restarts at 0, so old deadlines would outlive the world.
 	static void Cleanup()

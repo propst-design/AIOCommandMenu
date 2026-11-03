@@ -46,7 +46,12 @@ class AIO_Repair
 	static const int USE_MS = 2500;   // about one player repair action
 	static const float REACH = 2.0;
 
-	protected static ref array<ref AIO_RepairJob> s_aJobs = {};
+	protected static ref array<ref AIO_RepairJob> s_aJobs;
+	// Called by AIO_StaticInit at game start (static initializer budget: tools/check_static_init.py).
+	static void AIO_InitStatics()
+	{
+		s_aJobs = {};
+	}
 
 	// Mission end (AIO_Game.c): the jobs belong to the world being torn down.
 	static void Cleanup()

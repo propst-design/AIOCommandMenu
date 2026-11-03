@@ -20,9 +20,16 @@ enum AIO_EBehaviour
 
 class AIO_Behaviour
 {
-	protected static ref array<AIAgent> s_aAgents = {};
-	protected static ref array<int> s_aModes = {};
-	protected static ref array<bool> s_aOwnROE = {}; // Stealth set his ROE; leaving Stealth gives it back
+	protected static ref array<AIAgent> s_aAgents;
+	protected static ref array<int> s_aModes;
+	protected static ref array<bool> s_aOwnROE; // Stealth set his ROE; leaving Stealth gives it back
+	// Called by AIO_StaticInit at game start (static initializer budget: tools/check_static_init.py).
+	static void AIO_InitStatics()
+	{
+		s_aAgents = {};
+		s_aModes = {};
+		s_aOwnROE = {};
+	}
 
 	// Mission end (AIO_Game.c): the jobs belong to the world being torn down.
 	static void Cleanup()

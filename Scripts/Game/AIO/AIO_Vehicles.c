@@ -32,8 +32,8 @@ class AIO_Vehicles
 	static const float UNFLIP_TIMEOUT_MS = 90000;
 	static const float DISMOUNT_WATCH_MS = 40000;
 
-	protected static ref array<ref AIO_UnflipJob> s_aUnflips = {};
-	protected static ref array<ref AIO_DismountWatch> s_aDismounts = {};
+	protected static ref array<ref AIO_UnflipJob> s_aUnflips;
+	protected static ref array<ref AIO_DismountWatch> s_aDismounts;
 
 	// Mission end (AIO_Game.c): the jobs belong to the world being torn down.
 	static void Cleanup()
@@ -294,8 +294,16 @@ class AIO_Vehicles
 	// Each reservation gets a number, so a timer from an earlier boarding of the same seat (in,
 	// out, sent back within the timeout) doesn't end the newer one.
 	protected static int s_iReservation;
-	protected static ref array<BaseCompartmentSlot> s_aReservedSeats = {};
-	protected static ref array<int> s_aReservedStamps = {};
+	protected static ref array<BaseCompartmentSlot> s_aReservedSeats;
+	protected static ref array<int> s_aReservedStamps;
+	// Called by AIO_StaticInit at game start (static initializer budget: tools/check_static_init.py).
+	static void AIO_InitStatics()
+	{
+		s_aUnflips = {};
+		s_aDismounts = {};
+		s_aReservedSeats = {};
+		s_aReservedStamps = {};
+	}
 
 	protected static int Reserve(BaseCompartmentSlot seat, IEntity body)
 	{

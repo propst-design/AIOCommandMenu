@@ -78,8 +78,14 @@ class AIO_Explosives
 	static const int KIND_MINE = 2;
 	static const int KIND_DISARM = 3;
 
-	protected static ref array<ref AIO_Demolition> s_aJobs = {};
-	protected static ref array<ref AIO_RemoteCharge> s_aRemote = {};
+	protected static ref array<ref AIO_Demolition> s_aJobs;
+	protected static ref array<ref AIO_RemoteCharge> s_aRemote;
+	// Called by AIO_StaticInit at game start (static initializer budget: tools/check_static_init.py).
+	static void AIO_InitStatics()
+	{
+		s_aJobs = {};
+		s_aRemote = {};
+	}
 
 	// Mission end (AIO_Game.c): the jobs belong to the world being torn down.
 	static void Cleanup()

@@ -413,7 +413,12 @@ class AIO_Test
 
 	// ---------------------------------------------------------------- behaviour modes
 
-	protected static ref array<RplId> s_aBehIds = {};
+	protected static ref array<RplId> s_aBehIds;
+	// Called by AIO_StaticInit at game start (static initializer budget: tools/check_static_init.py).
+	static void AIO_InitStatics()
+	{
+		s_aBehIds = {};
+	}
 
 	protected static bool Raised(IEntity body)
 	{

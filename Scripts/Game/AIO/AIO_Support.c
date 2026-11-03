@@ -21,7 +21,12 @@ class AIO_Treatment
 
 class AIO_Support
 {
-	protected static ref array<ref AIO_Treatment> s_aTreatments = {};
+	protected static ref array<ref AIO_Treatment> s_aTreatments;
+	// Called by AIO_StaticInit at game start (static initializer budget: tools/check_static_init.py).
+	static void AIO_InitStatics()
+	{
+		s_aTreatments = {};
+	}
 
 	static void Cleanup()
 	{

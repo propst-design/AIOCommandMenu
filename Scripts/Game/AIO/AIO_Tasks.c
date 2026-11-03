@@ -705,8 +705,8 @@ class AIO_Tasks
 
 	// Men with an ordered stance: the watchdog re-applies it when something else changed it
 	// (idle men re-read the stance setting only when a behaviour sets a stance).
-	protected static ref array<AIAgent> s_aStanceAgents = {};
-	protected static ref array<int> s_aStances = {};
+	protected static ref array<AIAgent> s_aStanceAgents;
+	protected static ref array<int> s_aStances;
 
 	protected static void KeepStances()
 	{
@@ -728,16 +728,25 @@ class AIO_Tasks
 		}
 	}
 
-	protected static ref array<AIAgent> s_aCopyAgents = {};
+	protected static ref array<AIAgent> s_aCopyAgents;
 	// Men given a hold: the watchdog checks these, not every AI in the world each second.
-	protected static ref array<AIAgent> s_aHoldAgents = {};
+	protected static ref array<AIAgent> s_aHoldAgents;
 
 	static void TrackHold(AIAgent agent)
 	{
 		if (agent && !s_aHoldAgents.Contains(agent))
 			s_aHoldAgents.Insert(agent);
 	}
-	protected static ref array<IEntity> s_aCopyLeaders = {};
+	protected static ref array<IEntity> s_aCopyLeaders;
+	// Called by AIO_StaticInit at game start (static initializer budget: tools/check_static_init.py).
+	static void AIO_InitStatics()
+	{
+		s_aStanceAgents = {};
+		s_aStances = {};
+		s_aCopyAgents = {};
+		s_aHoldAgents = {};
+		s_aCopyLeaders = {};
+	}
 
 	// The man copies the leader's stance until told otherwise (Stance > Auto or another stance).
 	static void CopyStance(IEntity body, IEntity leader)

@@ -39,7 +39,12 @@ class AIO_Bound
 
 class AIO_Bounding
 {
-	protected static ref array<ref AIO_Bound> s_aJobs = {};
+	protected static ref array<ref AIO_Bound> s_aJobs;
+	// Called by AIO_StaticInit at game start (static initializer budget: tools/check_static_init.py).
+	static void AIO_InitStatics()
+	{
+		s_aJobs = {};
+	}
 	protected static bool s_bIssuing;
 	static const float STEP_M = 20;
 	static const float STALL_MS = 45000;

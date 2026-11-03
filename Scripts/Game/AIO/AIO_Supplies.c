@@ -43,7 +43,12 @@ class AIO_Supplies
 	static const float REACH = 2.5;
 	static const int FETCH_MS = 90000;
 
-	protected static ref array<ref AIO_Fetch> s_aFetches = {};
+	protected static ref array<ref AIO_Fetch> s_aFetches;
+	// Called by AIO_StaticInit at game start (static initializer budget: tools/check_static_init.py).
+	static void AIO_InitStatics()
+	{
+		s_aFetches = {};
+	}
 
 	// Mission end (AIO_Game.c): the jobs belong to the world being torn down.
 	static void Cleanup()

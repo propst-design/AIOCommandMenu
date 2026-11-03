@@ -29,7 +29,12 @@ class AIO_Route
 class AIO_Routes
 {
 	static const int MAX_POINTS = 16;
-	protected static ref array<ref AIO_Route> s_aRoutes = {};
+	protected static ref array<ref AIO_Route> s_aRoutes;
+	// Called by AIO_StaticInit at game start (static initializer budget: tools/check_static_init.py).
+	static void AIO_InitStatics()
+	{
+		s_aRoutes = {};
+	}
 
 	// Observe ordinary Move here without replacing vanilla driving/group movement.
 	static AIO_Route TrackMove(SCR_AIGroup group, IEntity leader, array<IEntity> men, vector point, int playerId, bool nativeMove)

@@ -88,9 +88,15 @@ class AIO_Grenades
 	static const float TURN_LOOK_PRIORITY = 60; // above targets (50+): face the ordered point, briefly
 	static const float FACING_DEG = 25;
 
-	protected static ref array<ref AIO_Throw> s_aThrows = {};
+	protected static ref array<ref AIO_Throw> s_aThrows;
 	protected static ref array<IEntity> s_aQueryHits;
-	protected static ref array<ref AIO_Burst> s_aBursts = {};
+	protected static ref array<ref AIO_Burst> s_aBursts;
+	// Called by AIO_StaticInit at game start (static initializer budget: tools/check_static_init.py).
+	static void AIO_InitStatics()
+	{
+		s_aThrows = {};
+		s_aBursts = {};
+	}
 
 	// Mission end (AIO_Game.c): the jobs belong to the world being torn down.
 	static void Cleanup()

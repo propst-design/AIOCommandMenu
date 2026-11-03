@@ -786,8 +786,14 @@ class AIO_Server
 
 	// Waypoints we spawned: a completed one leaves the group's list but the entity stays, so the
 	// next one for that group (or mission end) deletes it.
-	protected static ref array<IEntity> s_aOurWaypoints = {};
-	protected static ref array<SCR_AIGroup> s_aOurWaypointGroups = {};
+	protected static ref array<IEntity> s_aOurWaypoints;
+	protected static ref array<SCR_AIGroup> s_aOurWaypointGroups;
+	// Called by AIO_StaticInit at game start (static initializer budget: tools/check_static_init.py).
+	static void AIO_InitStatics()
+	{
+		s_aOurWaypoints = {};
+		s_aOurWaypointGroups = {};
+	}
 
 	static void Cleanup()
 	{
