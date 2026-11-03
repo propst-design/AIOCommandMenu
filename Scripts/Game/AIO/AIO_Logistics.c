@@ -47,8 +47,14 @@ class AIO_Logistics
 	static const float REACH = 2.5;
 	static const int WALK_MS = 90000;
 
-	protected static ref array<ref AIO_Delivery> s_aDeliveries = {};
-	protected static ref array<ref AIO_HandOverCallback> s_aHandOvers = {}; // keeps callbacks alive
+	protected static ref array<ref AIO_Delivery> s_aDeliveries;
+	protected static ref array<ref AIO_HandOverCallback> s_aHandOvers; // keeps callbacks alive
+	// Called by AIO_StaticInit at game start (static initializer budget: tools/check_static_init.py).
+	static void AIO_InitStatics()
+	{
+		s_aDeliveries = {};
+		s_aHandOvers = {};
+	}
 
 	// Mission end (AIO_Game.c): the jobs belong to the world being torn down.
 	static void Cleanup()

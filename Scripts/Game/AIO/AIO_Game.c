@@ -3,6 +3,13 @@
 
 modded class ArmaReforgerScripted
 {
+	// The game object is created before any world or entity, so our static lists are ready
+	// from the first frame (AIO_StaticInit.c).
+	void ArmaReforgerScripted()
+	{
+		AIO_StaticInit.Run();
+	}
+
 	override bool OnGameStart()
 	{
 		bool started = super.OnGameStart();

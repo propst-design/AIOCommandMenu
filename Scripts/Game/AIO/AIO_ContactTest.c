@@ -19,12 +19,22 @@ class AIO_ContactTest
 	protected static SCR_AIGroup s_Enemy;
 	protected static SCR_AIGroup s_EnemyMaster;
 	protected static IEntity s_Leader;
-	protected static ref array<IEntity> s_aMen = {};
-	protected static ref array<IEntity> s_aEnemy = {};
-	protected static ref map<IEntity, int> s_mAmmo = new map<IEntity, int>();
-	protected static ref map<IEntity, BaseWeaponComponent> s_mWeapons = new map<IEntity, BaseWeaponComponent>();
-	protected static ref map<IEntity, BaseMagazineComponent> s_mMagazines = new map<IEntity, BaseMagazineComponent>();
-	protected static ref map<IEntity, vector> s_mPosts = new map<IEntity, vector>();
+	protected static ref array<IEntity> s_aMen;
+	protected static ref array<IEntity> s_aEnemy;
+	protected static ref map<IEntity, int> s_mAmmo;
+	protected static ref map<IEntity, BaseWeaponComponent> s_mWeapons;
+	protected static ref map<IEntity, BaseMagazineComponent> s_mMagazines;
+	protected static ref map<IEntity, vector> s_mPosts;
+	// Called by AIO_StaticInit at game start (static initializer budget: tools/check_static_init.py).
+	static void AIO_InitStatics()
+	{
+		s_aMen = {};
+		s_aEnemy = {};
+		s_mAmmo = new map<IEntity, int>();
+		s_mWeapons = new map<IEntity, BaseWeaponComponent>();
+		s_mMagazines = new map<IEntity, BaseMagazineComponent>();
+		s_mPosts = new map<IEntity, vector>();
+	}
 	protected static vector s_vOrigin;
 	protected static vector s_vLane;
 	protected static int s_iPass, s_iFail, s_iShots, s_iEnemyShots, s_iContacts;

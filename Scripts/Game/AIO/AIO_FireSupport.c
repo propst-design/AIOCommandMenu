@@ -22,7 +22,12 @@ class AIO_FireSupport
 	static const float MORTAR_SEARCH = 100;
 	static const int MISSION_MS = 240000;
 
-	protected static ref array<ref AIO_FireMission> s_aMissions = {};
+	protected static ref array<ref AIO_FireMission> s_aMissions;
+	// Called by AIO_StaticInit at game start (static initializer budget: tools/check_static_init.py).
+	static void AIO_InitStatics()
+	{
+		s_aMissions = {};
+	}
 	protected static ref array<IEntity> s_aQueryHits;
 
 	// Mission end (AIO_Game.c): the jobs belong to the world being torn down.
