@@ -140,7 +140,8 @@ class AIO_Routes
 		route.m_aMen.Copy(men);
 		route.m_aPoints.Copy(points);
 		route.m_bPatrol = patrol;
-		if (AIO_Server.IsPossessed(group) && men.Count() >= squad.Count() - 1)
+		squad.RemoveItem(leader); // the possessing leader is not one of his men (Members leaves a real player out already)
+		if (AIO_Server.IsPossessed(group) && men.Count() >= squad.Count())
 			AIO_Server.ClearWaypoints(group);
 		Dispatch(route);
 		s_aRoutes.Insert(route);

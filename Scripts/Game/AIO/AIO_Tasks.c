@@ -676,6 +676,12 @@ class AIO_Tasks
 		SCR_AICharacterSettingsComponent settings = SCR_AICharacterSettingsComponent.Cast(agent.FindComponent(SCR_AICharacterSettingsComponent));
 		if (!settings)
 			return;
+		// A possessed man's stance is the human's (#16): no new order for him, and clearing an old
+		// one must not move him.
+		ChimeraCharacter character = ChimeraCharacter.Cast(agent.GetControlledEntity());
+		bool possessed = AIO_Server.IsPlayerControlled(character);
+		if (possessed && stance >= 0)
+			return;
 		settings.RemoveSettingsOfTypeAndOrigin(SCR_AICharacterStanceSettingBase, SCR_EAISettingOrigin.COMMANDING);
 		int at = s_aStanceAgents.Find(agent);
 		if (at >= 0)
@@ -686,9 +692,8 @@ class AIO_Tasks
 		if (stance < 0)
 		{
 			// Auto: stand up now; the man's own behaviours pick his stance from here on.
-			ChimeraCharacter freed = ChimeraCharacter.Cast(agent.GetControlledEntity());
-			if (freed && freed.GetCharacterController() && freed.GetCharacterController().GetStance() == ECharacterStance.PRONE)
-				SCR_AIStanceHandling.SetStance(freed.GetCharacterController(), ECharacterStance.CROUCH);
+			if (!possessed && character && character.GetCharacterController() && character.GetCharacterController().GetStance() == ECharacterStance.PRONE)
+				SCR_AIStanceHandling.SetStance(character.GetCharacterController(), ECharacterStance.CROUCH);
 			AIO_Behaviour.RestoreStance(agent, settings);
 			return;
 		}
@@ -698,13 +703,14 @@ class AIO_Tasks
 		settings.AddCharacterSetting(SCR_AICharacterStanceSetting.Create(SCR_EAISettingOrigin.COMMANDING, SCR_EAIBehaviorCause.COMBAT, stance), false, true);
 		// The setting is read when a behaviour sets a stance; a man standing idle (holding) would not
 		// change until then, so change it now as well.
-		ChimeraCharacter character = ChimeraCharacter.Cast(agent.GetControlledEntity());
 		if (character && character.GetCharacterController())
 			SCR_AIStanceHandling.SetStance(character.GetCharacterController(), stance);
 	}
 
 	// Men with an ordered stance: the watchdog re-applies it when something else changed it
 	// (idle men re-read the stance setting only when a behaviour sets a stance).
+	// A man a player possesses keeps his entry but is left alone (#16): the human has his controls,
+	// and the stance comes back by itself when the AI gets him back.
 	protected static ref array<AIAgent> s_aStanceAgents;
 	protected static ref array<int> s_aStances;
 
@@ -722,6 +728,8 @@ class AIO_Tasks
 				s_aStances.RemoveOrdered(i);
 				continue;
 			}
+			if (AIO_Server.IsPlayerControlled(character))
+				continue;
 			CharacterControllerComponent controller = character.GetCharacterController();
 			if (controller.GetStance() != s_aStances[i])
 				SCR_AIStanceHandling.SetStance(controller, s_aStances[i]);
@@ -962,6 +970,8 @@ class AIO_Tasks
 				s_aCopyLeaders.RemoveOrdered(c);
 				continue;
 			}
+			if (AIO_Server.IsPlayerControlled(copier.GetControlledEntity()))
+				continue; // possessed (#16): the copy order waits for the AI to get him back
 			ApplyCopiedStance(copier, leader);
 		}
 		// Copy: a release below can give a man a new hold (tracked again at the end).
@@ -987,6 +997,8 @@ class AIO_Tasks
 				s_aHoldAgents.RemoveItem(agent);
 				continue;
 			}
+			if (AIO_Server.IsPlayerControlled(body))
+				continue; // possessed (#16): the human walks him; his post waits for the AI
 			if (hold.m_bInterior && !CheckInterior(body, utility, hold))
 				continue;
 			if (hold.m_bAnchored && (!hold.m_Anchor || !AIO_Server.IsAlive(hold.m_Anchor) || !AIO_Server.StillCommands(hold.m_Anchor, body)))

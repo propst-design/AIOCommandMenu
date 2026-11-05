@@ -18,7 +18,8 @@
 //   -aioFireMissionTest 1 : a squad soldier mans a mortar and fires 3 HE rounds.
 //   -aioExplosivesTest 1 : remote charge on a vehicle + Detonate, timed charge on the ground.
 //   -aioGrenadesTest 1 : frag from a held post, danger close / range refusals, walk-up smoke, smoke screen, cancel.
-//   -aioBehaviourTest 1 : Safe / Combat / Stealth / Aware modes: posture, stance, ROE, travel marking, danger.
+//   -aioBehaviourTest 1 : Safe / Combat / Stealth / Aware modes: posture, stance, ROE, travel marking, danger;
+//                         a "possessed" man keeps the human's stance and posture, leaves the roster, gets his orders back (#16).
 //   -aioContactTest 1 : native firefight, retained orders, danger interruption and arrival-driven bounding.
 //   -aioGarrisonTest 1 : Garrison from 50 m on several building kinds (AIO_GarrisonTest.c).
 //   -aioFormationTest 1 : rifle squad walks legs in Column, Staggered column, Line, Wedge; shapes measured on the move.
@@ -497,6 +498,57 @@ class AIO_Test
 		Check("behaviour-stealth", Raised(men[1]) && Low(men[1]) && AIO_Maneuvers.ROEOf(men[1]) == EAIGroupCombatMode.RETURN_FIRE,
 			string.Format("raised %1, low %2, roe %3", Raised(men[1]), Low(men[1]), AIO_Maneuvers.ROEOf(men[1])));
 		Check("behaviour-others-untouched", !Raised(men[2]) && AIO_Behaviour.ModeOf(AIO_Tasks.AgentOf(men[2])) == AIO_EBehaviour.SAFE, "the third man stays in Safe");
+
+		// #16: a man a player takes control of answers to the human. The Combat man gets a fixed
+		// prone stance first, so the stance watch and the posture watch both have something to force.
+		array<RplId> first = {s_aBehIds[0]};
+		AIO_Server.ExecuteMen(s_Group, AIO_EOrder.STANCE_PRONE, first, vector.Zero, Leader(), RplId.Invalid(), 0);
+		s_BehPossessed = men[0];
+		GetGame().GetCallqueue().CallLater(BehPossess, 3000, false);
+	}
+
+	protected static IEntity s_BehPossessed;
+
+	// "A player takes control": on a live server the player manager answers for him; here the test
+	// flags him and switches his AI off as the game does. The human then stands up and lowers the weapon.
+	protected static void BehPossess()
+	{
+		CharacterControllerComponent controller = ChimeraCharacter.Cast(s_BehPossessed).GetCharacterController();
+		Check("possession-setup", controller.GetStance() == ECharacterStance.PRONE && Raised(s_BehPossessed),
+			string.Format("before possession: stance %1 raised %2", controller.GetStance(), Raised(s_BehPossessed)));
+		AIO_Server.s_TestPossessed = s_BehPossessed;
+		AIControlComponent.Cast(s_BehPossessed.FindComponent(AIControlComponent)).DeactivateAI();
+		SCR_AIStanceHandling.SetStance(controller, ECharacterStance.STAND);
+		controller.SetWeaponRaised(false);
+		GetGame().GetCallqueue().CallLater(BehPossessed, 3500, false);
+	}
+
+	protected static void BehPossessed()
+	{
+		CharacterControllerComponent controller = ChimeraCharacter.Cast(s_BehPossessed).GetCharacterController();
+		Check("possession-controls-kept", controller.GetStance() == ECharacterStance.STAND && !Raised(s_BehPossessed),
+			string.Format("after three watchdog ticks: stance %1 raised %2", controller.GetStance(), Raised(s_BehPossessed)));
+		array<IEntity> men = {};
+		AIO_Server.Members(s_Group, men);
+		array<RplId> first = {s_aBehIds[0]};
+		string reply = AIO_Server.ExecuteMen(s_Group, AIO_EOrder.STANCE_CROUCH, first, vector.Zero, Leader(), RplId.Invalid(), 0);
+		Check("possession-not-commandable", !men.Contains(s_BehPossessed) && reply.Contains("no longer") && controller.GetStance() == ECharacterStance.STAND,
+			string.Format("roster of %1 men without him; crouch order: %2", men.Count(), reply));
+		Check("possession-mode-suspended", AIO_Behaviour.ModeOf(AIO_Tasks.AgentOf(s_BehPossessed)) == AIO_EBehaviour.COMBAT, "Combat mode kept for his release");
+		// Release: the AI gets him back and the ordered stance and posture return by themselves.
+		AIO_Server.s_TestPossessed = null;
+		AIControlComponent.Cast(s_BehPossessed.FindComponent(AIControlComponent)).ActivateAI();
+		GetGame().GetCallqueue().CallLater(BehReleased, 3500, false);
+	}
+
+	protected static void BehReleased()
+	{
+		CharacterControllerComponent controller = ChimeraCharacter.Cast(s_BehPossessed).GetCharacterController();
+		AIAgent agent = AIO_Tasks.AgentOf(s_BehPossessed);
+		Check("possession-released", controller.GetStance() == ECharacterStance.PRONE && Raised(s_BehPossessed) && AIO_Behaviour.ModeOf(agent) == AIO_EBehaviour.COMBAT,
+			string.Format("stance %1 raised %2 mode '%3'", controller.GetStance(), Raised(s_BehPossessed), AIO_Behaviour.Label(agent)));
+		array<IEntity> men = {};
+		NonLeaders(men);
 
 		string aware = AIO_Server.ExecuteMen(s_Group, AIO_EOrder.BEH_AWARE, s_aBehIds, vector.Zero, Leader(), RplId.Invalid(), 0);
 		bool cleared = true;
