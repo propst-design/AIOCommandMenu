@@ -26,6 +26,15 @@ modded class SCR_AICombatComponent
 	{
 		if (m_bAIO_HasMode)
 			return m_eAIO_Mode;
+		// The game reads the mode from the group's utility without checking it is there, and a group
+		// can be without one for a moment (a host's VM exception, 3 Nov play log): fire at will, as the
+		// game answers for a soldier without a group.
+		AIAgent agent = GetAiAgent();
+		if (!agent)
+			return EAIGroupCombatMode.FIRE_AT_WILL;
+		SCR_AIGroup group = SCR_AIGroup.Cast(agent.GetParentGroup());
+		if (group && !group.GetGroupUtilityComponent())
+			return EAIGroupCombatMode.FIRE_AT_WILL;
 		return super.GetCombatMode();
 	}
 }
