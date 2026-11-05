@@ -917,10 +917,21 @@ class AIO_Test
 		Check("grenades-frag-burst", AIO_Grenades.s_fLastMiss >= 0 && AIO_Grenades.s_fLastMiss <= 12, string.Format("burst %1 m from the point", AIO_Grenades.s_fLastMiss));
 		GrenHealth("after the burst");
 		// men[1] is sent alone at a spot beyond throwing range, away from the burst: he walks up, throws, and rejoins.
+		// FindSpot falls back to a 25 m ring round a steep point, which can bring it inside throwing range (1.9
+		// Arland: 31 m, so he threw from where he stood): turn up to 90 degrees off "away" until it is out of range.
 		vector away = men[1].GetOrigin() - s_vFragSpot;
 		away[1] = 0;
 		away.Normalize();
-		s_vGrenSpot = FindSpot(men[1].GetOrigin() + away * 55, 0);
+		array<float> turns = {0, 0.785, -0.785, 1.571, -1.571};
+		foreach (float turn : turns)
+		{
+			float c = Math.Cos(turn);
+			float s = Math.Sin(turn);
+			vector dir = Vector(away[0] * c - away[2] * s, 0, away[0] * s + away[2] * c);
+			s_vGrenSpot = FindSpot(men[1].GetOrigin() + dir * 55, 0);
+			if (s_vGrenSpot != vector.Zero && vector.Distance(men[1].GetOrigin(), s_vGrenSpot) > AIO_Grenades.THROW_RANGE + 8)
+				break;
+		}
 		s_iGrenThrown = AIO_Grenades.s_iThrown;
 		array<IEntity> one = {men[1]};
 		string reply = AIO_Server.ExecuteBodies(s_Group, AIO_EOrder.GREN_SMOKE, one, s_vGrenSpot, Leader(), RplId.Invalid(), 0);
