@@ -5,6 +5,9 @@
 // game's repair support station, e.g. the wrench kit) walks to the vehicle, crouches by it and
 // repairs it step by step with that tool's own numbers: damage healed per use and the health cap a
 // field repair can reach. Destroyed vehicles are beyond a field repair, as for a player. Server only.
+// Every repair step needs him physically at work (#17): beside the vehicle, on its level, conscious,
+// on foot and under AI control. Knocked out or taken over by a player, he pauses; pushed or moved
+// away, he walks back first; in a vehicle, the job ends.
 
 // Read access to the tool's repair settings (protected in the game's class).
 modded class SCR_BaseDamageHealSupportStationComponent
@@ -29,6 +32,7 @@ class AIO_RepairJob
 	int m_iDeadline;      // tick count
 	int m_iNextUse;       // tick count while working
 	bool m_bWorking;
+	bool m_bPaused;       // knocked out or under a player's control: no work, no orders
 	vector m_vVehicleAt;  // where the vehicle stood when he started working
 	vector m_vStand;
 	bool m_bHadHold;
@@ -44,7 +48,9 @@ class AIO_Repair
 	static const int WALK_MS = 120000;
 	static const int WORK_MS = 240000;
 	static const int USE_MS = 2500;   // about one player repair action
-	static const float REACH = 2.0;
+	static const float REACH = 2.0;       // arrival: this close (flat) to his stand spot
+	static const float WORK_REACH = 3.0;  // once working: a little slack for crouching and shuffling
+	static const float LEVEL = 2.0;       // his feet to the vehicle's level: slopes fit, the floor above or a bridge don't
 
 	protected static ref array<ref AIO_RepairJob> s_aJobs;
 	// Called by AIO_StaticInit at game start (static initializer budget: tools/check_static_init.py).
@@ -81,6 +87,8 @@ class AIO_Repair
 		{
 			ChimeraCharacter character = ChimeraCharacter.Cast(body);
 			if (!character || !AIO_Server.IsAlive(body) || character.IsInVehicle() || IsRepairing(AIO_Tasks.AgentOf(body)))
+				continue;
+			if (character.GetCharacterController().IsUnconscious() || AIO_Server.IsPlayerControlled(body))
 				continue;
 			IEntity hisTool = FindTool(body);
 			if (!hisTool)
@@ -135,6 +143,17 @@ class AIO_Repair
 		array<HitZone> zones = {};
 		damage.GetAllHitZones(zones);
 		return damage.GetHitZonesDamage(station.AIO_MaxHealScaled(), zones);
+	}
+
+	// He is working on it right now (crouched at the vehicle), not walking to it or paused.
+	static bool IsWorking(AIAgent agent)
+	{
+		foreach (AIO_RepairJob job : s_aJobs)
+		{
+			if (job.m_Agent == agent)
+				return job.m_bWorking;
+		}
+		return false;
 	}
 
 	static bool IsRepairing(AIAgent agent)
@@ -231,6 +250,24 @@ class AIO_Repair
 				s_aJobs.Remove(i);
 				continue;
 			}
+			ChimeraCharacter character = ChimeraCharacter.Cast(body);
+			// In a vehicle (Game Master, or got in): he can't work on it from a seat.
+			if (character.IsInVehicle())
+			{
+				End(job, body, "stopped repairing: he is in a vehicle", true);
+				s_aJobs.Remove(i);
+				continue;
+			}
+			// Knocked out, or a player took his body (Game Master, possession): the job waits. His
+			// body isn't ours to move, and nothing is repaired until he is back at the vehicle.
+			if (character.GetCharacterController().IsUnconscious() || AIO_Server.IsPlayerControlled(body))
+			{
+				if (!job.m_bPaused)
+					Print(string.Format("[AIO] REPAIR %1 paused (unconscious %2, player-controlled %3)", AIO_Server.NameOf(body), character.GetCharacterController().IsUnconscious(), AIO_Server.IsPlayerControlled(body)));
+				job.m_bPaused = true;
+				StopWorking(job);
+				continue;
+			}
 			SCR_DamageManagerComponent damage = null;
 			if (job.m_Vehicle)
 				damage = SCR_DamageManagerComponent.GetDamageManager(job.m_Vehicle);
@@ -246,6 +283,14 @@ class AIO_Repair
 				s_aJobs.Remove(i);
 				continue;
 			}
+			if (job.m_bPaused)
+			{
+				// Back under AI control and awake: a fresh walk-up time, and a walk back if he was moved.
+				job.m_bPaused = false;
+				job.m_iDeadline = now + WALK_MS;
+				if (!InReach(job, body, REACH))
+					Restand(job, body);
+			}
 			if (now > job.m_iDeadline)
 			{
 				string why = "couldn't reach the vehicle";
@@ -257,7 +302,7 @@ class AIO_Repair
 			}
 			if (!job.m_bWorking)
 			{
-				if (vector.DistanceXZ(body.GetOrigin(), job.m_vStand) > REACH)
+				if (!InReach(job, body, REACH))
 				{
 					// The vehicle moved: follow it.
 					if (vector.DistanceXZ(StandSpot(job.m_Vehicle, body.GetOrigin()), job.m_vStand) > 4)
@@ -275,6 +320,16 @@ class AIO_Repair
 			{
 				End(job, body, "stopped: the vehicle drove off");
 				s_aJobs.Remove(i);
+				continue;
+			}
+			if (!InReach(job, body, WORK_REACH))
+			{
+				// Pushed, knocked back or moved away (Game Master): back to the walking stage, and
+				// he walks back to the vehicle before the next repair step.
+				Print(string.Format("[AIO] REPAIR %1 moved away from the vehicle (%2 m from his spot): walking back", AIO_Server.NameOf(body), vector.DistanceXZ(body.GetOrigin(), job.m_vStand)));
+				StopWorking(job);
+				job.m_iDeadline = now + WALK_MS;
+				Restand(job, body);
 				continue;
 			}
 			if (now < job.m_iNextUse)
@@ -297,6 +352,30 @@ class AIO_Repair
 		}
 	}
 
+	// He can work on it from where he is: beside his stand spot (flat distance) and on the vehicle's
+	// level, not on a floor above or below it. The level is the vehicle's origin (at its wheels), or
+	// the middle of its bounds when that is lower (on its roof). Not the bounds' bottom: an M1025's
+	// world bounds reach 2 m into the ground (test 4 Nov).
+	protected static bool InReach(AIO_RepairJob job, IEntity body, float reach)
+	{
+		vector at = body.GetOrigin();
+		if (vector.DistanceXZ(at, job.m_vStand) > reach)
+			return false;
+		vector mins, maxs;
+		job.m_Vehicle.GetWorldBounds(mins, maxs);
+		float level = Math.Min(job.m_Vehicle.GetOrigin()[1], (mins[1] + maxs[1]) * 0.5);
+		return Math.AbsFloat(at[1] - level) <= LEVEL;
+	}
+
+	// Out of the working stage (he crouched for it): the next step needs a new arrival.
+	protected static void StopWorking(AIO_RepairJob job)
+	{
+		if (!job.m_bWorking)
+			return;
+		job.m_bWorking = false;
+		AIO_Tasks.SetStance(job.m_Agent, -1);
+	}
+
 	protected static void Restand(AIO_RepairJob job, IEntity body)
 	{
 		SCR_AIUtilityComponent utility = AIO_Tasks.UtilityOf(job.m_Agent);
@@ -310,12 +389,17 @@ class AIO_Repair
 		utility.AddAction(new AIO_HoldBehavior(utility, null, job.m_vStand));
 	}
 
-	protected static void End(AIO_RepairJob job, IEntity body, string problem)
+	// mounted: he got into a vehicle; only the repair's own walk and hold are dropped, so nothing
+	// pulls him back out to his stand spot or his old post.
+	protected static void End(AIO_RepairJob job, IEntity body, string problem, bool mounted = false)
 	{
 		job.m_bEnding = true;
 		AIO_Tasks.SetStance(job.m_Agent, -1);
-		AIO_Tasks.Rejoin(body, GetGame().GetPlayerManager().GetPlayerControlledEntity(job.m_iPlayerId));
-		if (job.m_bHadHold)
+		if (mounted)
+			AIO_Tasks.Release(body);
+		else
+			AIO_Tasks.Rejoin(body, GetGame().GetPlayerManager().GetPlayerControlledEntity(job.m_iPlayerId));
+		if (job.m_bHadHold && !mounted)
 		{
 			if (job.m_Anchor && AIO_Server.IsAlive(job.m_Anchor) && AIO_Server.StillCommands(job.m_Anchor, body))
 				AIO_Tasks.KeepOffset(body, job.m_Anchor, job.m_vOffset);
