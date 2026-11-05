@@ -92,6 +92,19 @@ class AIO_Server
 		return controller && !controller.IsDead();
 	}
 
+	// A soldier a player controls (Game Master "take control", another mod's possession): his
+	// body answers to the human. Our watches leave it alone and nobody can order it (#16).
+	static bool IsPlayerControlled(IEntity body)
+	{
+		if (!body)
+			return false;
+		if (s_TestPossessed && body == s_TestPossessed)
+			return true;
+		return GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(body) > 0;
+	}
+	// AIO_Test only: a body treated as player-controlled on a server without players.
+	static IEntity s_TestPossessed;
+
 	static void Roster(int playerId, notnull array<RplId> ids, notnull array<string> names, notnull array<int> health, notnull array<string> tasks, notnull array<int> ammo)
 	{
 		array<IEntity> members = {};

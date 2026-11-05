@@ -15,6 +15,7 @@
 //   -aioSupportTest 1 : watch direction, commanded medical treatment, routes, patrols and arrival reports.
 //   -aioRadiusTest 1 : all-round defense radius selection, outward/crouched posts and actual movement.
 //   -aioSpecialistsTest 1 : Give me ammo, lay and disarm a mine, repair a damaged vehicle.
+//   -aioRepairTest 1 : repair only while the engineer is at the vehicle (moved away, possessed, knocked out; #17).
 //   -aioFireMissionTest 1 : a squad soldier mans a mortar and fires 3 HE rounds.
 //   -aioExplosivesTest 1 : remote charge on a vehicle + Detonate, timed charge on the ground.
 //   -aioGrenadesTest 1 : frag from a held post, danger close / range refusals, walk-up smoke, smoke screen, cancel.
@@ -63,6 +64,7 @@ class AIO_Test
 	protected static bool s_bExplosivesTest;
 	protected static bool s_bGrenadesTest;
 	protected static bool s_bSpecialistsTest;
+	protected static bool s_bRepairTest;
 	protected static bool s_bFireMissionTest;
 	protected static bool s_bContactTest;
 	protected static bool s_bLeadershipTest;
@@ -132,6 +134,9 @@ class AIO_Test
 		string specialistsValue;
 		System.GetCLIParam("aioSpecialistsTest", specialistsValue);
 		s_bSpecialistsTest = specialistsValue == "1";
+		string repairValue;
+		System.GetCLIParam("aioRepairTest", repairValue);
+		s_bRepairTest = repairValue == "1";
 		string fireValue;
 		System.GetCLIParam("aioFireMissionTest", fireValue);
 		s_bFireMissionTest = fireValue == "1";
@@ -149,7 +154,7 @@ class AIO_Test
 			GetGame().GetCallqueue().CallLater(AIO_GarrisonTest.Start, 8000, false);
 			return;
 		}
-		bool specialTest = s_bLeadershipTest || s_bGrenadesTest || s_bSpecialistsTest || s_bFireMissionTest || s_bExplosivesTest || s_bBehaviourTest || s_bContactTest;
+		bool specialTest = s_bLeadershipTest || s_bGrenadesTest || s_bSpecialistsTest || s_bRepairTest || s_bFireMissionTest || s_bExplosivesTest || s_bBehaviourTest || s_bContactTest;
 		bool movementTest = s_bRadiusTest || s_bSupportTest || s_bFormationTest || s_bRecoveryTest || s_bVehicleTest || s_bMoveTest;
 		bool basicTest = s_bInfantryTest || s_bSupplyTest || s_bAttackTest || s_bDefenseTest;
 		if (!specialTest && !movementTest && !basicTest && (!System.GetCLIParam("aioTaskTest", value) || value != "1"))
@@ -275,6 +280,8 @@ class AIO_Test
 			GetGame().GetCallqueue().CallLater(RadiusStart, 12000, false);
 		else if (s_bSpecialistsTest)
 			GetGame().GetCallqueue().CallLater(SpecStart, 12000, false);
+		else if (s_bRepairTest)
+			GetGame().GetCallqueue().CallLater(RepStart, 12000, false);
 		else if (s_bFireMissionTest)
 			GetGame().GetCallqueue().CallLater(FireStart, 12000, false);
 		else if (s_bExplosivesTest)
@@ -1186,6 +1193,191 @@ class AIO_Test
 		SCR_DamageManagerComponent damage = SCR_DamageManagerComponent.GetDamageManager(s_SpecVehicle);
 		float after = damage.GetHealthScaled();
 		Check("repair-health", after > s_fSpecHealth + 0.1, string.Format("vehicle health %1 -> %2, still repairing %3", s_fSpecHealth, after, AIO_Repair.IsRepairing(AIO_Tasks.AgentOf(men[0]))));
+		Finish();
+	}
+
+	// ---------------------------------------------------------------- repair needs the engineer there (#17)
+	// One engineer repairs a damaged M1025. Each phase measures the vehicle's summed hit-zone health
+	// over a window longer than two repair steps (2.5 s each): it rises while he works beside it, and
+	// stays flat while he is 60 m away (teleported), possessed, or knocked out. After the move he must
+	// walk back and go back to work by himself.
+
+	static const int REP_WINDOW_MS = 7000;
+	protected static IEntity s_RepEngineer;
+	protected static IEntity s_RepVehicle;
+	protected static float s_fRepBefore;
+	protected static int s_iRepPhase;
+	protected static int s_iRepPolls;
+
+	protected static float ZoneHealth(IEntity vehicle)
+	{
+		SCR_DamageManagerComponent damage = SCR_DamageManagerComponent.GetDamageManager(vehicle);
+		if (!damage)
+			return -1;
+		array<HitZone> zones = {};
+		damage.GetAllHitZones(zones);
+		float total = 0;
+		foreach (HitZone zone : zones)
+			total += zone.GetHealth();
+		return total;
+	}
+
+	// Damaged again before each phase, so the field repair can't finish (and end the job) mid-test.
+	protected static void RepDamage()
+	{
+		SCR_DamageManagerComponent damage = SCR_DamageManagerComponent.GetDamageManager(s_RepVehicle);
+		array<HitZone> zones = {};
+		damage.GetAllHitZones(zones);
+		foreach (HitZone zone : zones)
+			zone.SetHealthScaled(0.3);
+	}
+
+	protected static AIAgent RepAgent()
+	{
+		return AIO_Tasks.AgentOf(s_RepEngineer);
+	}
+
+	protected static string RepState()
+	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(s_RepEngineer);
+		return string.Format("job %1, working %2, %3 m from the vehicle, feet %4 m above its origin, unconscious %5",
+			AIO_Repair.IsRepairing(RepAgent()), AIO_Repair.IsWorking(RepAgent()), vector.DistanceXZ(s_RepEngineer.GetOrigin(), s_RepVehicle.GetOrigin()),
+			s_RepEngineer.GetOrigin()[1] - s_RepVehicle.GetOrigin()[1], character.GetCharacterController().IsUnconscious());
+	}
+
+	protected static void RepStart()
+	{
+		array<IEntity> men = {};
+		NonLeaders(men);
+		if (men.Count() < 1 || !Leader())
+		{
+			Check("repair-setup", false, "need a leader and a soldier");
+			Finish();
+			return;
+		}
+		AIO_Tasks.AgentOf(Leader()).DeactivateAI();
+		s_RepEngineer = men[0];
+		EntitySpawnParams params = new EntitySpawnParams();
+		params.TransformMode = ETransformMode.WORLD;
+		params.Transform[3] = FindSpot(s_vStart, 20);
+		s_RepVehicle = GetGame().SpawnEntityPrefab(Resource.Load(HUMVEE), GetGame().GetWorld(), params);
+		GiveItem(s_RepEngineer, WRENCH);
+		GetGame().GetCallqueue().CallLater(RepOrder, 3000, false);
+	}
+
+	protected static void RepOrder()
+	{
+		RepDamage();
+		array<IEntity> engineer = {s_RepEngineer};
+		string reply = AIO_Repair.Order(engineer, s_RepVehicle, Leader(), s_RepVehicle.GetOrigin(), 0);
+		Check("repair-order", reply.Contains("repairing"), reply);
+		if (!reply.Contains("repairing"))
+		{
+			Finish();
+			return;
+		}
+		s_iRepPhase = 1;
+		s_iRepPolls = 0;
+		GetGame().GetCallqueue().CallLater(RepWaitWorking, 1000, false);
+	}
+
+	// Polls until he is crouched at work, then starts the current phase:
+	// 1 heals at the vehicle, 2 heals again after the walk back, 3 knocked out.
+	protected static void RepWaitWorking()
+	{
+		s_iRepPolls++;
+		if (!AIO_Repair.IsWorking(RepAgent()))
+		{
+			if (s_iRepPolls < 90 && AIO_Repair.IsRepairing(RepAgent()))
+			{
+				GetGame().GetCallqueue().CallLater(RepWaitWorking, 1000, false);
+				return;
+			}
+			Check(string.Format("repair-phase%1-at-work", s_iRepPhase), false, string.Format("not working after %1 s: %2", s_iRepPolls, RepState()));
+			Finish();
+			return;
+		}
+		Print(string.Format("[AIO] TEST repair phase %1: at work after %2 s (%3)", s_iRepPhase, s_iRepPolls, RepState()));
+		RepDamage();
+		s_fRepBefore = ZoneHealth(s_RepVehicle);
+		if (s_iRepPhase < 3)
+		{
+			GetGame().GetCallqueue().CallLater(RepHealed, REP_WINDOW_MS, false);
+			return;
+		}
+		// Phase 3: knocked out where he works.
+		SCR_CharacterDamageManagerComponent damage = SCR_CharacterDamageManagerComponent.Cast(s_RepEngineer.FindComponent(SCR_CharacterDamageManagerComponent));
+		if (damage)
+			damage.ForceUnconsciousness(0);
+		ChimeraCharacter character = ChimeraCharacter.Cast(s_RepEngineer);
+		if (!character.GetCharacterController().IsUnconscious())
+		{
+			Print("[AIO] TEST repair: ForceUnconsciousness had no effect, using SetUnconscious");
+			character.GetCharacterController().SetUnconscious(true);
+		}
+		GetGame().GetCallqueue().CallLater(RepUnconsciousWindow, REP_WINDOW_MS, false);
+	}
+
+	// Phases 1 and 2: working beside the vehicle (at first, and again after walking back) heals it.
+	protected static void RepHealed()
+	{
+		float after = ZoneHealth(s_RepVehicle);
+		string name = "repair-heals-at-vehicle";
+		if (s_iRepPhase == 2)
+			name = "repair-resumes-after-walking-back";
+		Check(name, after > s_fRepBefore + 1, string.Format("hit-zone health %1 -> %2 in %3 ms (%4)", s_fRepBefore, after, REP_WINDOW_MS, RepState()));
+		if (s_iRepPhase == 2)
+		{
+			// Possessed: a player takes his body where he works; only the controller changes.
+			RepDamage();
+			s_fRepBefore = ZoneHealth(s_RepVehicle);
+			AIO_Server.s_TestPossessed = s_RepEngineer;
+			GetGame().GetCallqueue().CallLater(RepPossessedWindow, REP_WINDOW_MS, false);
+			return;
+		}
+		// Moved away mid-repair: teleported 60 m off (a Game Master move, a blast).
+		vector transform[4];
+		s_RepEngineer.GetWorldTransform(transform);
+		transform[3] = FindSpot(s_RepVehicle.GetOrigin(), 60);
+		BaseGameEntity.Cast(s_RepEngineer).Teleport(transform);
+		s_fRepBefore = ZoneHealth(s_RepVehicle);
+		GetGame().GetCallqueue().CallLater(RepAwayWindow, REP_WINDOW_MS, false);
+	}
+
+	protected static void RepAwayWindow()
+	{
+		float after = ZoneHealth(s_RepVehicle);
+		float away = vector.DistanceXZ(s_RepEngineer.GetOrigin(), s_RepVehicle.GetOrigin());
+		// Only meaningful while he is still away and the job still runs (a finished job heals nothing either).
+		bool valid = away > 10 && AIO_Repair.IsRepairing(RepAgent());
+		Check("repair-no-heal-when-away", valid && after <= s_fRepBefore + 0.5 && !AIO_Repair.IsWorking(RepAgent()),
+			string.Format("hit-zone health %1 -> %2 in %3 ms (%4)", s_fRepBefore, after, REP_WINDOW_MS, RepState()));
+		// Phase 2: he must walk back by himself and work again.
+		s_iRepPhase = 2;
+		s_iRepPolls = 0;
+		GetGame().GetCallqueue().CallLater(RepWaitWorking, 1000, false);
+	}
+
+	protected static void RepPossessedWindow()
+	{
+		float after = ZoneHealth(s_RepVehicle);
+		bool valid = AIO_Repair.IsRepairing(RepAgent());
+		Check("repair-no-heal-when-possessed", valid && after <= s_fRepBefore + 0.5 && !AIO_Repair.IsWorking(RepAgent()),
+			string.Format("hit-zone health %1 -> %2 in %3 ms (%4)", s_fRepBefore, after, REP_WINDOW_MS, RepState()));
+		// The AI gets him back: he is still beside the vehicle, so he goes back to work by himself.
+		AIO_Server.s_TestPossessed = null;
+		s_iRepPhase = 3;
+		s_iRepPolls = 0;
+		GetGame().GetCallqueue().CallLater(RepWaitWorking, 1000, false);
+	}
+
+	protected static void RepUnconsciousWindow()
+	{
+		float after = ZoneHealth(s_RepVehicle);
+		ChimeraCharacter character = ChimeraCharacter.Cast(s_RepEngineer);
+		bool valid = character.GetCharacterController().IsUnconscious() && AIO_Repair.IsRepairing(RepAgent());
+		Check("repair-no-heal-when-unconscious", valid && after <= s_fRepBefore + 0.5 && !AIO_Repair.IsWorking(RepAgent()),
+			string.Format("hit-zone health %1 -> %2 in %3 ms (%4)", s_fRepBefore, after, REP_WINDOW_MS, RepState()));
 		Finish();
 	}
 

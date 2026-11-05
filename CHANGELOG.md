@@ -9,6 +9,7 @@
 - Fixed: a soldier you sent off elsewhere while he was pushing a vehicle upright was pulled back to formation when the push ended, cancelling your new order.
 - Fixed: in a close fight, men ordered to throw smoke (Smoke there, Smoke screen, or the cover smoke on Fall back, Peel back and Flank) often kept shooting instead. Your smoke order now comes before fighting a nearby enemy; a wounded man still treats himself first, and frags still wait while he fights off an enemy close to him.
 - Fixed: Disarm mines now walks the mines nearest-first instead of zig-zagging to the far end of the line after the first one.
+- Fixed: a soldier repairing a vehicle kept fixing it from wherever he ended up: pushed or moved away, on another floor, knocked out, in a vehicle or taken over by a player. He now has to be beside the vehicle and on its level for every repair step: moved away, he walks back first; knocked out or under a player's control, the repair waits; in a vehicle, he stops.
 - Fixed: admin Teleport with group could put a soldier at the corner of the map when there was no free spot near you; he now stays where he is.
 - Fixed: men keeping station on a player (Advance, Flank) stood at his last position for good if he disconnected; they now rejoin the squad, as they already did when he died.
 - Fixed: a soldier killed while in cover (Take cover, Fortify) left that spot reserved for the rest of the mission, so no other AI, friend or foe, would use it.
