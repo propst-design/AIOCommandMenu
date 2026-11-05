@@ -37,11 +37,15 @@ $RequestDir  = Join-Path $ProjectRoot '.aio-requests'
 $ServerProfile = Join-Path $ProjectRoot '.local-testserver'
 New-Item -ItemType Directory -Force $RequestDir | Out-Null
 
+# One queue consumer per checkout (as ACA's launcher): two launchers on one checkout would steal each
+# other's requests, but a worktree (another branch, the nightly sweep) gets its own launcher.
 $created = $false
-$mutex = New-Object Threading.Mutex($true, 'Local\AIO_TestWatcher', [ref]$created)
+$sha = [Security.Cryptography.SHA256]::Create()
+try { $key = [BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes([IO.Path]::GetFullPath($ProjectRoot).ToLowerInvariant()))).Replace('-', '') } finally { $sha.Dispose() }
+$mutex = New-Object Threading.Mutex($true, "Local\AIO_TestWatcher_$key", [ref]$created)
 if (!$created) {
     $mutex.Dispose()
-    Write-Host 'The AIO test launcher is already running. Keep that window open.' -ForegroundColor Yellow
+    Write-Host 'The AIO test launcher is already running for this checkout. Keep that window open.' -ForegroundColor Yellow
     exit 0
 }
 Set-Content -LiteralPath (Join-Path $RequestDir 'watcher-started.txt') -Value (Get-Date -Format o)
