@@ -110,6 +110,8 @@ class AIO_Behaviour
 		ChimeraCharacter character = ChimeraCharacter.Cast(agent.GetControlledEntity());
 		if (!character || !AIO_Server.IsAlive(character))
 			return false;
+		if (AIO_Server.IsPlayerControlled(character))
+			return false; // a player has him (#16): his posture and pace are his own
 		SCR_AICharacterSettingsComponent settings = SCR_AICharacterSettingsComponent.Cast(agent.FindComponent(SCR_AICharacterSettingsComponent));
 		if (!settings)
 			return false;
@@ -189,7 +191,8 @@ class AIO_Behaviour
 			AddStanceRange(settings, mode);
 	}
 
-	// Called by the watchdog once a second.
+	// Called by the watchdog once a second. A man a player possesses keeps his mode but is left
+	// alone (#16): the mode's posture and settings apply again when the AI gets him back.
 	static void Tick()
 	{
 		for (int i = s_aAgents.Count() - 1; i >= 0; i--)
@@ -205,6 +208,8 @@ class AIO_Behaviour
 				s_aOwnROE.RemoveOrdered(i);
 				continue;
 			}
+			if (AIO_Server.IsPlayerControlled(character))
+				continue;
 			ApplyPosture(agent, character, s_aModes[i]);
 		}
 	}

@@ -44,6 +44,9 @@ class AIO_Server
 		return squad && !squad.IsSlave();
 	}
 
+	// The living men of the group under AI control. A body a player possesses (the possessing
+	// leader himself, or another player who took one of the men) is that player's, not the squad's:
+	// the roster, the order resolution and every whole-squad order start here (#16).
 	static void Members(SCR_AIGroup slave, notnull array<IEntity> members)
 	{
 		if (!slave)
@@ -55,7 +58,7 @@ class AIO_Server
 			if (!agent)
 				continue;
 			IEntity body = agent.GetControlledEntity();
-			if (body && IsAlive(body))
+			if (body && IsAlive(body) && !IsPlayerControlled(body))
 				members.Insert(body);
 		}
 	}
@@ -91,6 +94,19 @@ class AIO_Server
 		CharacterControllerComponent controller = character.GetCharacterController();
 		return controller && !controller.IsDead();
 	}
+
+	// A soldier a player controls (Game Master "take control", another mod's possession): his
+	// body answers to the human. Our watches leave it alone and nobody can order it (#16).
+	static bool IsPlayerControlled(IEntity body)
+	{
+		if (!body)
+			return false;
+		if (s_TestPossessed && body == s_TestPossessed)
+			return true;
+		return GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(body) > 0;
+	}
+	// AIO_Test only: a body treated as player-controlled on a server without players.
+	static IEntity s_TestPossessed;
 
 	static void Roster(int playerId, notnull array<RplId> ids, notnull array<string> names, notnull array<int> health, notnull array<string> tasks, notnull array<int> ammo)
 	{
