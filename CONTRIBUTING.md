@@ -6,6 +6,8 @@ and the open issues labelled `in progress`: those are already being worked on. T
 something on, comment on its issue (or open one) so it can be assigned to you, and for a
 substantial feature discuss it there or in [Discord](https://discord.gg/WK8xGSztB) first.
 Push work in progress early as a draft pull request so others can see it.
+Report bugs and ideas with the GitHub **Bug report** / **Feature request** templates
+or in Discord (#issues; see the README's "Reporting bugs").
 
 ## Development and releases
 
@@ -18,7 +20,8 @@ is handled by the maintainer.
 ## Get your own working copy
 
 Install Git, Arma Reforger and **Arma Reforger Tools** (Workbench) through Steam.
-Use the regular game/tools versions together. Python 3 is used for source checks.
+Use matching stable versions of the game and Tools (Reforger 1.9 at present).
+Python 3 is used for source checks.
 Fork [this repository](https://github.com/propst-design/AIOCommandMenu) on GitHub, then run
 these commands from your Workbench `addons` directory (replace `YOUR-USERNAME`):
 
@@ -43,8 +46,10 @@ Run `Play-AIO-GameMaster.cmd` for a local-source Game Master session. Possess a
 soldier in an AI group to exercise the menu; the free Game Master camera has no
 player squad. You do not need ACA or BBB for standalone development.
 
-Relevant source: `Scripts/Game/AIO`, tests: `AIO_Test.c` and `AIO_ContactTest.c` in the same directory, resources:
-`Configs`. Use the README for the menu's player controls.
+Relevant source: `Scripts/Game/AIO` (server tests are the `AIO_*Test.c` files there);
+input bindings: `Configs/System`. The menu layout is `AIO_MenuTree.Build()` and the
+order list is `AIO_EOrder`, both in `AIO_Orders.c`. Use the README for the menu's
+player controls.
 For optional integration, clone ACA and its BBB dependency as sibling folders;
 `Play-AIO-with-ACA.cmd` then loads the local combination.
 
@@ -72,12 +77,31 @@ git switch -c another-fix
 `AIO_EOrder` values travel over RPC: append new values; never reorder or remove
 existing ones. Validate group ownership and permissions on the server. Test
 selected men, whole squads, mounted units, possession and order replacement.
-AiO remains standalone. Preserve its GPL terms and do not copy code from ACA,
-BBB or other mods with incompatible licenses.
+AiO remains standalone: it must work in Conflict, Game Master and Arma
+Commander: Actual without depending on any mod; talk to other mods only at
+runtime. AiO is GPLv3: do not copy code from APL-SA mods (such as Arma
+Commander: Actual or Better Battle Buddies), from APL-ND mods, or from any
+other mod with an incompatible license.
 
 Preserve resource GUIDs, license notices and existing line endings. Keep changes
 focused and avoid unrelated formatting. Enforce Script must compile in Workbench;
 be careful with engine API signatures and avoid unsupported ternary expressions.
+After changing a `.conf` input file, let Workbench rebuild the resource database
+before testing, or the new binding won't register.
+
+Two Enforce Script traps bite often (CI checks both):
+
+- **Ints win comparisons and division.** With an int on the left, `<`, `>=` and
+  friends compare as ints (`6 >= 6.75` is true), and int / int divides as ints.
+  Put the float first. `python tools/check_enforce_numbers.py` flags both.
+- **The static-initializer budget is shared by every loaded mod.** A class-level
+  static with a built value (`= {}`, `= new ...`, `= Foo()`) or a `const` inside a
+  function adds to one capped engine function; a big mod list goes over the cap
+  and the Game module stops compiling for players. Declare such statics bare and fill
+  them in the class's `AIO_InitStatics()`, called from `AIO_StaticInit.Run()`
+  (`AIO_StaticInit.c`) at game creation; move local consts to class level as
+  `static const`. Plain literals (`static const float X = 2.5;`) cost nothing.
+  `python tools/check_static_init.py` flags new ones.
 
 Install **Arma Reforger Server** through Steam and run
 `Start-AIO-Test-Launcher.cmd`. From a Git Bash window at the repository
@@ -89,9 +113,10 @@ bash tools/runtest.sh "contrib-$(date +%Y%m%d-%H%M%S)" tasks 60
 
 The helper prints diagnostic output; inspect the `[AIO] TEST ... PASS|FAIL` lines and `[AIO] TEST COMPLETE`
 and check for failures rather than treating its exit code as acceptance. Choose the preset for the behavior you changed, such as `vehicles`, `supply` or
-`leadership`. Integration presets ending in `-aca` require ACA and BBB sibling
-checkouts. The runner shares port 2001 with other server tests; wait for an
-existing game/server to finish. Also exercise the menu in game: server tests
+`leadership`; `compile` just boots a server with AiO to check that it compiles.
+Integration presets ending in `-aca` require ACA and BBB sibling checkouts. The
+test server uses port 2001: the launcher waits for another dedicated server to
+close, and a game you host yourself must be closed first. Also exercise the menu in game: server tests
 alone cannot prove keyboard navigation, feedback or joined-client behavior.
 
 For multiplayer changes, include a joined-client check when possible and state
@@ -103,12 +128,14 @@ Before submitting, stage only the intended files and check them:
 ```powershell
 git diff --cached --stat
 python tools/check_public_source.py
+python tools/check_enforce_numbers.py
+python tools/check_static_init.py
 git diff --cached --check
 ```
 
-The source check also runs on GitHub pull requests and pushes. It catches common
-private/generated files and recognizable sensitive text; it cannot replace a
-manual review or compile/test the game.
+The three checks also run on GitHub pull requests and pushes to `main`. The
+public-source check catches common private/generated files and recognizable
+sensitive text; none of them replaces a manual review or compiles/tests the game.
 
 ## Submit a pull request
 

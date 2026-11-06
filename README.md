@@ -1,5 +1,4 @@
-# AiO Command Menu (Reforger)
-
+# All-in-One Command Menu (AiO) for Arma Reforger
 
 > **Source development:** `main` contains ongoing development and can be ahead of
 > the Workshop release or contain unfinished changes. For normal play, use Workshop.
@@ -16,20 +15,25 @@ A numbered command menu for your AI squad, based on the design of
 Move the squad, give individual soldiers orders, assign colour teams, control
 vehicles and manage supplies through the keyboard.
 
-AiO is standalone: it requires Arma Reforger, with no other mod dependencies.
-It uses the game's player-led AI squad setup, including Conflict and compatible
-scenarios such as Arma Commander Actual (ACA). In Game Master, take control of a
-soldier to command the other AI in that soldier's group. It does not recruit AI,
-create a squad, or command arbitrary groups from the Game Master camera.
+AiO is standalone: it requires only Arma Reforger (checked on 1.9, the current
+stable version), with no other mod dependencies. It uses the game's player-led AI
+squad setup, so it works in Conflict, Game Master and scenarios such as
+Arma Commander: Actual. In Game Master, take control of a soldier to command the
+other AI in that soldier's group. It does not recruit AI, create a squad, or
+command arbitrary groups from the Game Master camera.
 
 ## Version and installation
 
 The current Workshop version is **0.3.3**. It adds Become leader, grenade and smoke orders,
-window posts when garrisoning and smoke cover when falling back. See [CHANGELOG.md](CHANGELOG.md) for the version history.
+window posts when garrisoning and smoke cover when falling back. `main` also holds the
+next update (0.3.4, not yet on Workshop): the aim marker, mouse control, saved menu
+options and many fixes; those features are marked *0.3.4* below.
+See [CHANGELOG.md](CHANGELOG.md) for the version history.
 
 Get the mod from the [Arma Reforger Workshop](https://reforger.armaplatform.com/workshop/629405AEFC950C12)
 and enable it for your scenario. Multiplayer requires the mod on the server and
-joining clients; it is not a client-only menu.
+joining clients; it is not a client-only menu. Server hosts: see
+[Admin page](#admin-page-more--admin) for the one startup option.
 
 ## Quick start
 
@@ -51,7 +55,19 @@ and [Menu reference](#menu-reference), then consult movement, defense, vehicles/
 - Choosing an order normally closes the menu. Adding or clearing draft route
   points keeps it open.
 - While the menu is open, number keys operate the menu instead of weapon and
-  quick-slot selection.
+  quick-slot selection. The menu closes while you are unconscious.
+- *0.3.4:* **More > Mouse control on/off** adds old-Arma mouse control: with the
+  menu open, the wheel moves a highlight over the lines, left click gives the
+  highlighted order and right click goes back (on Select members too; Backspace
+  still clears). Shooting and aiming are blocked only while the menu is open.
+  Not with the map open, where the mouse works the map.
+- *0.3.4:* while the menu is open, an **aim marker** shows where an aimed order
+  will land, with the distance; its colour and shape follow the kind of order. On
+  Defense it outlines the building Garrison and Clear would use; on the vehicle
+  pages, the vehicle. It turns grey with a red note when there is nothing to act
+  on. **More > Aim marker** picks crosshair, a ring on the surface, or off, and
+  sets the distance display and size. Your menu options (aim marker, mouse
+  control, squad bar) are kept in your game profile across missions.
 - No selected members means **whole squad**. On Select members, **1–7** toggle
   soldiers, **8** cycles pages, **9** opens Teams and **0** returns to orders.
 - Selection lasts for about **eight seconds with the menu closed**. Reopen it
@@ -81,12 +97,12 @@ from the map, a trace from above identifies the object under the cursor.
 | 5 | R.O.E. | Fire at will; Return fire only; Hold fire; Engage at will; Disengage |
 | 6 | Stance & speed | Stand; Crouch; Prone; Auto; Copy my stance; Speed (Walk, Run, Sprint, Auto); Behaviour (Safe, Aware, Combat, Stealth) |
 | 7 | Supplies | Heal up!; Rearm; Rearm from that; Take that weapon; Treat that soldier; Treat me; Give me ammo; Give me bandages; Explosives & mines |
-| 8 | More | Squad bar on/off; Admin (when allowed); Fire mission (mortar); Routes; Become leader; Step down as leader |
+| 8 | More | Squad bar on/off; Admin (when allowed); Fire mission (mortar); Routes; Become leader; Step down as leader; Aim marker (0.3.4); Mouse control on/off (0.3.4) |
 | 9 | HALT | Stop the current movement assignment |
 | 0 | Select members | Select individuals or colour teams |
 
-The Admin page is hidden without permission, so the Routes line number under
-More changes with admin access. Follow labels when navigating that page.
+The Admin page is hidden without permission, so the line numbers after Squad bar
+under More change with admin access. Follow labels when navigating that page.
 
 **More > Become leader** claims vacant leadership in your player squad, or takes over
 from the AI leader when you possess a soldier in an independent AI group. It cannot
@@ -222,7 +238,8 @@ passenger seats; specific roles require a free seat of that type.
 Switch seat works in the soldier's current vehicle. **Disembark passengers**
 only empties cargo seats; **Get out** includes crew; **EJECT** puts recipients
 outside immediately. Vehicle controls act on vehicles occupied by the recipients,
-not an empty vehicle you aim at. Engine controls require a driver. Lights on/off
+not an empty vehicle you aim at, nor one driven by someone outside your squad.
+Engine controls require a driver. Lights on/off
 sets headlights; **Lights: driver decides** restores the AI driver's choice.
 **Unflip** sends up to four available men on foot to right the target vehicle.
 Driving and boarding use the game's AI and remain subject to its pathfinding.
@@ -230,8 +247,10 @@ Driving and boarding use the game's AI and remain subject to its pathfinding.
 **Repair that vehicle** sends the nearest man on foot who carries a repair kit
 (wrench). He crouches beside the vehicle and repairs it in steps using the kit's
 own repair rate and limit, so a field repair may stop short of full health, as it
-does for players. Destroyed vehicles can't be repaired. He stops if the vehicle
-drives off, and returns to his previous orders when done.
+does for players. Destroyed vehicles can't be repaired. Every step needs him
+beside the vehicle and on its level: moved away, he walks back first; knocked out
+or taken over by a player, the repair waits; in a vehicle, he stops. He stops if
+the vehicle drives off, and returns to his previous orders when done.
 
 **Heal up!** tells wounded recipients to use their own medical supplies.
 **Rearm** searches within 50 m of each man for useful bodies, loose gear,
@@ -257,7 +276,7 @@ weapons use, or up to two bandages. He always keeps one of each for himself.
 ### Explosives and mines (Supplies > Explosives & mines)
 
 Only men who carry the right equipment can do these. The nearest suitable
-recipient goes.
+recipient within 400 m of the point goes.
 
 - **Charge on that, 30 s timer**: he walks to what you aim at and places a
   demolition charge. On a vehicle the charge sticks to it and moves with it;
@@ -339,7 +358,7 @@ offsets and assigning staggered non-overlapping slots to avoid overlapping soldi
 Teleport with vehicle (teleports you, your vehicle, and anyone inside it to the target point).
 Squad admin commands affect the whole squad regardless of selection.
 
-The host/server startup option controls access:
+The host/server startup option (a launch parameter) controls access:
 
 | Option | Access |
 | --- | --- |
@@ -349,8 +368,14 @@ The host/server startup option controls access:
 
 ## Compatibility and current limits
 
-AiO works with player-led AI squads in compatible scenarios.
+AiO works with player-led AI squads in compatible scenarios: Conflict, Game
+Master (by possessing a soldier) and Arma Commander: Actual among them.
 
+- *0.3.4:* the game's own command wheel overrides AiO: a wheel order to move, follow, stop
+  or get in releases men you told to hold, and a wheel fire order ends per-man
+  fire orders (Hold fire on selected men, Fire on my lead).
+- *0.3.4:* a soldier under a player's control (Game Master or another mod's possession) is
+  left to that player: nobody can select or order him until the AI has him back.
 - Voice replies come from supported whole-squad commands routed through the
   game's commanding system. Individual and GM-possession orders use AiO text
   feedback instead.
@@ -369,8 +394,8 @@ AiO works with player-led AI squads in compatible scenarios.
 
 Report in [Discord](https://discord.gg/WK8xGSztB) under **#issues** (choose **AiO Command Menu**);
 use **#suggestions** for ideas. No GitHub account needed. Search existing posts first.
-Alternatively, use [GitHub Issues](https://github.com/propst-design/AIOCommandMenu/issues)
-(New issue > Bug report). For either route, include the mod and game versions, scenario, session
+Alternatively, use [GitHub Issues](https://github.com/propst-design/AIOCommandMenu/issues/new/choose)
+(**Bug report** or **Feature request**). For either route, include the mod and game versions, scenario, session
 type, other mods, exact menu path, selected recipients and camera/map targeting.
 Describe what happened and what you expected.
 
