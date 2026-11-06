@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.3.4 — unreleased
+## 0.3.5 — unreleased
+
+## 0.3.4 — released
 
 - Works with Arma Reforger 1.9: checked against the new game version, no changes were needed.
 - Loads with long mod lists. Every loaded mod shares one engine limit on the script set-up that runs as the game loads, and with a big stack (ACE, a content pack, AiO and more) it ran over and the game refused to load its scripts. AiO Command Menu now does that set-up once the game has started instead, so it no longer counts against the limit.
