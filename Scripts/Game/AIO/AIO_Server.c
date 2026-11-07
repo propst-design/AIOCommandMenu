@@ -181,6 +181,8 @@ class AIO_Server
 		ChimeraCharacter caller = ChimeraCharacter.Cast(pc.GetControlledEntity());
 		if (caller && caller.GetCharacterController() && (caller.GetCharacterController().IsDead() || caller.GetCharacterController().IsUnconscious()))
 			return "You can't give orders now";
+		if (AIO_Recruit.IsOrder(order))
+			return AIO_Recruit.Order(pc, order, members, point, target);
 
 		SCR_AIGroup slave = Slave(playerId);
 		if (!slave)

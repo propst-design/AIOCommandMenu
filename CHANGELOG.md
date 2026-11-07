@@ -2,6 +2,8 @@
 
 ## 0.3.5 — unreleased
 
+- New: More > Recruit / dismiss. Aim at an AI soldier of your side to recruit him, or his whole AI squad, or take every free soldier of your side within 30 m. Dismiss selected men and they leave together as their own AI squad, waiting where they stand, ready for another player to recruit: that is how you trade men. Destroy selected men, the soldier you aim at or his whole squad to remove them from the game. Squads a player leads or belongs to are never touched, destroying the other side is for admins, and on servers the server's limit on AI per player squad still applies to players who aren't admins.
+
 ## 0.3.4 — released
 
 - Works with Arma Reforger 1.9: checked against the new game version, no changes were needed.

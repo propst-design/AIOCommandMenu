@@ -23,6 +23,7 @@
 //                         a "possessed" man keeps the human's stance and posture, leaves the roster, gets his orders back (#16).
 //   -aioContactTest 1 : native firefight, retained orders, danger interruption and arrival-driven bounding.
 //   -aioGarrisonTest 1 : Garrison from 50 m on several building kinds (AIO_GarrisonTest.c).
+//   -aioSquadTradeTest 1 : recruit, dismiss, trade and destroy soldiers between squads (AIO_SquadTradeTest.c).
 //   -aioFormationTest 1 : rifle squad walks legs in Column, Staggered column, Line, Wedge; shapes measured on the move.
 // Prints "[AIO] TEST <name> PASS|FAIL ..." lines and "[AIO] TEST COMPLETE".
 class AIO_Test
@@ -153,6 +154,14 @@ class AIO_Test
 		{
 			Print("[AIO] TEST garrison: starting in 8 s");
 			GetGame().GetCallqueue().CallLater(AIO_GarrisonTest.Start, 8000, false);
+			return;
+		}
+		string tradeValue;
+		System.GetCLIParam("aioSquadTradeTest", tradeValue);
+		if (tradeValue == "1" && Replication.IsServer())
+		{
+			Print("[AIO] TEST squadtrade: starting in 4 s");
+			GetGame().GetCallqueue().CallLater(AIO_SquadTradeTest.Start, 4000, false);
 			return;
 		}
 		bool specialTest = s_bLeadershipTest || s_bGrenadesTest || s_bSpecialistsTest || s_bRepairTest || s_bFireMissionTest || s_bExplosivesTest || s_bBehaviourTest || s_bContactTest;
