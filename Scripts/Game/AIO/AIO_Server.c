@@ -234,7 +234,7 @@ class AIO_Server
 				Members(slave, helpers);
 			return Specialist(helpers, pc.GetControlledEntity(), order, point, target, playerId);
 		}
-		if (AIO_Behaviour.IsOrder(order))
+		if (AIO_Behaviour.IsOrder(order) || AIO_Lights.IsOrder(order))
 		{
 			array<IEntity> modeMen = {};
 			if (members && !members.IsEmpty())
@@ -244,6 +244,8 @@ class AIO_Server
 			modeMen.RemoveItem(pc.GetControlledEntity());
 			if (modeMen.IsEmpty())
 				return "No soldiers selected under your command";
+			if (AIO_Lights.IsOrder(order))
+				return AIO_Lights.Order(modeMen, order);
 			return AIO_Behaviour.Order(modeMen, order);
 		}
 		// Formations belong to the whole squad, also when men are selected.
@@ -666,6 +668,8 @@ class AIO_Server
 			return AIO_Support.Order(slave, bodies, player, order, point, EntityOf(target), playerId);
 		if (AIO_Behaviour.IsOrder(order))
 			return AIO_Behaviour.Order(bodies, order);
+		if (AIO_Lights.IsOrder(order))
+			return AIO_Lights.Order(bodies, order);
 		if (AIO_Explosives.IsOrder(order))
 			return AIO_Explosives.Order(bodies, player, order, point, EntityOf(target), playerId);
 		if (AIO_Grenades.IsOrder(order))

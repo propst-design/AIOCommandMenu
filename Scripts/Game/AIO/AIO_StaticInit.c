@@ -22,6 +22,7 @@ class AIO_StaticInit
 		AIO_FireSupport.AIO_InitStatics();
 		AIO_GarrisonTest.AIO_InitStatics();
 		AIO_Grenades.AIO_InitStatics();
+		AIO_Lights.AIO_InitStatics();
 		AIO_Logistics.AIO_InitStatics();
 		AIO_Maneuvers.AIO_InitStatics();
 		AIO_Repair.AIO_InitStatics();

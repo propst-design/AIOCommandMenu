@@ -2,6 +2,8 @@
 
 ## 0.3.5 — unreleased
 
+- Stance & speed > Lights: Lights off tells the whole squad, or the soldiers you select, to keep their lights off. Their flashlights go off, a man driving switches off his vehicle's headlights, high beams and hazard lights, and the lights stay off (the men stop switching them on at night, and anything that comes on again is put out) until you choose Lights: own choice, which hands them back to the game's AI. The squad bar shows "Lights off".
+
 ## 0.3.4 — released
 
 - Works with Arma Reforger 1.9: checked against the new game version, no changes were needed.

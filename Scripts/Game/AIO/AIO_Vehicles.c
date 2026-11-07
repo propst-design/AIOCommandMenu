@@ -542,11 +542,13 @@ class AIO_Vehicles
 	}
 
 	// keep = true: the AI driver doesn't touch the lights; false = his own choice again.
+	// Either way it replaces a Stance & speed > Lights off order he had (AIO_Lights).
 	static void LeaveLightsAlone(IEntity driver, bool keep)
 	{
 		AIAgent agent = AIO_Tasks.AgentOf(driver);
 		if (!agent)
 			return;
+		AIO_Lights.Forget(agent);
 		SCR_AICharacterSettingsComponent settings = SCR_AICharacterSettingsComponent.Cast(agent.FindComponent(SCR_AICharacterSettingsComponent));
 		if (!settings)
 			return;
