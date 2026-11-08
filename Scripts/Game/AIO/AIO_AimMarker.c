@@ -123,7 +123,7 @@ class AIO_AimMarker
 			case AIO_EOrder.ASSAULT: case AIO_EOrder.SUPPRESS: case AIO_EOrder.BOUND:
 			case AIO_EOrder.GREN_FRAG: case AIO_EOrder.GREN_SMOKE: case AIO_EOrder.GREN_SMOKE_SCREEN:
 			case AIO_EOrder.FIRE_HE_3: case AIO_EOrder.FIRE_HE_6: case AIO_EOrder.FIRE_SMOKE: case AIO_EOrder.FIRE_ILLUM:
-			case AIO_EOrder.ADMIN_KILL_TARGET:
+			case AIO_EOrder.ADMIN_KILL_TARGET: case AIO_EOrder.DESTROY_MAN: case AIO_EOrder.DESTROY_SQUAD:
 				return AIO_EAimType.ATTACK;
 			case AIO_EOrder.DEF_GARRISON: case AIO_EOrder.DEF_CLEAR: case AIO_EOrder.DEF_FORTIFY: case AIO_EOrder.WATCH_DIRECTION:
 				return AIO_EAimType.DEFEND;

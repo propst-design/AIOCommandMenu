@@ -97,7 +97,7 @@ from the map, a trace from above identifies the object under the cursor.
 | 5 | R.O.E. | Fire at will; Return fire only; Hold fire; Engage at will; Disengage |
 | 6 | Stance & speed | Stand; Crouch; Prone; Auto; Copy my stance; Speed (Walk, Run, Sprint, Auto); Behaviour (Safe, Aware, Combat, Stealth); Lights (Lights off, Own choice; 0.3.5) |
 | 7 | Supplies | Heal up!; Rearm; Rearm from that; Take that weapon; Treat that soldier; Treat me; Give me ammo; Give me bandages; Explosives & mines |
-| 8 | More | Squad bar on/off; Admin (when allowed); Fire mission (mortar); Routes; Become leader; Step down as leader; Aim marker (0.3.4); Mouse control on/off (0.3.4) |
+| 8 | More | Squad bar on/off; Admin (when allowed); Fire mission (mortar); Routes; Become leader; Step down as leader; Aim marker (0.3.4); Mouse control on/off (0.3.4); Recruit / dismiss (0.3.5) |
 | 9 | HALT | Stop the current movement assignment |
 | 0 | Select members | Select individuals or colour teams |
 
@@ -111,6 +111,20 @@ another member (or leaves it vacant when you are alone); in a possessed AI group
 it hands the lead to a living AI squadmate. These actions use your own group and
 ignore member selection. Game Master possession still permits AiO commands after
 stepping down. Native leadership changes can reset custom squad names/descriptions.
+
+*0.3.5:* **More > Recruit / dismiss** changes who is in your squad:
+- **Recruit that soldier / Recruit his whole squad**: aim at an AI soldier of your own
+  side (within 100 m) to take him, or every man of his AI squad, into your squad.
+  **Recruit everyone nearby** takes every free soldier of your side within 30 m.
+- **Dismiss selected men**: the selected men leave together as an AI squad of their
+  own and wait where they are. Another leader can recruit them: that is how men are
+  traded between players.
+- **Destroy selected men / that soldier / his whole squad** removes them from the
+  game (no body is left). Destroying soldiers of the other side is for admins.
+
+Soldiers in a squad that a player leads or belongs to (including one a player has
+taken control of) can't be recruited or destroyed. On servers, the server's limit
+on AI per player squad still applies unless you are an admin.
 
 ## Movement and combat
 

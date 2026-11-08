@@ -119,6 +119,13 @@ enum AIO_EOrder
 	AIM_DISTANCE,
 	AIM_SIZE,
 	MOUSE_CONTROL, // client only, never sent
+	RECRUIT_MAN,
+	RECRUIT_SQUAD,
+	RECRUIT_NEARBY,
+	DISMISS_SELECTED,
+	DESTROY_SELECTED,
+	DESTROY_MAN,
+	DESTROY_SQUAD,
 	LIGHTS_OFF,
 	LIGHTS_FREE
 }
@@ -337,6 +344,15 @@ class AIO_MenuTree
 		aim.Order("Distance on/off", AIO_EOrder.AIM_DISTANCE);
 		aim.Order("Size: small / medium / large", AIO_EOrder.AIM_SIZE);
 		more.Order("Mouse control on/off (wheel, left click, right click)", AIO_EOrder.MOUSE_CONTROL);
+		// Take AI soldiers or squads of your side in, let men go as their own squad, remove soldiers (AIO_Recruit.c).
+		AIO_MenuItem recruit = more.Page("Recruit / dismiss");
+		recruit.Order("Recruit that soldier", AIO_EOrder.RECRUIT_MAN, AIO_ETarget.POINT);
+		recruit.Order("Recruit his whole squad", AIO_EOrder.RECRUIT_SQUAD, AIO_ETarget.POINT);
+		recruit.Order("Recruit everyone nearby (30 m)", AIO_EOrder.RECRUIT_NEARBY);
+		recruit.Order("Dismiss selected men (they form their own squad)", AIO_EOrder.DISMISS_SELECTED);
+		recruit.Order("Destroy selected men", AIO_EOrder.DESTROY_SELECTED);
+		recruit.Order("Destroy that soldier", AIO_EOrder.DESTROY_MAN, AIO_ETarget.POINT);
+		recruit.Order("Destroy his whole squad", AIO_EOrder.DESTROY_SQUAD, AIO_ETarget.POINT);
 
 		root.Order("HALT", AIO_EOrder.HALT);
 		return root;

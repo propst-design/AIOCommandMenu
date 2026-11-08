@@ -2,6 +2,7 @@
 
 ## 0.3.5 — unreleased
 
+- New: More > Recruit / dismiss. Aim at an AI soldier of your side to recruit him, or his whole AI squad, or take every free soldier of your side within 30 m. Dismiss selected men and they leave together as their own AI squad, waiting where they stand, ready for another player to recruit: that is how you trade men. Destroy selected men, the soldier you aim at or his whole squad to remove them from the game. Squads a player leads or belongs to are never touched, destroying the other side is for admins, and on servers the server's limit on AI per player squad still applies to players who aren't admins.
 - Stance & speed > Lights: Lights off tells the whole squad, or the soldiers you select, to keep their lights off. Their flashlights go off, a man driving switches off his vehicle's headlights, high beams and hazard lights, and the lights stay off (the men stop switching them on at night, and anything that comes on again is put out) until you choose Lights: own choice, which hands them back to the game's AI. The squad bar shows "Lights off".
 
 ## 0.3.4 — released

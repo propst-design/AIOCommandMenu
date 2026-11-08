@@ -25,6 +25,8 @@ class AIO_StaticInit
 		AIO_Lights.AIO_InitStatics();
 		AIO_Logistics.AIO_InitStatics();
 		AIO_Maneuvers.AIO_InitStatics();
+		AIO_Recruit.AIO_InitStatics();
+		AIO_SquadTradeTest.AIO_InitStatics();
 		AIO_Repair.AIO_InitStatics();
 		AIO_Routes.AIO_InitStatics();
 		AIO_Server.AIO_InitStatics();
