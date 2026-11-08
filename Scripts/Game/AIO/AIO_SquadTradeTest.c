@@ -242,6 +242,24 @@ class AIO_SquadTradeTest
 	// The recruits walked over into the squad's formation; Recruit nearby; dismiss; trade; destroy.
 	protected static void Formation()
 	{
+		// In formation = no farther from the leader than the squad's farthest slot (its own formation and
+		// size: the outer wedge slots of an eight-man squad lie beyond 15 m) plus 5 m, and closer than he was.
+		float slotLimit = 15;
+		string formation = AIO_Formations.Current(s_A);
+		AIFormationDefinition definition;
+		if (!formation.IsEmpty())
+			definition = GetGame().GetAIWorld().GetFormation(formation);
+		if (definition)
+		{
+			int slots = Count(s_A);
+			for (int slot = 1; slot < slots; slot++)
+			{
+				vector offset = definition.GetOffsetPosition(slot);
+				float reach = Math.Sqrt(offset[0] * offset[0] + offset[2] * offset[2]) + 5;
+				if (reach > slotLimit)
+					slotLimit = reach;
+			}
+		}
 		int closer;
 		string distances;
 		foreach (int i, IEntity recruit : s_aRecruits)
@@ -250,10 +268,11 @@ class AIO_SquadTradeTest
 				continue;
 			float now = vector.Distance(recruit.GetOrigin(), s_LeaderA.GetOrigin());
 			distances += string.Format(" %1->%2", Math.Round(s_aRecruitStart[i]), Math.Round(now));
-			if (now < 15 && now < s_aRecruitStart[i])
+			if (now < slotLimit && now < s_aRecruitStart[i])
 				closer++;
 		}
-		Check("recruits-in-formation", closer == s_aRecruits.Count() && closer > 0, "metres from the leader:" + distances);
+		Check("recruits-in-formation", closer == s_aRecruits.Count() && closer > 0,
+			string.Format("formation %1, limit %2 m; metres from the leader:%3", formation, Math.Round(slotLimit), distances));
 
 		// Recruit nearby: the near team joins; the possessed team (25 m) is refused, nobody else in 30 m.
 		int before = Count(s_A);

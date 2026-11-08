@@ -249,7 +249,7 @@ class AIO_Recruit
 
 	protected static string Recruit(SCR_AIGroup squad, IEntity leader, bool admin, array<IEntity> men)
 	{
-		int room = Room(squad, admin);
+		int room = SquadRoom(squad, admin);
 		if (room == 0)
 			return "Your squad is full (server limit for AI in a squad)";
 		int taken;
@@ -283,7 +283,7 @@ class AIO_Recruit
 
 	// How many more AI a player's squad may take: the server's commanding limit, which the vanilla
 	// recruit command keeps too. Admins and possessed AI squads have none. -1 = no limit.
-	protected static int Room(SCR_AIGroup squad, bool admin)
+	protected static int SquadRoom(SCR_AIGroup squad, bool admin)
 	{
 		if (admin || !squad.IsSlave())
 			return -1;
