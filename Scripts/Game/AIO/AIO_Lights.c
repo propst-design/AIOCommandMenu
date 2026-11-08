@@ -11,23 +11,41 @@
 // - Lights off: that setting forbids him to touch his lights in every behaviour, his flashlights
 //   go off and so do the headlights, high beams and hazard lights of a vehicle he drives. The
 //   watchdog puts out whatever comes on again (a flashlight back from his pack, a lit vehicle he
-//   takes the wheel of, another mod) until he is told otherwise.
-// - Lights: own choice: the setting goes and the game decides again.
-// A Vehicles > Vehicle controls lights order to his vehicle replaces it for the driver.
+//   takes the wheel of, another mod) until he is told otherwise or leaves the squad.
+// - Lights: own choice: Lights off ends and the game decides again. It only undoes Lights off: a
+//   Vehicles > Vehicle controls lights order a driver has stays until Drivers handle the lights.
+// A Vehicle controls lights order to his vehicle replaces Lights off for the driver, and Lights
+// off replaces a Vehicle controls lights order: the newer order wins.
+// The order covers the men in the squad when it is given; men who join later choose their own.
 
 class AIO_Lights
 {
-	protected static ref array<AIAgent> s_aAgents; // men told to keep their lights off
+	// The "came on again" line: at most once a minute per man, so another mod that keeps
+	// re-lighting a lamp doesn't flood the log.
+	static const float PRINT_GAP_MS = 60000;
+
+	// Men told to keep their lights off, each with the leader who told them and the squad they
+	// were in (parallel arrays).
+	protected static ref array<AIAgent> s_aAgents;
+	protected static ref array<IEntity> s_aLeaders;
+	protected static ref array<SCR_AIGroup> s_aSquads;
+	protected static ref array<float> s_aPrintAt;
 	// Called by AIO_StaticInit at game start (static initializer budget: tools/check_static_init.py).
 	static void AIO_InitStatics()
 	{
 		s_aAgents = {};
+		s_aLeaders = {};
+		s_aSquads = {};
+		s_aPrintAt = {};
 	}
 
 	// Mission end (AIO_Game.c): the men belong to the world being torn down.
 	static void Cleanup()
 	{
 		s_aAgents.Clear();
+		s_aLeaders.Clear();
+		s_aSquads.Clear();
+		s_aPrintAt.Clear();
 	}
 
 	static bool IsOrder(int order)
@@ -35,28 +53,40 @@ class AIO_Lights
 		return order == AIO_EOrder.LIGHTS_OFF || order == AIO_EOrder.LIGHTS_FREE;
 	}
 
-	static string Order(array<IEntity> bodies, int order)
+	// leader: the player who gave it (null in tests); squad: the squad the men are in.
+	static string Order(array<IEntity> bodies, int order, IEntity leader, SCR_AIGroup squad)
 	{
 		bool dark = order == AIO_EOrder.LIGHTS_OFF;
 		int count, torches, vehicles;
 		foreach (IEntity body : bodies)
 		{
 			AIAgent agent = AIO_Tasks.AgentOf(body);
+			// Own choice only undoes Lights off: a man without it may have a Vehicle controls
+			// lights order, and that stays.
+			if (!dark && !IsDark(agent))
+				continue;
 			if (!Allow(agent, !dark))
 				continue;
 			count++;
-			s_aAgents.RemoveItem(agent);
+			Drop(agent);
 			if (!dark)
 				continue;
 			s_aAgents.Insert(agent);
+			s_aLeaders.Insert(leader);
+			s_aSquads.Insert(squad);
+			s_aPrintAt.Insert(0);
 			torches += FlashlightsOff(body);
 			if (VehicleLightsOff(body))
 				vehicles++;
 		}
+		if (!dark)
+		{
+			if (count == 0)
+				return "None of them have Lights off";
+			return string.Format("%1 men choose their own lights again", count);
+		}
 		if (count == 0)
 			return "No soldiers under your command";
-		if (!dark)
-			return string.Format("%1 men choose their own lights again", count);
 		AIO_Tasks.Watch();
 		string reply = string.Format("%1 men keep their lights off", count);
 		if (torches > 0 || vehicles > 0)
@@ -171,13 +201,54 @@ class AIO_Lights
 	// light setting: the watchdog must not switch off what that order turned on.
 	static void Forget(AIAgent agent)
 	{
-		s_aAgents.RemoveItem(agent);
+		Drop(agent);
+	}
+
+	// He leaves the squad (AIO_Recruit.Clean: dismissed, destroyed) or the watchdog finds him
+	// gone from it: Lights off ends for him and the game decides his lights again.
+	static void Release(AIAgent agent)
+	{
+		if (!IsDark(agent))
+			return;
+		Drop(agent);
+		SCR_AICharacterSettingsComponent settings = SCR_AICharacterSettingsComponent.Cast(agent.FindComponent(SCR_AICharacterSettingsComponent));
+		if (settings)
+			settings.RemoveSettingsOfTypeAndOrigin(SCR_AICharacterLightInteractionSettingBase, SCR_EAISettingOrigin.COMMANDING);
+	}
+
+	protected static void Drop(AIAgent agent)
+	{
+		int i = s_aAgents.Find(agent);
+		if (i >= 0)
+			DropAt(i);
+	}
+
+	protected static void DropAt(int i)
+	{
+		s_aAgents.Remove(i);
+		s_aLeaders.Remove(i);
+		s_aSquads.Remove(i);
+		s_aPrintAt.Remove(i);
+	}
+
+	// Still in the squad that was told? The leader who gave the order must still command him
+	// (AIO_Server.StillCommands); while that leader is dead or the order came without one, the
+	// man must still be in the squad he was in.
+	protected static bool StillInSquad(int i, AIAgent agent, IEntity body)
+	{
+		IEntity leader = s_aLeaders[i];
+		if (leader && AIO_Server.IsAlive(leader) && !AIO_Server.StillCommands(leader, body))
+			return false;
+		SCR_AIGroup squad = s_aSquads[i];
+		return !squad || agent.GetParentGroup() == squad;
 	}
 
 	// Called by the watchdog once a second: whatever came on again goes out. A man a player
-	// possesses keeps the order but is left alone (#16) until the AI has him back.
+	// possesses keeps the order but is left alone (#16) until the AI has him back; a man who
+	// left the squad is released.
 	static void Tick()
 	{
+		float now = GetGame().GetWorld().GetWorldTime();
 		for (int i = s_aAgents.Count() - 1; i >= 0; i--)
 		{
 			AIAgent agent = s_aAgents[i];
@@ -186,15 +257,24 @@ class AIO_Lights
 				body = agent.GetControlledEntity();
 			if (!body || !AIO_Server.IsAlive(body))
 			{
-				s_aAgents.Remove(i);
+				DropAt(i);
+				continue;
+			}
+			if (!StillInSquad(i, agent, body))
+			{
+				Print(string.Format("[AIO] LIGHTS %1 left the squad: Lights off ends for him", AIO_Server.NameOf(body)));
+				Release(agent);
 				continue;
 			}
 			if (AIO_Server.IsPlayerControlled(body))
 				continue;
 			int torches = FlashlightsOff(body);
 			bool vehicle = VehicleLightsOff(body);
-			if (torches > 0 || vehicle)
+			if ((torches > 0 || vehicle) && now >= s_aPrintAt[i])
+			{
+				s_aPrintAt[i] = now + PRINT_GAP_MS;
 				Print(string.Format("[AIO] LIGHTS %1: lights came on again, switched off (%2 flashlights, vehicle %3)", AIO_Server.NameOf(body), torches, vehicle));
+			}
 		}
 	}
 }

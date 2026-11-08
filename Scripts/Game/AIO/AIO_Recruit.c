@@ -373,7 +373,7 @@ class AIO_Recruit
 	}
 
 	// Ends everything AiO has a man of ours doing or set on him (tasks, per-man fire rules, behaviour
-	// mode, stance and pace), so he leaves the squad or the game with nothing of ours left behind.
+	// mode, stance, pace and Lights off), so he leaves the squad or the game with nothing of ours left behind.
 	static void Clean(IEntity man)
 	{
 		AIAgent agent = AIO_Tasks.AgentOf(man);
@@ -387,6 +387,7 @@ class AIO_Recruit
 			AIO_Behaviour.Set(agent, AIO_EBehaviour.AWARE);
 		AIO_Tasks.SetStance(agent, -1);
 		AIO_Tasks.SetSpeed(agent, -1);
+		AIO_Lights.Release(agent);
 	}
 
 	// ---------------------------------------------------------------- destroy

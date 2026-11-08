@@ -247,7 +247,7 @@ class AIO_Server
 			if (modeMen.IsEmpty())
 				return "No soldiers selected under your command";
 			if (AIO_Lights.IsOrder(order))
-				return AIO_Lights.Order(modeMen, order);
+				return AIO_Lights.Order(modeMen, order, pc.GetControlledEntity(), slave);
 			return AIO_Behaviour.Order(modeMen, order);
 		}
 		// Formations belong to the whole squad, also when men are selected.
@@ -671,7 +671,7 @@ class AIO_Server
 		if (AIO_Behaviour.IsOrder(order))
 			return AIO_Behaviour.Order(bodies, order);
 		if (AIO_Lights.IsOrder(order))
-			return AIO_Lights.Order(bodies, order);
+			return AIO_Lights.Order(bodies, order, player, slave);
 		if (AIO_Explosives.IsOrder(order))
 			return AIO_Explosives.Order(bodies, player, order, point, EntityOf(target), playerId);
 		if (AIO_Grenades.IsOrder(order))

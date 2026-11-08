@@ -2864,6 +2864,12 @@ class AIO_Test
 		string reply = AIO_Server.ExecuteBodies(s_Group, AIO_EOrder.LIGHTS_FREE, members, vector.Zero, null, RplId.Invalid(), 0);
 		AIAgent agent = AIO_Tasks.AgentOf(InSeat(ECompartmentType.PILOT));
 		Check("lights-free", AIO_Lights.MayTouchLights(agent) && !AIO_Lights.IsDark(agent), reply);
+		// Own choice only undoes Lights off: a driver's Vehicle controls lights order stays.
+		Print("[AIO] TEST vehicle: " + AIO_Vehicles.Controls(members, AIO_EOrder.VEH_LIGHTS_OFF));
+		reply = AIO_Server.ExecuteBodies(s_Group, AIO_EOrder.LIGHTS_FREE, members, vector.Zero, null, RplId.Invalid(), 0);
+		AIAgent wheel = AIO_Tasks.AgentOf(InSeat(ECompartmentType.PILOT));
+		Check("lights-free-keeps-vehicle-order", wheel && !AIO_Lights.MayTouchLights(wheel) && reply.Contains("None of them"), reply);
+		Print("[AIO] TEST vehicle: " + AIO_Vehicles.Controls(members, AIO_EOrder.VEH_LIGHTS_AUTO));
 		Print("[AIO] TEST vehicle: " + AIO_Vehicles.Controls(members, AIO_EOrder.VEH_ENGINE_OFF));
 		reply = AIO_Vehicles.GetOut(members, s_Group, AIO_EOrder.VEH_DISEMBARK);
 		Print("[AIO] TEST vehicle: " + reply);

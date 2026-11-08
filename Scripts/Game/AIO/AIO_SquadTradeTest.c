@@ -24,6 +24,7 @@ class AIO_SquadTradeTest
 	protected static SCR_AIGroup s_A, s_B, s_Free, s_Near, s_Possessed, s_Far, s_Enemy;
 	protected static IEntity s_LeaderA, s_LeaderB;
 	protected static IEntity s_Dismissed1, s_Dismissed2;
+	protected static IEntity s_Mover;
 	protected static vector s_vBase;
 	protected static int s_iPass, s_iFail, s_iCountA;
 
@@ -294,6 +295,12 @@ class AIO_SquadTradeTest
 		else
 			Check("squad-limit", true, "no commanding manager on this world: no limit to keep");
 
+		// Lights off for the whole squad first: the men dismissed leave it behind, the rest keep it.
+		array<IEntity> squadMen = {};
+		AIO_Server.Members(s_A, squadMen);
+		string lightsReply = AIO_Lights.Order(squadMen, AIO_EOrder.LIGHTS_OFF, s_LeaderA, s_A);
+		Check("lights-off-squad", lightsReply.Contains("keep their lights off"), lightsReply);
+
 		// Dismiss two men, one in Stealth with his own fire rule: they leave clean, as a squad of their side.
 		s_Dismissed1 = Man(s_A, 0);
 		s_Dismissed2 = Man(s_A, 1);
@@ -318,6 +325,10 @@ class AIO_SquadTradeTest
 		bool unlisted = !gone || !s_A.GetAIMembers() || !s_A.GetAIMembers().Contains(gone);
 		Check("dismiss-clean", AIO_Behaviour.ModeOf(AIO_Tasks.AgentOf(s_Dismissed1)) == AIO_EBehaviour.AWARE && AIO_Maneuvers.ROEOf(s_Dismissed1) == -1 && unlisted,
 			string.Format("mode %1, own ROE %2, still listed %3", AIO_Behaviour.ModeOf(AIO_Tasks.AgentOf(s_Dismissed1)), AIO_Maneuvers.ROEOf(s_Dismissed1), !unlisted));
+		AIAgent left = AIO_Tasks.AgentOf(s_Dismissed1);
+		AIAgent stayed = AIO_Tasks.AgentOf(Man(s_A, 0));
+		Check("dismiss-lights", left && !AIO_Lights.IsDark(left) && AIO_Lights.MayTouchLights(left) && AIO_Lights.IsDark(stayed),
+			string.Format("dismissed: lights off %1, may touch lights %2; a man who stayed: lights off %3", AIO_Lights.IsDark(left), AIO_Lights.MayTouchLights(left), AIO_Lights.IsDark(stayed)));
 		GetGame().GetCallqueue().CallLater(Trade, 3000, false);
 	}
 
@@ -355,6 +366,28 @@ class AIO_SquadTradeTest
 				gone = false;
 		}
 		Check("destroyed-gone", gone && Count(s_A) == s_iCountA - 1, string.Format("A %1, was %2", Count(s_A), s_iCountA));
+
+		// A man who leaves the squad some other way (a Game Master move, another mod): the watchdog
+		// ends Lights off for him within a second or two.
+		s_Mover = Man(s_A, 0);
+		AIAgent mover = AIO_Tasks.AgentOf(s_Mover);
+		if (!mover || !AIO_Lights.IsDark(mover))
+		{
+			Check("left-squad-lights", false, "no man of A with Lights off left to move");
+			Finish();
+			return;
+		}
+		s_A.RemoveAgentFromControlledEntity(s_Mover);
+		s_B.AddAgentFromControlledEntity(s_Mover);
+		GetGame().GetCallqueue().CallLater(LeftLights, 2500, false);
+	}
+
+	protected static void LeftLights()
+	{
+		AIAgent agent = AIO_Tasks.AgentOf(s_Mover);
+		bool moved = GroupOf(s_Mover) == s_B;
+		Check("left-squad-lights", moved && agent && !AIO_Lights.IsDark(agent) && AIO_Lights.MayTouchLights(agent),
+			string.Format("moved to B %1, lights off %2, may touch lights %3", moved, AIO_Lights.IsDark(agent), AIO_Lights.MayTouchLights(agent)));
 		Finish();
 	}
 }

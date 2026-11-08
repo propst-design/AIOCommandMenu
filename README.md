@@ -187,12 +187,18 @@ men on foot; there is no Careless mode.
 
 *0.3.5:* **Stance & speed > Lights** sets light discipline. **Lights off** switches
 off the recipients' flashlights and, for a man at the wheel, his vehicle's
-headlights, high beams and hazard lights. They stay off through later orders: the
-men no longer switch lights on themselves, and anything that comes on again is put
-out within a second. **Lights: own choice** hands the lights back to the game's AI
-(at night its drivers use headlights while nothing threatens them). A Vehicle
-controls lights order to a driver replaces Lights off for him. A turret's
-searchlight and a vehicle's other lights are left alone.
+headlights, high beams and hazard lights. It covers the men in the squad when you
+give it: men who join later choose their own lights. They stay off through later
+orders: the men no longer switch lights on themselves, and anything that comes on
+again is put out within a second. A man who leaves the squad (dismissed, moved by
+a Game Master or another mod) chooses his own lights again.
+**Lights: own choice** ends Lights off and hands the lights back to the game's AI
+(at night its drivers use headlights while nothing threatens them); it leaves a
+Vehicle controls lights order alone. Between Lights off and a Vehicle controls
+lights order to a driver, the newer order wins. A turret's searchlight and a
+vehicle's other lights are left alone. Weapon-mounted lights: the game's own
+weapons have none (Arma Reforger 1.9 has rails for them but no weapon light); a
+mod's weapon light goes off only if it is a flashlight gadget.
 
 **Bound to position** needs at least two soldiers on foot. Two elements
 alternate moves of up to 20 m toward spread posts at the camera/map destination.
