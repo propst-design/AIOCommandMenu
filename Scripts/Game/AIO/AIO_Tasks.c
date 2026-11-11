@@ -648,6 +648,13 @@ class AIO_Tasks
 				label += ", ";
 			label += mode;
 		}
+		string lights = AIO_Lights.Label(agent);
+		if (!lights.IsEmpty())
+		{
+			if (!label.IsEmpty())
+				label += ", ";
+			label += lights;
+		}
 		return label;
 	}
 
@@ -947,6 +954,7 @@ class AIO_Tasks
 	{
 		KeepStances();
 		AIO_Behaviour.Tick();
+		AIO_Lights.Tick();
 		AIO_Explosives.Tick();
 		AIO_Grenades.Tick();
 		AIO_Repair.Tick();

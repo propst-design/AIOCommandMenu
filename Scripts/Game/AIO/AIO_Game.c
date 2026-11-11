@@ -29,6 +29,7 @@ modded class ArmaReforgerScripted
 		AIO_Tasks.Cleanup();
 		AIO_Maneuvers.Cleanup();
 		AIO_Behaviour.Cleanup();
+		AIO_Lights.Cleanup();
 		AIO_Explosives.Cleanup();
 		AIO_Grenades.Cleanup();
 		AIO_Repair.Cleanup();

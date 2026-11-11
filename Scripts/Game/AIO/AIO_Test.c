@@ -9,7 +9,7 @@
 //   -aioAttackTest 1 : Flank right, per-man ROE / engage / fire on my lead, Bound forward.
 //   -aioDefenseTest 1 : 360 defense, Garrison and Clear a building, Fortify.
 //   -aioTowerTest 1 : the defense test on the airfield control tower.
-//   -aioVehicleTest 1 : get in, switch seats, lights/engine, disembark, get out, eject, unflip.
+//   -aioVehicleTest 1 : get in, switch seats, lights/engine, lights off held / own choice, disembark, get out, eject, unflip.
 //   -aioTeleportTest 1 : map teleport with driver, crew, passenger, gunner and on-foot bodies.
 //   -aioRecoveryTest 1 : GM-style rifle squad, unreachable interior posts, cancel, formation recovery.
 //   -aioSupportTest 1 : watch direction, commanded medical treatment, routes, patrols and arrival reports.
@@ -77,6 +77,7 @@ class AIO_Test
 	static const ResourceName RIFLE_SQUAD = "{DDF3799FA1387848}Prefabs/Groups/BLUFOR/Group_US_RifleSquad.et";
 	protected static IEntity s_Vehicle;
 	protected static IEntity s_Gunner;
+	protected static IEntity s_TorchMan; // lights test: the passenger whose flashlight the test switches on
 	static const ResourceName HUMVEE = "{3EA6F47D95867114}Prefabs/Vehicles/Wheeled/M998/M1025_armed_M2HB.et";
 	static const ResourceName MORTAR = "{8094D99689ABE241}Prefabs/Weapons/Mortars/M252/Mortar_M252.et";
 	static const ResourceName TRIPOD = "{73530808E4B455BA}Prefabs/Weapons/Tripods/Tripod_M3_M2HB.et";
@@ -2792,10 +2793,86 @@ class AIO_Test
 		bool lit = lights != null && lights.GetLightsState(ELightType.Head);
 		bool running = controller != null && controller.IsEngineOn();
 		Check("lights-engine", lit && running, string.Format("lights %1, engine %2", lit, running));
+		// Stance & speed > Lights off: a passenger's flashlight goes on first, as the game's AI
+		// switches it; the order must put it and the headlights out, and keep them out.
+		s_TorchMan = null;
+		IEntity driver = InSeat(ECompartmentType.PILOT);
 		array<IEntity> members = {};
 		Squad(members);
+		foreach (IEntity member : members)
+		{
+			if (member != driver && TorchOn(member))
+			{
+				s_TorchMan = member;
+				break;
+			}
+		}
+		GetGame().GetCallqueue().CallLater(VehLightsOff, 2000, false);
+	}
+
+	// His first flashlight switched on the way the game's AI does it; false if he carries none.
+	protected static bool TorchOn(IEntity body)
+	{
+		SCR_GadgetManagerComponent gadgets = SCR_GadgetManagerComponent.GetGadgetManager(body);
+		if (!gadgets)
+			return false;
+		array<SCR_GadgetComponent> torches = gadgets.GetGadgetsByType(EGadgetType.FLASHLIGHT);
+		if (!torches || torches.IsEmpty() || !torches[0])
+			return false;
+		torches[0].ToggleActive(true, SCR_EUseContext.FROM_ACTION);
+		return true;
+	}
+
+	protected static void VehLightsOff()
+	{
+		if (s_TorchMan)
+			Check("lights-flashlight-on", AIO_Lights.FlashlightOn(s_TorchMan), AIO_Server.NameOf(s_TorchMan) + "'s flashlight switched on by the test");
+		else
+			Print("[AIO] TEST vehicle: no passenger carries a flashlight; the lights test checks the headlights only");
+		array<IEntity> members = {};
+		Squad(members);
+		string reply = AIO_Server.ExecuteBodies(s_Group, AIO_EOrder.LIGHTS_OFF, members, vector.Zero, null, RplId.Invalid(), 0);
+		Check("lights-off-order", reply.Contains("keep their lights off"), reply);
+		GetGame().GetCallqueue().CallLater(VehLightsDark, 2000, false);
+	}
+
+	protected static void VehLightsDark()
+	{
+		BaseLightManagerComponent lights = BaseLightManagerComponent.Cast(s_Vehicle.FindComponent(BaseLightManagerComponent));
+		IEntity driver = InSeat(ECompartmentType.PILOT);
+		bool head = lights && lights.GetLightsState(ELightType.Head);
+		bool torch = s_TorchMan && AIO_Lights.FlashlightOn(s_TorchMan);
+		bool touch = AIO_Lights.MayTouchLights(AIO_Tasks.AgentOf(driver));
+		string label = AIO_Tasks.TaskLabel(driver);
+		Check("lights-off", lights && !head && !torch && !touch && label.Contains("Lights off"),
+			string.Format("headlights %1, flashlight %2, driver may touch lights %3, squad bar '%4'", head, torch, touch, label));
+		// Something lights them again (another mod, a flashlight back from his pack): the order holds.
+		if (lights)
+			lights.SetLightsState(ELightType.Head, true);
+		if (s_TorchMan)
+			TorchOn(s_TorchMan);
+		GetGame().GetCallqueue().CallLater(VehLightsHeld, 3000, false);
+	}
+
+	protected static void VehLightsHeld()
+	{
+		BaseLightManagerComponent lights = BaseLightManagerComponent.Cast(s_Vehicle.FindComponent(BaseLightManagerComponent));
+		bool head = lights && lights.GetLightsState(ELightType.Head);
+		bool torch = s_TorchMan && AIO_Lights.FlashlightOn(s_TorchMan);
+		Check("lights-off-held", !head && !torch, string.Format("lit again; 3 s later headlights %1, flashlight %2", head, torch));
+		array<IEntity> members = {};
+		Squad(members);
+		string reply = AIO_Server.ExecuteBodies(s_Group, AIO_EOrder.LIGHTS_FREE, members, vector.Zero, null, RplId.Invalid(), 0);
+		AIAgent agent = AIO_Tasks.AgentOf(InSeat(ECompartmentType.PILOT));
+		Check("lights-free", AIO_Lights.MayTouchLights(agent) && !AIO_Lights.IsDark(agent), reply);
+		// Own choice only undoes Lights off: a driver's Vehicle controls lights order stays.
+		Print("[AIO] TEST vehicle: " + AIO_Vehicles.Controls(members, AIO_EOrder.VEH_LIGHTS_OFF));
+		reply = AIO_Server.ExecuteBodies(s_Group, AIO_EOrder.LIGHTS_FREE, members, vector.Zero, null, RplId.Invalid(), 0);
+		AIAgent wheel = AIO_Tasks.AgentOf(InSeat(ECompartmentType.PILOT));
+		Check("lights-free-keeps-vehicle-order", wheel && !AIO_Lights.MayTouchLights(wheel) && reply.Contains("None of them"), reply);
+		Print("[AIO] TEST vehicle: " + AIO_Vehicles.Controls(members, AIO_EOrder.VEH_LIGHTS_AUTO));
 		Print("[AIO] TEST vehicle: " + AIO_Vehicles.Controls(members, AIO_EOrder.VEH_ENGINE_OFF));
-		string reply = AIO_Vehicles.GetOut(members, s_Group, AIO_EOrder.VEH_DISEMBARK);
+		reply = AIO_Vehicles.GetOut(members, s_Group, AIO_EOrder.VEH_DISEMBARK);
 		Print("[AIO] TEST vehicle: " + reply);
 		GetGame().GetCallqueue().CallLater(VehDisembarked, 15000, false);
 	}

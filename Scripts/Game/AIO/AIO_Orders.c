@@ -125,7 +125,9 @@ enum AIO_EOrder
 	DISMISS_SELECTED,
 	DESTROY_SELECTED,
 	DESTROY_MAN,
-	DESTROY_SQUAD
+	DESTROY_SQUAD,
+	LIGHTS_OFF,
+	LIGHTS_FREE
 }
 
 // What an order needs from the player's side.
@@ -284,6 +286,10 @@ class AIO_MenuTree
 		behaviour.Order("Aware (normal)", AIO_EOrder.BEH_AWARE);
 		behaviour.Order("Combat (low and ready)", AIO_EOrder.BEH_COMBAT);
 		behaviour.Order("Stealth (low, slow, return fire)", AIO_EOrder.BEH_STEALTH);
+		// Light discipline: their flashlights and the vehicles they drive (AIO_Lights.c).
+		AIO_MenuItem lights = stance.Page("Lights");
+		lights.Order("Lights off (flashlights, headlights)", AIO_EOrder.LIGHTS_OFF);
+		lights.Order("Lights: own choice", AIO_EOrder.LIGHTS_FREE);
 
 		AIO_MenuItem supplies = root.Page("Supplies");
 		supplies.Order("Heal up!", AIO_EOrder.HEAL_UP);

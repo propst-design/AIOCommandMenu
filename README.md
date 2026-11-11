@@ -95,7 +95,7 @@ from the map, a trace from above identifies the object under the cursor.
 | 3 | Vehicles | Get in (Any seat, Driver, Gunner, Passenger); Switch seat; Get out; Disembark passengers; EJECT; Vehicle controls; Unflip that vehicle; Repair that vehicle |
 | 4 | Defense | Take cover; Garrison building; Clear building; 360 defense (radius); Fortify here; Watch that direction; Watch: own choice; Grenades & smoke |
 | 5 | R.O.E. | Fire at will; Return fire only; Hold fire; Engage at will; Disengage |
-| 6 | Stance & speed | Stand; Crouch; Prone; Auto; Copy my stance; Speed (Walk, Run, Sprint, Auto); Behaviour (Safe, Aware, Combat, Stealth) |
+| 6 | Stance & speed | Stand; Crouch; Prone; Auto; Copy my stance; Speed (Walk, Run, Sprint, Auto); Behaviour (Safe, Aware, Combat, Stealth); Lights (Lights off, Own choice; 0.3.5) |
 | 7 | Supplies | Heal up!; Rearm; Rearm from that; Take that weapon; Treat that soldier; Treat me; Give me ammo; Give me bandages; Explosives & mines |
 | 8 | More | Squad bar on/off; Admin (when allowed); Fire mission (mortar); Routes; Become leader; Step down as leader; Aim marker (0.3.4); Mouse control on/off (0.3.4); Recruit / dismiss (0.3.5) |
 | 9 | HALT | Stop the current movement assignment |
@@ -184,6 +184,21 @@ judges danger itself, so a mode shapes how men travel and wait, not how they fig
 
 A later Stance or Speed order replaces the mode's stance or pace. Modes apply to
 men on foot; there is no Careless mode.
+
+*0.3.5:* **Stance & speed > Lights** sets light discipline. **Lights off** switches
+off the recipients' flashlights and, for a man at the wheel, his vehicle's
+headlights, high beams and hazard lights. It covers the men in the squad when you
+give it: men who join later choose their own lights. They stay off through later
+orders: the men no longer switch lights on themselves, and anything that comes on
+again is put out within a second. A man who leaves the squad (dismissed, moved by
+a Game Master or another mod) chooses his own lights again.
+**Lights: own choice** ends Lights off and hands the lights back to the game's AI
+(at night its drivers use headlights while nothing threatens them); it leaves a
+Vehicle controls lights order alone. Between Lights off and a Vehicle controls
+lights order to a driver, the newer order wins. A turret's searchlight and a
+vehicle's other lights are left alone. Weapon-mounted lights: the game's own
+weapons have none (Arma Reforger 1.9 has rails for them but no weapon light); a
+mod's weapon light goes off only if it is a flashlight gadget.
 
 **Bound to position** needs at least two soldiers on foot. Two elements
 alternate moves of up to 20 m toward spread posts at the camera/map destination.
