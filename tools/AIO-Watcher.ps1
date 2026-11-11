@@ -187,8 +187,11 @@ function Write-Result($id, $lines) {
     $lines | Set-Content -LiteralPath (Join-Path $RequestDir "$id.result.txt") -Encoding UTF8
 }
 
+# Another server on port 2001 (ACA's or AiO's hidden test server, or a hosted game). Checks the port,
+# not any Reforger server process: a pak: server (ACA 2302, AiO 2303) runs beside a 2001 one, and
+# waiting on its process refused srv runs for the whole of a 2 h ACA pak: soak (11 Nov).
 function Other-ServerRunning {
-    return [bool](Get-Process -Name 'ArmaReforgerServer' -ErrorAction SilentlyContinue)
+    return (Test-PortListening 2001)
 }
 
 function Invoke-Push($id) {
@@ -272,7 +275,7 @@ function Invoke-Request($file) {
         # 'Unable to start replication', reported below.)
         $waited = 0
         while ((Other-ServerRunning) -and $waited -lt 600) { Start-Sleep -Seconds 5; $waited += 5 }
-        if (Other-ServerRunning) { Write-Result $id @('status=refused', 'reason=another Reforger server kept running'); return }
+        if (Other-ServerRunning) { Write-Result $id @('status=refused', 'reason=another Reforger server kept running on port 2001'); return }
         $profileDir = $ServerProfile
         New-Item -ItemType Directory -Force $profileDir | Out-Null
         # -aioCheats all: hidden dev servers have no host, so everyone gets the Admin page.
