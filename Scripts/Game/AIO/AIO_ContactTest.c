@@ -406,6 +406,7 @@ class AIO_ContactTest
 		if (observers) observers.RemoveObserverSP(22103);
 		GetGame().GetCallqueue().Remove(Sample);
 		Print(string.Format("[AIO] TEST RESULT %1 passed, %2 failed", s_iPass, s_iFail));
+		AIO_TestVerdict.Report(s_iPass, s_iFail);
 		Print("[AIO] TEST COMPLETE");
 	}
 }
