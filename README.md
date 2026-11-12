@@ -6,7 +6,7 @@
 > testing and pull requests. No direct repository access is needed.
 
 [![Game: Arma Reforger](https://img.shields.io/badge/Arma-Reforger-556b2f?style=flat-square)](https://reforger.armaplatform.com/)
-[![Workshop release: 0.3.3](https://img.shields.io/badge/Workshop-0.3.3-blue?style=flat-square)](https://reforger.armaplatform.com/workshop/629405AEFC950C12)
+[![Workshop release: 0.3.4](https://img.shields.io/badge/Workshop-0.3.4-blue?style=flat-square)](https://reforger.armaplatform.com/workshop/629405AEFC950C12)
 [![Standalone addon](https://img.shields.io/badge/Addon-Standalone-teal?style=flat-square)](#version-and-installation)
 [![License: GPL v3 or later](https://img.shields.io/badge/License-GPL--3.0--or--later-orange?style=flat-square)](LICENSE.md)
 
@@ -19,15 +19,16 @@ AiO is standalone: it requires only Arma Reforger (checked on 1.9, the current
 stable version), with no other mod dependencies. It uses the game's player-led AI
 squad setup, so it works in Conflict, Game Master and scenarios such as
 Arma Commander: Actual. In Game Master, take control of a soldier to command the
-other AI in that soldier's group. It does not recruit AI, create a squad, or
-command arbitrary groups from the Game Master camera.
+other AI in that soldier's group. It does not create a squad or command
+arbitrary groups from the Game Master camera; from 0.4.0 it can take AI soldiers
+of your own side into your squad (More > Recruit / dismiss).
 
 ## Version and installation
 
-The current Workshop version is **0.3.3**. It adds Become leader, grenade and smoke orders,
-window posts when garrisoning and smoke cover when falling back. `main` also holds the
-next update (0.3.4, not yet on Workshop): the aim marker, mouse control, saved menu
-options and many fixes; those features are marked *0.3.4* below.
+The current Workshop version is **0.3.4** (the aim marker, mouse control and saved menu
+options). `main` also holds the next update (0.4.0, not yet on Workshop): the order
+marker, Recruit / dismiss, light discipline and fixes; those features are marked
+*0.4.0* below.
 See [CHANGELOG.md](CHANGELOG.md) for the version history.
 
 Get the mod from the [Arma Reforger Workshop](https://reforger.armaplatform.com/workshop/629405AEFC950C12)
@@ -56,12 +57,12 @@ and [Menu reference](#menu-reference), then consult movement, defense, vehicles/
   points keeps it open.
 - While the menu is open, number keys operate the menu instead of weapon and
   quick-slot selection. The menu closes while you are unconscious.
-- *0.3.4:* **More > Mouse control on/off** adds old-Arma mouse control: with the
+- **More > Mouse control on/off** adds old-Arma mouse control: with the
   menu open, the wheel moves a highlight over the lines, left click gives the
   highlighted order and right click goes back (on Select members too; Backspace
   still clears). Shooting and aiming are blocked only while the menu is open.
   Not with the map open, where the mouse works the map.
-- *0.3.4:* while the menu is open, an **aim marker** shows where an aimed order
+- While the menu is open, an **aim marker** shows where an aimed order
   will land, with the distance; its colour and shape follow the kind of order. On
   Defense it outlines the building Garrison and Clear would use; on the vehicle
   pages, the vehicle. It turns grey with a red note when there is nothing to act
@@ -103,7 +104,7 @@ from the map, a trace from above identifies the object under the cursor.
 | 5 | R.O.E. | Fire at will; Return fire only; Hold fire; Engage at will; Disengage |
 | 6 | Stance & speed | Stand; Crouch; Prone; Auto; Copy my stance; Speed (Walk, Run, Sprint, Auto); Behaviour (Safe, Aware, Combat, Stealth); Lights (Lights off, Own choice; 0.4.0) |
 | 7 | Supplies | Heal up!; Rearm; Rearm from that; Take that weapon; Treat that soldier; Treat me; Give me ammo; Give me bandages; Explosives & mines |
-| 8 | More | Squad bar on/off; Admin (when allowed); Fire mission (mortar); Routes; Become leader; Step down as leader; Aim & order markers (0.3.4, order marker 0.4.0); Mouse control on/off (0.3.4); Recruit / dismiss (0.4.0) |
+| 8 | More | Squad bar on/off; Admin (when allowed); Fire mission (mortar); Routes; Become leader; Step down as leader; Aim & order markers (order marker 0.4.0); Mouse control on/off; Recruit / dismiss (0.4.0) |
 | 9 | HALT | Stop the current movement assignment |
 | 0 | Select members | Select individuals or colour teams |
 
@@ -415,10 +416,10 @@ A second option decides who may destroy AI soldiers outside their own squad
 AiO works with player-led AI squads in compatible scenarios: Conflict, Game
 Master (by possessing a soldier) and Arma Commander: Actual among them.
 
-- *0.3.4:* the game's own command wheel overrides AiO: a wheel order to move, follow, stop
+- The game's own command wheel overrides AiO: a wheel order to move, follow, stop
   or get in releases men you told to hold, and a wheel fire order ends per-man
   fire orders (Hold fire on selected men, Fire on my lead).
-- *0.3.4:* a soldier under a player's control (Game Master or another mod's possession) is
+- A soldier under a player's control (Game Master or another mod's possession) is
   left to that player: nobody can select or order him until the AI has him back.
 - Voice replies come from supported whole-squad commands routed through the
   game's commanding system. Individual and GM-possession orders use AiO text

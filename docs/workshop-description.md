@@ -16,10 +16,12 @@ PUT YOUR SQUAD TO WORK
 - Have a squad soldier fire a nearby mortar: HE, smoke or illumination.
 - Plan infantry routes and looping patrols. A stalled route keeps its plan: resume it or skip a waypoint.
 - Become leader of your squad, even from an AI leader while possessing a squad member, or step down.
+- Recruit AI soldiers of your side, one man or his whole squad, or dismiss men to wait as their own squad for another player to take. Destroying soldiers outside your own squad is for admins unless the server allows it.
+- Lights off: the squad, or the men you select, keep flashlights and vehicle lights off.
 
 SEE WHERE YOUR ORDERS LAND
 
-While the menu is open, the aim marker shows where an aimed order will land and how far away it is: the building Garrison and Clear would use, or the vehicle your men would get into, unflip or repair. It turns grey when there is nothing there. Prefer old-Arma controls? More > Mouse control lets the wheel move through the menu, left click give the order and right click go back. Your menu settings are remembered across missions.
+While the menu is open, the aim marker shows where an aimed order will land and how far away it is: the building Garrison and Clear would use, or the vehicle your men would get into, unflip or repair. It turns grey when there is nothing there. With the menu closed, a faint order marker shows where your squad is heading, whoever gave the order (More > Aim & order markers). Prefer old-Arma controls? More > Mouse control lets the wheel move through the menu, left click give the order and right click go back. Your menu settings are remembered across missions.
 
 GET STARTED
 
@@ -38,7 +40,7 @@ REQUIREMENTS AND LIMITS
 
 Requires only Arma Reforger (checked on 1.9). Load AiO on the server and joining clients; it is not client-only.
 
-AiO commands your existing squad. It does not recruit soldiers or command arbitrary groups from the GM camera. The game's own command wheel overrides AiO orders, and a soldier a player or Game Master takes over is left to them.
+AiO commands your own squad. It does not create squads or command arbitrary groups from the GM camera. The game's own command wheel overrides AiO orders, and a soldier a player or Game Master takes over is left to them.
 
 Buildings, doors and vehicle routes depend on Reforger's navigation: Clear building does not guarantee every room is cleared, and Fortify here finds cover rather than building it. Specialist orders need the right carried kit, ammunition and a reachable target.
 
