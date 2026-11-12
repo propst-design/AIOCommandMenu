@@ -13,11 +13,7 @@ class AIO_Delivery
 	int m_iPlayerId;
 	int m_iDeadline;  // tick count
 	vector m_vGoal;
-	bool m_bHadHold;
-	vector m_vSpot;
-	IEntity m_Anchor;
-	bool m_bAnchored; // a deleted anchor (player disconnected) reads as null, not dead
-	vector m_vOffset;
+	ref AIO_SavedHold m_Hold = new AIO_SavedHold(); // his hold before the errand, given back after
 	bool m_bEnding;
 }
 
@@ -208,15 +204,7 @@ class AIO_Logistics
 		delivery.m_bBandages = bandages;
 		delivery.m_iPlayerId = playerId;
 		delivery.m_iDeadline = System.GetTickCount() + WALK_MS;
-		AIO_HoldBehavior hold = AIO_Tasks.ActiveHold(utility);
-		if (hold)
-		{
-			delivery.m_bHadHold = true;
-			delivery.m_vSpot = hold.m_vSpot;
-			delivery.m_Anchor = hold.m_Anchor;
-			delivery.m_bAnchored = hold.m_bAnchored;
-			delivery.m_vOffset = hold.m_vOffset;
-		}
+		delivery.m_Hold.Save(AIO_Tasks.ActiveHold(utility));
 		AIO_Tasks.Release(giver);
 		s_aDeliveries.Insert(delivery);
 		Walk(delivery, giver);
@@ -300,13 +288,7 @@ class AIO_Logistics
 	{
 		delivery.m_bEnding = true;
 		AIO_Tasks.Rejoin(giver, GetGame().GetPlayerManager().GetPlayerControlledEntity(delivery.m_iPlayerId));
-		if (delivery.m_bHadHold)
-		{
-			if (delivery.m_Anchor && AIO_Server.IsAlive(delivery.m_Anchor) && AIO_Server.StillCommands(delivery.m_Anchor, giver))
-				AIO_Tasks.KeepOffset(giver, delivery.m_Anchor, delivery.m_vOffset);
-			else if (!delivery.m_bAnchored)
-				AIO_Tasks.MoveTo(giver, delivery.m_vSpot);
-		}
+		delivery.m_Hold.Restore(giver);
 		AIO_Supplies.Report(delivery.m_iPlayerId, string.Format("%1 %2", AIO_Server.NameOf(giver), result));
 		Print(string.Format("[AIO] GIVE %1 %2", AIO_Server.NameOf(giver), result));
 	}

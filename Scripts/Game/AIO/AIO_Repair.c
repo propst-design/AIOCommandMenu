@@ -35,11 +35,7 @@ class AIO_RepairJob
 	bool m_bPaused;       // knocked out or under a player's control: no work, no orders
 	vector m_vVehicleAt;  // where the vehicle stood when he started working
 	vector m_vStand;
-	bool m_bHadHold;
-	vector m_vSpot;
-	IEntity m_Anchor;
-	bool m_bAnchored; // a deleted anchor (player disconnected) reads as null, not dead
-	vector m_vOffset;
+	ref AIO_SavedHold m_Hold = new AIO_SavedHold(); // his hold before the errand, given back after
 	bool m_bEnding;
 }
 
@@ -72,7 +68,7 @@ class AIO_Repair
 
 	static string Order(array<IEntity> bodies, IEntity looked, IEntity player, vector point, int playerId)
 	{
-		IEntity vehicle = AIO_Vehicles.TargetVehicle(looked, player, point);
+		IEntity vehicle = AIO_Vehicles.TargetVehicle(AIO_Vehicles.CheckedLook(looked, point), player, point);
 		if (!vehicle)
 			return "Look at the vehicle to repair";
 		SCR_DamageManagerComponent damage = SCR_DamageManagerComponent.GetDamageManager(vehicle);
@@ -200,15 +196,7 @@ class AIO_Repair
 		job.m_Tool = tool;
 		job.m_iPlayerId = playerId;
 		job.m_iDeadline = System.GetTickCount() + WALK_MS;
-		AIO_HoldBehavior hold = AIO_Tasks.ActiveHold(utility);
-		if (hold)
-		{
-			job.m_bHadHold = true;
-			job.m_vSpot = hold.m_vSpot;
-			job.m_Anchor = hold.m_Anchor;
-			job.m_bAnchored = hold.m_bAnchored;
-			job.m_vOffset = hold.m_vOffset;
-		}
+		job.m_Hold.Save(AIO_Tasks.ActiveHold(utility));
 		AIO_Tasks.Release(body);
 		job.m_vStand = StandSpot(vehicle, body.GetOrigin());
 		utility.AddAction(new AIO_MoveBehavior(utility, null, job.m_vStand, radius: 1.0));
@@ -399,13 +387,8 @@ class AIO_Repair
 			AIO_Tasks.Release(body);
 		else
 			AIO_Tasks.Rejoin(body, GetGame().GetPlayerManager().GetPlayerControlledEntity(job.m_iPlayerId));
-		if (job.m_bHadHold && !mounted)
-		{
-			if (job.m_Anchor && AIO_Server.IsAlive(job.m_Anchor) && AIO_Server.StillCommands(job.m_Anchor, body))
-				AIO_Tasks.KeepOffset(body, job.m_Anchor, job.m_vOffset);
-			else if (!job.m_bAnchored)
-				AIO_Tasks.MoveTo(body, job.m_vSpot);
-		}
+		if (!mounted)
+			job.m_Hold.Restore(body);
 		if (!problem.IsEmpty())
 		{
 			AIO_Supplies.Report(job.m_iPlayerId, string.Format("%1 %2", AIO_Server.NameOf(body), problem));

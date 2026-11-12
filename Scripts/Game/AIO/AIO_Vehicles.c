@@ -173,6 +173,28 @@ class AIO_Vehicles
 
 	// The vehicle an order is about: the one looked at, else the player's own, else the nearest
 	// within 15 m of the point looked at.
+	// Server: the entity the client says the player looked at, only if the look point is on it.
+	// The client sends both; a modified one could name any vehicle by its id and reserve its seats,
+	// so the id is worth no more than the point it came with (else the point alone decides).
+	static IEntity CheckedLook(IEntity looked, vector point)
+	{
+		if (!looked || point == vector.Zero)
+			return null;
+		IEntity root = looked.GetRootParent();
+		if (!root)
+			root = looked;
+		vector mins, maxs;
+		root.GetWorldBounds(mins, maxs);
+		vector closest;
+		for (int axis = 0; axis < 3; axis++)
+			closest[axis] = Math.Clamp(point[axis], mins[axis], maxs[axis]);
+		if (vector.Distance(closest, point) > LOOK_SLACK)
+			return null;
+		return looked;
+	}
+
+	static const float LOOK_SLACK = 2.0; // metres between the look point and the looked entity's bounds
+
 	static IEntity TargetVehicle(IEntity looked, IEntity player, vector point)
 	{
 		IEntity vehicle = VehicleRoot(looked);
@@ -811,6 +833,7 @@ class AIO_Vehicles
 
 	static string Order(notnull array<IEntity> bodies, SCR_AIGroup group, int order, IEntity looked, IEntity player, vector point)
 	{
+		looked = CheckedLook(looked, point);
 		switch (order)
 		{
 			case AIO_EOrder.VEH_GET_IN_ANY: return GetIn(bodies, TargetVehicle(looked, player, point), -1);

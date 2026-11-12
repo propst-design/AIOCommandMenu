@@ -9,6 +9,8 @@ mkdir -p "$OUT"
 # Preserve the thumbnail and any publisher metadata created in Workbench.
 rm -rf "$OUT/Scripts" "$OUT/Configs"
 cp -r "$SRC/Scripts" "$SRC/Configs" "$OUT/"
+# The automated tests stay out of the player download (game code reaches them only via AIO_TestHooks).
+rm -rf "$OUT/Scripts/Game/AIO_Tests"
 cp "$SRC/resourceDatabase.rdb" "$SRC/COPYING" "$SRC/LICENSE.md" "$SRC/LICENSE.txt" "$SRC/README.md" "$SRC/CHANGELOG.md" "$OUT/"
 sed 's/^ TITLE ".*"/ TITLE "AiO Command Menu (Reforger)"/' "$SRC/addon.gproj" > "$OUT/addon.gproj"
 cp "$SRC/tools/workshop/"* "$OUT/../" 2>/dev/null || true

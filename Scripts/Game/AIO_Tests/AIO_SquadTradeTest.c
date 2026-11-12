@@ -350,6 +350,8 @@ class AIO_SquadTradeTest
 		Check("destroy-own-squad-refused", reply.Contains("your own squad"), reply);
 		IEntity theirs = Man(s_B, 0);
 		reply = Order(s_A, s_LeaderA, false, AIO_EOrder.DESTROY_MAN, theirs);
+		Check("destroy-man-not-admin", reply.Contains("admins") && theirs && !theirs.IsDeleted(), reply);
+		reply = Order(s_A, s_LeaderA, true, AIO_EOrder.DESTROY_MAN, theirs);
 		Check("destroy-man", reply.Contains("destroyed") && !reply.Contains("Nobody"), reply);
 		s_aRecruits.Clear();
 		s_aRecruits.Insert(own);

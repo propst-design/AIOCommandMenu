@@ -8,6 +8,21 @@ modded class SCR_PlayerController
 {
 	protected float m_fAIO_Window = -1000;
 	protected int m_iAIO_InWindow;
+	protected float m_fAIO_RosterWindow = -1000;
+	protected int m_iAIO_RosterInWindow;
+
+	// Flood guard for orders, routes and teams: a handful a second is plenty for a menu.
+	protected bool AIO_Allow()
+	{
+		float now = GetGame().GetWorld().GetWorldTime();
+		if (now - m_fAIO_Window > 1000)
+		{
+			m_fAIO_Window = now;
+			m_iAIO_InWindow = 0;
+		}
+		m_iAIO_InWindow++;
+		return m_iAIO_InWindow <= 10;
+	}
 
 	override void OnUpdate(float timeSlice)
 	{
@@ -26,19 +41,31 @@ modded class SCR_PlayerController
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void AIO_RpcAskRoster()
 	{
+		// The menu asks at most once a second (opening it asks at once): more is a broken or hostile client.
+		float now = GetGame().GetWorld().GetWorldTime();
+		if (now - m_fAIO_RosterWindow > 1000)
+		{
+			m_fAIO_RosterWindow = now;
+			m_iAIO_RosterInWindow = 0;
+		}
+		m_iAIO_RosterInWindow++;
+		if (m_iAIO_RosterInWindow > 3)
+			return;
 		array<RplId> ids = {};
 		array<string> names = {};
 		array<int> health = {};
 		array<string> tasks = {};
 		array<int> ammo = {};
-		AIO_Server.Roster(GetPlayerId(), ids, names, health, tasks, ammo);
-		Rpc(AIO_RpcRoster, ids, names, health, tasks, ammo, AIO_Server.AdminAllowed(GetPlayerId()), AIO_Server.OrderStatus(GetPlayerId()));
+		array<int> teams = {};
+		AIO_Server.Roster(GetPlayerId(), ids, names, health, tasks, ammo, teams);
+		Rpc(AIO_RpcRoster, ids, names, health, tasks, ammo, teams, AIO_Server.AdminAllowed(GetPlayerId()), AIO_Server.OrderStatus(GetPlayerId()));
 	}
 
+	// 8 parameters: the most an RPC takes.
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	protected void AIO_RpcRoster(array<RplId> ids, array<string> names, array<int> health, array<string> tasks, array<int> ammo, bool admin, string orderStatus)
+	protected void AIO_RpcRoster(array<RplId> ids, array<string> names, array<int> health, array<string> tasks, array<int> ammo, array<int> teams, bool admin, string orderStatus)
 	{
-		AIO_Menu.Get().SetRoster(ids, names, health, tasks, ammo, admin);
+		AIO_Menu.Get().SetRoster(ids, names, health, tasks, ammo, teams, admin);
 		AIO_Menu.Get().SetOrderStatus(orderStatus);
 	}
 
@@ -52,15 +79,7 @@ modded class SCR_PlayerController
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void AIO_RpcOrder(int order, array<RplId> members, vector point, RplId target)
 	{
-		// Flood guard: a handful of orders a second is plenty for a menu.
-		float now = GetGame().GetWorld().GetWorldTime();
-		if (now - m_fAIO_Window > 1000)
-		{
-			m_fAIO_Window = now;
-			m_iAIO_InWindow = 0;
-		}
-		m_iAIO_InWindow++;
-		if (m_iAIO_InWindow > 10 || (members && members.Count() > 64))
+		if (!AIO_Allow() || (members && members.Count() > 64))
 			return;
 		string feedback = AIO_Server.Execute(this, order, members, point, target);
 		if (!feedback.IsEmpty())
@@ -80,14 +99,7 @@ modded class SCR_PlayerController
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void AIO_RpcRoute(array<RplId> ids, array<vector> points, bool patrol)
 	{
-		float now = GetGame().GetWorld().GetWorldTime();
-		if (now - m_fAIO_Window > 1000)
-		{
-			m_fAIO_Window = now;
-			m_iAIO_InWindow = 0;
-		}
-		m_iAIO_InWindow++;
-		if (m_iAIO_InWindow > 10)
+		if (!AIO_Allow())
 			return;
 		SCR_AIGroup group = AIO_Server.Slave(GetPlayerId());
 		array<IEntity> men = {};
@@ -105,6 +117,8 @@ modded class SCR_PlayerController
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void AIO_RpcTeam(array<RplId> ids, int team)
 	{
+		if (!AIO_Allow())
+			return;
 		SCR_AIGroup slave = AIO_Server.Slave(GetPlayerId());
 		if (!slave || !ids || ids.Count() > 64) // a squad, not an unbounded list (as AIO_RpcRoute)
 			return;

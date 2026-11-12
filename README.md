@@ -126,7 +126,8 @@ stepping down. Native leadership changes can reset custom squad names/descriptio
   own and wait where they are. Another leader can recruit them: that is how men are
   traded between players.
 - **Destroy selected men / that soldier / his whole squad** removes them from the
-  game (no body is left). Destroying soldiers of the other side is for admins.
+  game (no body is left). Destroying soldiers outside your own squad is for
+  admins, unless the host starts the server with `-aioDestroy all`.
 
 Soldiers in a squad that a player leads or belongs to (including one a player has
 taken control of) can't be recruited or destroyed. On servers, the server's limit
@@ -400,6 +401,14 @@ The host/server startup option (a launch parameter) controls access:
 | `-aioCheats admins` (default) | Single player, the listen-server host and logged-in admins |
 | `-aioCheats all` | Every player |
 | `-aioCheats off` | Nobody, including the host |
+
+A second option decides who may destroy AI soldiers outside their own squad
+(More > Recruit / dismiss); everyone may destroy their own men:
+
+| Option | Access |
+| --- | --- |
+| `-aioDestroy admins` (default) | Admins (as above) |
+| `-aioDestroy all` | Every squad leader, soldiers of their own side within 100 m |
 
 ## Compatibility and current limits
 

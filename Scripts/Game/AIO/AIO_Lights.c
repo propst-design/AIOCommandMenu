@@ -73,6 +73,7 @@ class AIO_Lights
 				continue;
 			s_aAgents.Insert(agent);
 			s_aLeaders.Insert(leader);
+			AIO_Tasks.Ordered(agent);
 			s_aSquads.Insert(squad);
 			s_aPrintAt.Insert(0);
 			torches += FlashlightsOff(body);

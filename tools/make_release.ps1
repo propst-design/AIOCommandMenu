@@ -32,6 +32,9 @@ foreach ($name in @('Scripts', 'Configs')) {
     }
     Copy-Item -LiteralPath (Join-Path $sourceRoot $name) -Destination $target -Recurse
 }
+# The automated tests stay out of the player download (game code reaches them only via AIO_TestHooks).
+$tests = Join-Path $releaseRoot 'Scripts\Game\AIO_Tests'
+if (Test-Path -LiteralPath $tests) { Remove-Item -LiteralPath $tests -Recurse -Force }
 foreach ($name in $releaseFiles) {
     Copy-Item -LiteralPath (Join-Path $sourceRoot $name) -Destination (Join-Path $releaseRoot $name) -Force
 }

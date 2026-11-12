@@ -167,6 +167,7 @@ class AIO_Behaviour
 
 		s_aAgents.Insert(agent);
 		s_aModes.Insert(mode);
+		AIO_Tasks.Ordered(agent);
 		s_aOwnROE.Insert(ownROE);
 		ApplyPosture(agent, character, mode);
 		AIO_Tasks.Watch();

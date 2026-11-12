@@ -24,6 +24,7 @@
 //   -aioContactTest 1 : native firefight, retained orders, danger interruption and arrival-driven bounding.
 //   -aioGarrisonTest 1 : Garrison from 50 m on several building kinds (AIO_GarrisonTest.c).
 //   -aioSquadTradeTest 1 : recruit, dismiss, trade and destroy soldiers between squads (AIO_SquadTradeTest.c).
+//   -aioReleaseTest 1 : orders end when no player commands the squad any more (AIO_ReleaseTest.c).
 //   -aioOrderMarkerTest 1 : the order marker's server side: waypoint sent on change, cleared on completion (AIO_OrderMarkerTest.c).
 //   -aioFormationTest 1 : rifle squad walks legs in Column, Staggered column, Line, Wedge; shapes measured on the move.
 // Prints "[AIO] TEST <name> PASS|FAIL ..." lines and "[AIO] TEST COMPLETE".
@@ -85,6 +86,16 @@ class AIO_Test
 
 	static void MaybeStart()
 	{
+		// No players on a test server: the test squads count as commanded (AIO_Server.s_bTestCommandAll).
+		array<string> suites = {"Task", "Move", "Infantry", "Supply", "Attack", "Defense", "Tower", "Garrison", "Vehicle", "Recovery",
+			"Formation", "Support", "Radius", "Contact", "Teleport", "Behaviour", "Explosives", "Specialists", "FireMission", "Grenades",
+			"Leadership", "Repair", "SquadTrade", "OrderMarker", "Release"};
+		foreach (string suite : suites)
+		{
+			string flag;
+			if (System.GetCLIParam("aio" + suite + "Test", flag) && flag == "1")
+				AIO_Server.s_bTestCommandAll = true;
+		}
 		string value;
 		string moveValue;
 		System.GetCLIParam("aioMoveTest", moveValue);
@@ -156,6 +167,14 @@ class AIO_Test
 		{
 			Print("[AIO] TEST garrison: starting in 8 s");
 			GetGame().GetCallqueue().CallLater(AIO_GarrisonTest.Start, 8000, false);
+			return;
+		}
+		string releaseValue;
+		System.GetCLIParam("aioReleaseTest", releaseValue);
+		if (releaseValue == "1" && Replication.IsServer())
+		{
+			Print("[AIO] TEST release: starting in 4 s");
+			GetGame().GetCallqueue().CallLater(AIO_ReleaseTest.Start, 4000, false);
 			return;
 		}
 		string markerValue;

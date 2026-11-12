@@ -31,11 +31,7 @@ class AIO_Demolition
 	vector m_vRetreat;
 	vector m_aPlaced[4];       // world transform the item is placed with
 	// what he was doing before (restored afterwards)
-	bool m_bHadHold;
-	vector m_vSpot;
-	IEntity m_Anchor;
-	bool m_bAnchored; // a deleted anchor (player disconnected) reads as null, not dead
-	vector m_vOffset;
+	ref AIO_SavedHold m_Hold = new AIO_SavedHold(); // his hold before the errand, given back after
 	bool m_bEnding;
 }
 
@@ -348,15 +344,7 @@ class AIO_Explosives
 		job.m_bRemote = kind == KIND_REMOTE;
 		job.m_iPlayerId = playerId;
 		job.m_iDeadline = System.GetTickCount() + WALK_MS;
-		AIO_HoldBehavior hold = AIO_Tasks.ActiveHold(utility);
-		if (hold)
-		{
-			job.m_bHadHold = true;
-			job.m_vSpot = hold.m_vSpot;
-			job.m_Anchor = hold.m_Anchor;
-			job.m_bAnchored = hold.m_bAnchored;
-			job.m_vOffset = hold.m_vOffset;
-		}
+		job.m_Hold.Save(AIO_Tasks.ActiveHold(utility));
 		AIO_Tasks.Release(body);
 		vector stand = StandSpot(body, point);
 		utility.AddAction(new AIO_MoveBehavior(utility, null, stand, radius: 1.0));
@@ -702,13 +690,7 @@ class AIO_Explosives
 		if (job.m_iKind == KIND_DISARM)
 			AIO_Tasks.SetStance(job.m_Agent, -1); // any end of a disarm (unreached spot, timeout) stands him up
 		AIO_Tasks.Rejoin(body, GetGame().GetPlayerManager().GetPlayerControlledEntity(job.m_iPlayerId));
-		if (job.m_bHadHold)
-		{
-			if (job.m_Anchor && AIO_Server.IsAlive(job.m_Anchor) && AIO_Server.StillCommands(job.m_Anchor, body))
-				AIO_Tasks.KeepOffset(body, job.m_Anchor, job.m_vOffset);
-			else if (!job.m_bAnchored)
-				AIO_Tasks.MoveTo(body, job.m_vSpot);
-		}
+		job.m_Hold.Restore(body);
 		if (!problem.IsEmpty())
 		{
 			AIO_Supplies.Report(job.m_iPlayerId, string.Format("%1 %2", AIO_Server.NameOf(body), problem));

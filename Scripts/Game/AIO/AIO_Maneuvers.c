@@ -158,9 +158,14 @@ class AIO_Maneuvers
 		if (!utility || !utility.m_CombatComponent)
 			return;
 		if (mode < 0)
+		{
 			utility.m_CombatComponent.AIO_SetCombatMode(false, EAIGroupCombatMode.FIRE_AT_WILL);
+		}
 		else
+		{
 			utility.m_CombatComponent.AIO_SetCombatMode(true, mode);
+			AIO_Tasks.Ordered(AIO_Tasks.AgentOf(body));
+		}
 	}
 
 	static int ROEOf(IEntity body)
@@ -176,8 +181,11 @@ class AIO_Maneuvers
 	static void SetEngage(IEntity body, int keepFormation)
 	{
 		SCR_AIUtilityComponent utility = AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(body));
-		if (utility)
-			utility.AIO_SetKeepFormation(keepFormation);
+		if (!utility)
+			return;
+		utility.AIO_SetKeepFormation(keepFormation);
+		if (keepFormation >= 0)
+			AIO_Tasks.Ordered(AIO_Tasks.AgentOf(body));
 	}
 
 	// Fire on my lead: hold fire until the player fires.

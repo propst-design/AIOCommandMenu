@@ -64,16 +64,48 @@ class AIO_Server
 	}
 
 	// False once the player controlling 'leader' no longer commands the man's group (he stepped
-	// down, changed squads, the man was moved). True when no player controls 'leader' (tests).
+	// down, changed squads, the man was moved, a Game Master let go of the leader he possessed).
+	// A leader no player controls commands nobody, except on a test server (s_bTestCommandAll).
 	static bool StillCommands(IEntity leader, IEntity body)
 	{
 		int leaderId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(leader);
 		if (leaderId <= 0)
-			return true;
+			return s_bTestCommandAll;
 		SCR_AIGroup squad = Slave(leaderId);
 		AIAgent agent = AIO_Tasks.AgentOf(body);
 		return squad && agent && agent.GetParentGroup() == squad;
 	}
+
+	// The AI groups some player commands right now: the AI group linked to each player-led group,
+	// and the AI group of each soldier a Game Master possesses.
+	static void CommandedSquads(notnull array<SCR_AIGroup> squads)
+	{
+		array<int> players = {};
+		GetGame().GetPlayerManager().GetPlayers(players);
+		foreach (int id : players)
+		{
+			SCR_AIGroup squad = Slave(id);
+			if (squad && !squads.Contains(squad))
+				squads.Insert(squad);
+		}
+	}
+
+	// Whether some player commands the man's group (always on a test server, see s_bTestCommandAll).
+	static bool InCommandedSquad(IEntity body)
+	{
+		if (s_bTestCommandAll)
+			return true;
+		AIAgent agent = AIO_Tasks.AgentOf(body);
+		if (!agent)
+			return false;
+		array<SCR_AIGroup> squads = {};
+		CommandedSquads(squads);
+		return squads.Contains(SCR_AIGroup.Cast(agent.GetParentGroup()));
+	}
+
+	// Test servers have no players: AIO_Test sets this so the test squads count as commanded (a
+	// release test clears it to see the men let go).
+	static bool s_bTestCommandAll;
 
 	// A job one of the men runs belongs to whoever commands his group now (the leader who ordered
 	// it may have stepped down or left); without a squad to check, to the player who ordered it.
@@ -108,7 +140,7 @@ class AIO_Server
 	// AIO_Test only: a body treated as player-controlled on a server without players.
 	static IEntity s_TestPossessed;
 
-	static void Roster(int playerId, notnull array<RplId> ids, notnull array<string> names, notnull array<int> health, notnull array<string> tasks, notnull array<int> ammo)
+	static void Roster(int playerId, notnull array<RplId> ids, notnull array<string> names, notnull array<int> health, notnull array<string> tasks, notnull array<int> ammo, notnull array<int> teams)
 	{
 		array<IEntity> members = {};
 		Members(Slave(playerId), members);
@@ -124,6 +156,7 @@ class AIO_Server
 			health.Insert(percent);
 			tasks.Insert(AIO_Tasks.TaskLabel(body));
 			ammo.Insert(AIO_Supplies.MagazineCount(body));
+			teams.Insert(AIO_Maneuvers.TeamOf(body));
 		}
 	}
 

@@ -33,6 +33,7 @@ class AIO_Menu
 	static const int SELECTION_KEEP_MS = 8000;
 	static const int FEEDBACK_MS = 4000;
 	static const int SWALLOW_MS = 500; // keep the menu's keys captured this long after closing
+	static const int ROSTER_IDLE_MS = 4000; // roster asks with the menu closed and nothing to report
 
 	protected static ref AIO_Menu s_Instance;
 
@@ -44,7 +45,9 @@ class AIO_Menu
 
 	protected ref array<ref AIO_Member> m_aMembers = {};
 	protected ref array<RplId> m_aSelected = {};
-	protected ref map<RplId, int> m_mTeams = new map<RplId, int>(); // kept across roster updates
+	// Teams just set here, until the server's roster carries them (the server keeps teams: AIO_Maneuvers.TeamOf).
+	protected ref map<RplId, int> m_mTeams = new map<RplId, int>();
+	protected int m_iTeamsSetAt;
 	protected bool m_bAdmin;
 	protected int m_iSelectionClearAt;   // tick count; 0 = keep
 	protected string m_sFeedback;
@@ -152,10 +155,15 @@ class AIO_Menu
 			return;
 		}
 		HoldSpeed(pc, (m_bOpen || now < m_iSwallowUntil) && MouseActive());
-		// Keep owner feedback current even while the command menu is closed.
+		// Roster and order status: every second while the menu is open, a selection is kept or an
+		// order reports progress (the status line below); otherwise every few seconds, so a server
+		// isn't asked once a second by every player who never opens the menu.
 		if (now >= m_iNextRosterAsk)
 		{
-			m_iNextRosterAsk = now + 1000;
+			if (m_bOpen || !m_aSelected.IsEmpty() || !m_sOrderStatus.IsEmpty())
+				m_iNextRosterAsk = now + 1000;
+			else
+				m_iNextRosterAsk = now + ROSTER_IDLE_MS;
 			pc.AIO_AskRoster();
 		}
 		UpdateStatus(now);
@@ -663,6 +671,7 @@ class AIO_Menu
 			}
 			foreach (RplId id : m_aSelected)
 				m_mTeams.Set(id, team);
+			m_iTeamsSetAt = System.GetTickCount();
 			// The server needs teams too (Bound forward / Peel back split by team).
 			array<RplId> teamIds = {};
 			teamIds.Copy(m_aSelected);
@@ -687,10 +696,15 @@ class AIO_Menu
 
 	// ------------------------------------------------------------------ server data
 
-	void SetRoster(array<RplId> ids, array<string> names, array<int> health, array<string> tasks, array<int> ammo, bool admin)
+	void SetRoster(array<RplId> ids, array<string> names, array<int> health, array<string> tasks, array<int> ammo, array<int> teams, bool admin)
 	{
 		m_bAdmin = admin;
 		m_aMembers.Clear();
+		// A roster asked for before our last team change can still be on its way: keep our own
+		// teams for a few seconds, then the server's (which also covers a reconnect or a new leader).
+		bool recent = System.GetTickCount() - m_iTeamsSetAt < 3000;
+		if (!recent)
+			m_mTeams.Clear();
 		for (int i = 0; i < ids.Count(); i++)
 		{
 			AIO_Member member = new AIO_Member();
@@ -701,8 +715,10 @@ class AIO_Menu
 				member.m_sTask = tasks[i];
 			if (ammo && i < ammo.Count())
 				member.m_iAmmo = ammo[i];
+			if (teams && i < teams.Count())
+				member.m_iTeam = teams[i];
 			int team;
-			if (m_mTeams.Find(ids[i], team))
+			if (recent && m_mTeams.Find(ids[i], team))
 				member.m_iTeam = team;
 			m_aMembers.Insert(member);
 		}

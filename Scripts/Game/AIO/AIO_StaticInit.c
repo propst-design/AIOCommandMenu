@@ -17,24 +17,21 @@ class AIO_StaticInit
 		s_bFilled = true;
 		AIO_Behaviour.AIO_InitStatics();
 		AIO_Bounding.AIO_InitStatics();
-		AIO_ContactTest.AIO_InitStatics();
 		AIO_Explosives.AIO_InitStatics();
 		AIO_FireSupport.AIO_InitStatics();
-		AIO_GarrisonTest.AIO_InitStatics();
 		AIO_Grenades.AIO_InitStatics();
 		AIO_Lights.AIO_InitStatics();
 		AIO_Logistics.AIO_InitStatics();
 		AIO_Maneuvers.AIO_InitStatics();
 		AIO_OrderMarkers.AIO_InitStatics();
 		AIO_Recruit.AIO_InitStatics();
-		AIO_SquadTradeTest.AIO_InitStatics();
 		AIO_Repair.AIO_InitStatics();
 		AIO_Routes.AIO_InitStatics();
 		AIO_Server.AIO_InitStatics();
 		AIO_Supplies.AIO_InitStatics();
 		AIO_Support.AIO_InitStatics();
 		AIO_Tasks.AIO_InitStatics();
-		AIO_Test.AIO_InitStatics();
+		AIO_TestHooks.Get().InitStatics(); // the tests' lists, when the tests are present
 		AIO_Vehicles.AIO_InitStatics();
 	}
 }

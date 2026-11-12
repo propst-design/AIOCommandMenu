@@ -111,6 +111,10 @@ class AIO_Recruit
 		}
 		if (group && PlayersSquad(group))
 			return AIO_Server.NameOf(man) + " belongs to another player's squad";
+		// Removing soldiers from the game outside your own squad (a mission's defenders, another mod's
+		// AI squads) is an admin's call unless the host allows it (Jacob, 12 Nov 2026).
+		if (!recruit && !admin && !AnyoneDestroys())
+			return "Only admins can destroy soldiers outside your squad";
 		if (!SameSide(man, leader))
 		{
 			if (recruit)
@@ -121,6 +125,16 @@ class AIO_Recruit
 		if (!admin && vector.Distance(man.GetOrigin(), leader.GetOrigin()) > RANGE)
 			return "Too far away (100 m at most)";
 		return "";
+	}
+
+	// Host option -aioDestroy all: any leader may destroy AI soldiers of their side outside their squad
+	// (in range). Default admins: only admins may; everyone may still destroy their own men.
+	static bool AnyoneDestroys()
+	{
+		string option;
+		System.GetCLIParam("aioDestroy", option);
+		option.ToLower();
+		return option == "all";
 	}
 
 	// A squad a player is part of: hands off. Playable groups hold players; a slave group belongs to the

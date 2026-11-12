@@ -34,11 +34,7 @@ class AIO_Throw
 	ref AIO_AIThrow m_Behavior;
 	// walked up: what he was doing before (restored afterwards)
 	bool m_bMoved;
-	bool m_bHadHold;
-	vector m_vSpot;
-	IEntity m_Anchor;
-	bool m_bAnchored; // a deleted anchor (player disconnected) reads as null, not dead
-	vector m_vOffset;
+	ref AIO_SavedHold m_Hold = new AIO_SavedHold(); // his hold before the errand, given back after
 	bool m_bEnding;
 	bool m_bCover;             // smoke added to a maneuver
 }
@@ -454,15 +450,7 @@ class AIO_Grenades
 		job.m_iGiveUp = System.GetTickCount() + GIVE_UP_MS;
 		if (vector.Distance(body.GetOrigin(), spot) > THROW_RANGE)
 		{
-			AIO_HoldBehavior hold = AIO_Tasks.ActiveHold(utility);
-			if (hold)
-			{
-				job.m_bHadHold = true;
-				job.m_vSpot = hold.m_vSpot;
-				job.m_Anchor = hold.m_Anchor;
-				job.m_bAnchored = hold.m_bAnchored;
-				job.m_vOffset = hold.m_vOffset;
-			}
+			job.m_Hold.Save(AIO_Tasks.ActiveHold(utility));
 			AIO_Tasks.Release(body);
 			vector away = body.GetOrigin() - spot;
 			away[1] = 0;
@@ -719,13 +707,7 @@ class AIO_Grenades
 		if (job.m_bMoved)
 		{
 			AIO_Tasks.Rejoin(body, GetGame().GetPlayerManager().GetPlayerControlledEntity(job.m_iPlayerId));
-			if (job.m_bHadHold)
-			{
-				if (job.m_Anchor && AIO_Server.IsAlive(job.m_Anchor) && AIO_Server.StillCommands(job.m_Anchor, body))
-					AIO_Tasks.KeepOffset(body, job.m_Anchor, job.m_vOffset);
-				else if (!job.m_bAnchored)
-					AIO_Tasks.MoveTo(body, job.m_vSpot);
-			}
+			job.m_Hold.Restore(body);
 		}
 		if (!problem.IsEmpty())
 		{

@@ -39,3 +39,5 @@ squadtrade|-aioSquadTradeTest 1|150
 squadtrade-aca|-aioSquadTradeTest 1|200|aca
 ordermarker|-aioOrderMarkerTest 1|90
 ordermarker-aca|-aioOrderMarkerTest 1|150|aca
+release|-aioReleaseTest 1|90
+release-aca|-aioReleaseTest 1|150|aca

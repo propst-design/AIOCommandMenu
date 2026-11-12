@@ -26,11 +26,7 @@ class AIO_Fetch
 	int m_iPlayerId;           // who ordered it (for the report)
 	int m_iDeadline;           // tick count
 	// what he was doing before (restored afterwards)
-	bool m_bHadHold;
-	vector m_vSpot;
-	IEntity m_Anchor;
-	bool m_bAnchored; // a deleted anchor (player disconnected) reads as null, not dead
-	vector m_vOffset;
+	ref AIO_SavedHold m_Hold = new AIO_SavedHold(); // his hold before the errand, given back after
 	bool m_bEnding; // being finished: Cancel leaves it alone (it's removed right after)
 }
 
@@ -623,15 +619,7 @@ class AIO_Supplies
 		fetch.m_iPlayerId = playerId;
 		fetch.m_iDeadline = System.GetTickCount() + FETCH_MS;
 		// Remember his hold (Move-menu station, held spot) to go back to it afterwards.
-		AIO_HoldBehavior hold = AIO_Tasks.ActiveHold(utility);
-		if (hold)
-		{
-			fetch.m_bHadHold = true;
-			fetch.m_vSpot = hold.m_vSpot;
-			fetch.m_Anchor = hold.m_Anchor;
-			fetch.m_bAnchored = hold.m_bAnchored;
-			fetch.m_vOffset = hold.m_vOffset;
-		}
+		fetch.m_Hold.Save(AIO_Tasks.ActiveHold(utility));
 		AIO_Tasks.Release(body);
 		vector spot = source.GetOrigin();
 		utility.AddAction(new AIO_MoveBehavior(utility, null, spot, radius: 1.0));
@@ -725,13 +713,7 @@ class AIO_Supplies
 	protected static void Finish(AIO_Fetch fetch, IEntity body, string result)
 	{
 		AIO_Tasks.Rejoin(body, GetGame().GetPlayerManager().GetPlayerControlledEntity(fetch.m_iPlayerId));
-		if (fetch.m_bHadHold)
-		{
-			if (fetch.m_Anchor && AIO_Server.IsAlive(fetch.m_Anchor) && AIO_Server.StillCommands(fetch.m_Anchor, body))
-				AIO_Tasks.KeepOffset(body, fetch.m_Anchor, fetch.m_vOffset);
-			else if (!fetch.m_bAnchored)
-				AIO_Tasks.MoveTo(body, fetch.m_vSpot);
-		}
+		fetch.m_Hold.Restore(body);
 		Report(fetch.m_iPlayerId, string.Format("%1 %2", AIO_Server.NameOf(body), result));
 		Print(string.Format("[AIO] SUPPLY %1 %2", AIO_Server.NameOf(body), result));
 	}

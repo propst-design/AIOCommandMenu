@@ -18,6 +18,8 @@ class AIO_MoveBehavior : SCR_AIMoveIndividuallyBehavior
 		// Mounted movement keeps its native priority; this contact policy is for infantry.
 		if (utility && utility.m_OwnerEntity && CompartmentAccessComponent.GetVehicleIn(utility.m_OwnerEntity))
 			SetPriorityLevel(PRIORITY_LEVEL_NORMAL);
+		if (utility)
+			AIO_Tasks.Ordered(utility.GetAIAgent());
 	}
 
 	override int GetCause()
@@ -100,6 +102,7 @@ class AIO_HoldBehavior : SCR_AIBehaviorBase
 		{
 			utility.AIO_SetOrderHold(this);
 			AIO_Tasks.TrackHold(utility.GetAIAgent());
+			AIO_Tasks.Ordered(utility.GetAIAgent());
 		}
 	}
 
@@ -124,6 +127,40 @@ class AIO_HoldBehavior : SCR_AIBehaviorBase
 	{
 		if (m_bTravel) return SCR_EAIBehaviorCause.SAFE;
 		return SCR_EAIBehaviorCause.GROUP_GOAL;
+	}
+}
+
+// A man's hold (Move-menu station, held spot) remembered while an errand (fetch, delivery, repair,
+// throw, charge) takes him away, and given back when it ends, unless nobody commands him by then.
+class AIO_SavedHold
+{
+	bool m_bHad;
+	vector m_vSpot;
+	IEntity m_Anchor;
+	bool m_bAnchored; // a deleted anchor (player disconnected) reads as null, not dead
+	vector m_vOffset;
+
+	void Save(AIO_HoldBehavior hold)
+	{
+		m_bHad = hold != null;
+		if (!hold)
+			return;
+		m_vSpot = hold.m_vSpot;
+		m_Anchor = hold.m_Anchor;
+		m_bAnchored = hold.m_bAnchored;
+		m_vOffset = hold.m_vOffset;
+	}
+
+	// Station on a player who still commands him, else the held spot if his squad still has a
+	// player in command (an errand that ends after the command did must not give him a new post).
+	void Restore(IEntity body)
+	{
+		if (!m_bHad || !body)
+			return;
+		if (m_Anchor && AIO_Server.IsAlive(m_Anchor) && AIO_Server.StillCommands(m_Anchor, body))
+			AIO_Tasks.KeepOffset(body, m_Anchor, m_vOffset);
+		else if (!m_bAnchored && AIO_Server.InCommandedSquad(body))
+			AIO_Tasks.MoveTo(body, m_vSpot);
 	}
 }
 
@@ -670,6 +707,8 @@ class AIO_Tasks
 			return;
 		settings.RemoveSettingsOfTypeAndOrigin(SCR_AICharacterMovementSpeedSettingBase, SCR_EAISettingOrigin.COMMANDING);
 		if (speed >= 0)
+			Ordered(agent);
+		if (speed >= 0)
 			settings.AddCharacterSetting(SCR_AICharacterMovementSpeedSetting.Create(SCR_EAISettingOrigin.COMMANDING, SCR_EAIBehaviorCause.GROUP_GOAL, speed), false, true);
 	}
 
@@ -706,6 +745,7 @@ class AIO_Tasks
 		}
 		s_aStanceAgents.Insert(agent);
 		s_aStances.Insert(stance);
+		Ordered(agent);
 		Watch();
 		settings.AddCharacterSetting(SCR_AICharacterStanceSetting.Create(SCR_EAISettingOrigin.COMMANDING, SCR_EAIBehaviorCause.COMBAT, stance), false, true);
 		// The setting is read when a behaviour sets a stance; a man standing idle (holding) would not
@@ -720,6 +760,15 @@ class AIO_Tasks
 	// and the stance comes back by itself when the AI gets him back.
 	protected static ref array<AIAgent> s_aStanceAgents;
 	protected static ref array<int> s_aStances;
+
+	// The stance we hold the man in, or -1.
+	static int StanceOrderOf(AIAgent agent)
+	{
+		int at = s_aStanceAgents.Find(agent);
+		if (at < 0)
+			return -1;
+		return s_aStances[at];
+	}
 
 	protected static void KeepStances()
 	{
@@ -753,9 +802,64 @@ class AIO_Tasks
 			s_aHoldAgents.Insert(agent);
 	}
 	protected static ref array<IEntity> s_aCopyLeaders;
+
+	// Every man given one of our orders (a move, hold, stance, speed, fire or formation rule,
+	// behaviour mode, lights), so the watchdog can let him go when no player commands his squad any
+	// more (the leader stepped down or left, a Game Master or another mod's commander let go of
+	// the leader): his old orders must not outrank whatever the game or that mod tells him next.
+	protected static ref array<AIAgent> s_aOrdered;
+	protected static ref array<int> s_aUncommanded; // watchdog ticks in a row without a commander
+	static const int UNCOMMANDED_TICKS = 3; // a squad handed between players can blink for a tick
+
+	static void Ordered(AIAgent agent)
+	{
+		if (!agent || s_aOrdered.Contains(agent))
+			return;
+		s_aOrdered.Insert(agent);
+		s_aUncommanded.Insert(0);
+		Watch();
+	}
+
+	// Lets go of men whose squad no player commands: every order of ours ends (AIO_Recruit.Clean)
+	// and they are the game's again, at normal priority. A man a player controls is the player's.
+	protected static void ReleaseUncommanded()
+	{
+		if (AIO_Server.s_bTestCommandAll || s_aOrdered.IsEmpty())
+			return;
+		array<SCR_AIGroup> squads = {};
+		AIO_Server.CommandedSquads(squads);
+		for (int i = s_aOrdered.Count() - 1; i >= 0; i--)
+		{
+			AIAgent agent = s_aOrdered[i];
+			IEntity body;
+			if (agent)
+				body = agent.GetControlledEntity();
+			if (!body || !AIO_Server.IsAlive(body))
+			{
+				s_aOrdered.Remove(i);
+				s_aUncommanded.Remove(i);
+				continue;
+			}
+			if (AIO_Server.IsPlayerControlled(body) || squads.Contains(SCR_AIGroup.Cast(agent.GetParentGroup())))
+			{
+				s_aUncommanded[i] = 0;
+				continue;
+			}
+			s_aUncommanded[i] = s_aUncommanded[i] + 1;
+			if (s_aUncommanded[i] < UNCOMMANDED_TICKS)
+				continue;
+			s_aOrdered.Remove(i);
+			s_aUncommanded.Remove(i);
+			Print(string.Format("[AIO] %1: no player commands his squad any more, his orders end", AIO_Server.NameOf(body)));
+			AIO_Recruit.Clean(body);
+		}
+	}
+
 	// Called by AIO_StaticInit at game start (static initializer budget: tools/check_static_init.py).
 	static void AIO_InitStatics()
 	{
+		s_aOrdered = {};
+		s_aUncommanded = {};
 		s_aStanceAgents = {};
 		s_aStances = {};
 		s_aCopyAgents = {};
@@ -772,6 +876,7 @@ class AIO_Tasks
 		StopCopying(agent);
 		s_aCopyAgents.Insert(agent);
 		s_aCopyLeaders.Insert(leader);
+		Ordered(agent);
 		ApplyCopiedStance(agent, leader);
 		Watch();
 	}
@@ -944,6 +1049,8 @@ class AIO_Tasks
 		s_aCopyAgents.Clear();
 		s_aCopyLeaders.Clear();
 		s_aHoldAgents.Clear();
+		s_aOrdered.Clear();
+		s_aUncommanded.Clear();
 		s_DoorBody = null;
 		s_DoorBuilding = null;
 		s_bDoorOpened = false;
@@ -952,6 +1059,7 @@ class AIO_Tasks
 	// Men holding a spot who drifted away (a fight, a push) walk back to it.
 	protected static void WatchTick()
 	{
+		ReleaseUncommanded();
 		KeepStances();
 		AIO_Behaviour.Tick();
 		AIO_Lights.Tick();
