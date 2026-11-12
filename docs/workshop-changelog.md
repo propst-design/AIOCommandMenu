@@ -1,4 +1,4 @@
-0.3.5
+0.4.0
 
 An order marker, recruiting and dismissing soldiers, and a lights-off order.
 

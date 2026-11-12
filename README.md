@@ -68,7 +68,7 @@ and [Menu reference](#menu-reference), then consult movement, defense, vehicles/
   on. **More > Aim marker** picks crosshair, a ring on the surface, or off, and
   sets the distance display and size. Your menu options (aim marker, mouse
   control, squad bar) are kept in your game profile across missions.
-- *0.3.5:* an **order marker**, as in older Arma games: a faint chevron with a
+- *0.4.0:* an **order marker**, as in older Arma games: a faint chevron with a
   short tag and the distance where your squad is heading, whoever gave the order
   (your whole-squad orders, the command wheel, a Game Master or another mod's AI commander). Only the
   next waypoint; it fades within about 15 m and while aiming down sights, and
@@ -101,9 +101,9 @@ from the map, a trace from above identifies the object under the cursor.
 | 3 | Vehicles | Get in (Any seat, Driver, Gunner, Passenger); Switch seat; Get out; Disembark passengers; EJECT; Vehicle controls; Unflip that vehicle; Repair that vehicle |
 | 4 | Defense | Take cover; Garrison building; Clear building; 360 defense (radius); Fortify here; Watch that direction; Watch: own choice; Grenades & smoke |
 | 5 | R.O.E. | Fire at will; Return fire only; Hold fire; Engage at will; Disengage |
-| 6 | Stance & speed | Stand; Crouch; Prone; Auto; Copy my stance; Speed (Walk, Run, Sprint, Auto); Behaviour (Safe, Aware, Combat, Stealth); Lights (Lights off, Own choice; 0.3.5) |
+| 6 | Stance & speed | Stand; Crouch; Prone; Auto; Copy my stance; Speed (Walk, Run, Sprint, Auto); Behaviour (Safe, Aware, Combat, Stealth); Lights (Lights off, Own choice; 0.4.0) |
 | 7 | Supplies | Heal up!; Rearm; Rearm from that; Take that weapon; Treat that soldier; Treat me; Give me ammo; Give me bandages; Explosives & mines |
-| 8 | More | Squad bar on/off; Admin (when allowed); Fire mission (mortar); Routes; Become leader; Step down as leader; Aim & order markers (0.3.4, order marker 0.3.5); Mouse control on/off (0.3.4); Recruit / dismiss (0.3.5) |
+| 8 | More | Squad bar on/off; Admin (when allowed); Fire mission (mortar); Routes; Become leader; Step down as leader; Aim & order markers (0.3.4, order marker 0.4.0); Mouse control on/off (0.3.4); Recruit / dismiss (0.4.0) |
 | 9 | HALT | Stop the current movement assignment |
 | 0 | Select members | Select individuals or colour teams |
 
@@ -118,7 +118,7 @@ it hands the lead to a living AI squadmate. These actions use your own group and
 ignore member selection. Game Master possession still permits AiO commands after
 stepping down. Native leadership changes can reset custom squad names/descriptions.
 
-*0.3.5:* **More > Recruit / dismiss** changes who is in your squad:
+*0.4.0:* **More > Recruit / dismiss** changes who is in your squad:
 - **Recruit that soldier / Recruit his whole squad**: aim at an AI soldier of your own
   side (within 100 m) to take him, or every man of his AI squad, into your squad.
   **Recruit everyone nearby** takes every free soldier of your side within 30 m.
@@ -192,7 +192,7 @@ judges danger itself, so a mode shapes how men travel and wait, not how they fig
 A later Stance or Speed order replaces the mode's stance or pace. Modes apply to
 men on foot; there is no Careless mode.
 
-*0.3.5:* **Stance & speed > Lights** sets light discipline. **Lights off** switches
+*0.4.0:* **Stance & speed > Lights** sets light discipline. **Lights off** switches
 off the recipients' flashlights and, for a man at the wheel, his vehicle's
 headlights, high beams and hazard lights. It covers the men in the squad when you
 give it: men who join later choose their own lights. They stay off through later

@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.5 — unreleased
+## 0.4.0 — unreleased
 
 - New: an order marker, in the spirit of older Arma games. A faint chevron with a short tag and the distance ("Move  230 m", "Defend  80 m") marks where your squad is heading, whoever gave the order: your whole-squad orders, the game's command wheel, a Game Master or another mod's AI commander. It shows only the next waypoint, follows a new order, and disappears when the order is done or cancelled. It fades out as you get within about 15 m and while you aim down sights, and hides with the map, a hidden HUD or any camera that isn't your own view (intros, cinematics, spectating). It works for the squad leader and for the other players in the squad. More > Aim & order markers turns it off or sets it faint, light or clear; the choice is remembered.
 - New: More > Recruit / dismiss. Aim at an AI soldier of your side to recruit him, or his whole AI squad, or take every free soldier of your side within 30 m. Dismiss selected men and they leave together as their own AI squad, waiting where they stand, ready for another player to recruit: that is how you trade men. Destroy selected men, the soldier you aim at or his whole squad to remove them from the game. Squads a player leads or belongs to are never touched, destroying the other side is for admins, and on servers the server's limit on AI per player squad still applies to players who aren't admins.
