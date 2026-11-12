@@ -24,6 +24,7 @@
 //   -aioContactTest 1 : native firefight, retained orders, danger interruption and arrival-driven bounding.
 //   -aioGarrisonTest 1 : Garrison from 50 m on several building kinds (AIO_GarrisonTest.c).
 //   -aioSquadTradeTest 1 : recruit, dismiss, trade and destroy soldiers between squads (AIO_SquadTradeTest.c).
+//   -aioOrderMarkerTest 1 : the order marker's server side: waypoint sent on change, cleared on completion (AIO_OrderMarkerTest.c).
 //   -aioFormationTest 1 : rifle squad walks legs in Column, Staggered column, Line, Wedge; shapes measured on the move.
 // Prints "[AIO] TEST <name> PASS|FAIL ..." lines and "[AIO] TEST COMPLETE".
 class AIO_Test
@@ -155,6 +156,14 @@ class AIO_Test
 		{
 			Print("[AIO] TEST garrison: starting in 8 s");
 			GetGame().GetCallqueue().CallLater(AIO_GarrisonTest.Start, 8000, false);
+			return;
+		}
+		string markerValue;
+		System.GetCLIParam("aioOrderMarkerTest", markerValue);
+		if (markerValue == "1" && Replication.IsServer())
+		{
+			Print("[AIO] TEST ordermarker: starting in 4 s");
+			GetGame().GetCallqueue().CallLater(AIO_OrderMarkerTest.Start, 4000, false);
 			return;
 		}
 		string tradeValue;

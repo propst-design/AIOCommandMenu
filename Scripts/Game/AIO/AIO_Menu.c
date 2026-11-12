@@ -140,6 +140,7 @@ class AIO_Menu
 			Diagnose(input, pc);
 
 		bool usable = CanUse(pc);
+		AIO_OrderMarker.Get().Update(pc, usable);
 		if (!usable)
 		{
 			if (m_bOpen)
@@ -577,6 +578,12 @@ class AIO_Menu
 				ShowFeedback("Mouse control off");
 			AIO_Settings.Save();
 			return; // keep the menu open to try it
+		}
+		if (AIO_OrderMarker.IsOption(item.m_eOrder))
+		{
+			ShowFeedback(AIO_OrderMarker.Get().Option(item.m_eOrder));
+			AIO_Settings.Save();
+			return; // keep the page open
 		}
 		if (AIO_AimMarker.IsOption(item.m_eOrder))
 		{
@@ -1170,6 +1177,7 @@ class AIO_Menu
 	{
 		AIO_SquadBar.Cleanup();
 		AIO_AimMarker.Cleanup();
+		AIO_OrderMarker.Cleanup();
 		if (!s_Instance)
 			return;
 		foreach (Widget widget : s_Instance.m_aWidgets)

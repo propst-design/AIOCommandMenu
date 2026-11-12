@@ -114,6 +114,18 @@ modded class SCR_PlayerController
 			AIO_Maneuvers.SetTeam(body, team);
 	}
 
+	// Server: the squad's next waypoint for this player's order marker (AIO_OrderMarkers, on change only).
+	void AIO_SendOrderMarker(bool has, vector position, string label)
+	{
+		Rpc(AIO_RpcOrderMarker, has, position, label);
+	}
+
+	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+	protected void AIO_RpcOrderMarker(bool has, vector position, string label)
+	{
+		AIO_OrderMarker.Get().Set(has, position, label);
+	}
+
 	// Server: tell this player something (e.g. a man reporting back after an errand).
 	void AIO_Notify(string text)
 	{

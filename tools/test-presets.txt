@@ -37,3 +37,5 @@ grenades-aca|-aioGrenadesTest 1|260|aca
 leadership|-aioLeadershipTest 1|90
 squadtrade|-aioSquadTradeTest 1|150
 squadtrade-aca|-aioSquadTradeTest 1|200|aca
+ordermarker|-aioOrderMarkerTest 1|90
+ordermarker-aca|-aioOrderMarkerTest 1|150|aca

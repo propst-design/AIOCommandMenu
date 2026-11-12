@@ -1,7 +1,7 @@
 // All-in-One Command Menu for Arma Reforger
 // Copyright (C) 2026 Jacob (propst-design). Licensed under the GNU GPL v3 or later (see LICENSE).
 
-// The player's menu options (More > Aim marker, Mouse control, Squad bar), kept across missions
+// The player's menu options (More > Aim & order markers, Mouse control, Squad bar), kept across missions
 // and game restarts in the game profile as "key=value" lines. Client only. Unknown keys and bad
 // values are ignored, so an old or hand-edited file can't break the menu.
 class AIO_Settings
@@ -13,6 +13,8 @@ class AIO_Settings
 	static int s_iAimSize = 1; // 0 small, 1 medium, 2 large
 	static bool s_bMouse;
 	static bool s_bSquadBarOff;
+	static bool s_bOrderMarkerOff;
+	static int s_iOrderMarkerOpacity = 1; // 0 faint, 1 light, 2 clear
 
 	protected static bool s_bLoaded;
 
@@ -48,6 +50,11 @@ class AIO_Settings
 					break;
 				case "mouse": s_bMouse = number != 0; break;
 				case "squadBar": s_bSquadBarOff = number == 0; break;
+				case "orderMarker": s_bOrderMarkerOff = number == 0; break;
+				case "orderMarkerOpacity":
+					if (number >= 0 && number <= 2)
+						s_iOrderMarkerOpacity = number;
+					break;
 			}
 		}
 		file.Close();
@@ -67,6 +74,8 @@ class AIO_Settings
 		file.WriteLine("aimSize=" + s_iAimSize.ToString()); // 0 small, 1 medium, 2 large
 		file.WriteLine("mouse=" + Flag(s_bMouse));
 		file.WriteLine("squadBar=" + Flag(!s_bSquadBarOff));
+		file.WriteLine("orderMarker=" + Flag(!s_bOrderMarkerOff));
+		file.WriteLine("orderMarkerOpacity=" + s_iOrderMarkerOpacity.ToString()); // 0 faint, 1 light, 2 clear
 		file.Close();
 	}
 

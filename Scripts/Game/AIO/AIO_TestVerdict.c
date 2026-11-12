@@ -32,6 +32,7 @@ class AIO_TestVerdict
 		if (System.IsCLIParam("aioFireMissionTest")) return 3;
 		if (System.IsCLIParam("aioGrenadesTest")) return 18;
 		if (System.IsCLIParam("aioLeadershipTest")) return 8;
+		if (System.IsCLIParam("aioOrderMarkerTest")) return 8;
 		return -1;
 	}
 
@@ -39,7 +40,7 @@ class AIO_TestVerdict
 	{
 		array<string> names = {"Task", "Move", "Infantry", "Supply", "Attack", "Defense", "Tower", "Garrison", "Vehicle", "Recovery",
 			"Formation", "Support", "Radius", "Contact", "Teleport", "Behaviour", "Explosives", "Specialists", "FireMission", "Grenades",
-			"Leadership", "Repair"};
+			"Leadership", "Repair", "OrderMarker"};
 		foreach (string name : names)
 		{
 			if (System.IsCLIParam("aio" + name + "Test"))

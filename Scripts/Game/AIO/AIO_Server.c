@@ -171,7 +171,7 @@ class AIO_Server
 			|| order == AIO_EOrder.ADMIN_TELEPORT_GROUP
 			|| order == AIO_EOrder.ADMIN_TELEPORT_VEHICLE)
 			return Admin(pc, order, point, target);
-		if (order == AIO_EOrder.TOGGLE_SQUAD_BAR || AIO_AimMarker.IsOption(order) || order == AIO_EOrder.MOUSE_CONTROL)
+		if (order == AIO_EOrder.TOGGLE_SQUAD_BAR || AIO_AimMarker.IsOption(order) || AIO_OrderMarker.IsOption(order) || order == AIO_EOrder.MOUSE_CONTROL)
 			return "";
 
 		if (order == AIO_EOrder.BECOME_LEADER || order == AIO_EOrder.STEP_DOWN_LEADER)

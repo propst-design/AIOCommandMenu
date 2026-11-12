@@ -14,6 +14,7 @@ modded class ArmaReforgerScripted
 	{
 		bool started = super.OnGameStart();
 		Print("[AIO] ready (All-in-One Command Menu loaded)");
+		AIO_OrderMarkers.Start();
 		AIO_Test.MaybeStart();
 		return started;
 	}
@@ -38,6 +39,7 @@ modded class ArmaReforgerScripted
 		AIO_Supplies.Cleanup();
 		AIO_Vehicles.Cleanup();
 		AIO_Server.Cleanup();
+		AIO_OrderMarkers.Cleanup();
 		super.OnBeforeWorldCleanup();
 	}
 }

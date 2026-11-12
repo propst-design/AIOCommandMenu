@@ -68,6 +68,12 @@ and [Menu reference](#menu-reference), then consult movement, defense, vehicles/
   on. **More > Aim marker** picks crosshair, a ring on the surface, or off, and
   sets the distance display and size. Your menu options (aim marker, mouse
   control, squad bar) are kept in your game profile across missions.
+- *0.3.5:* an **order marker**, as in older Arma games: a faint chevron with a
+  short tag and the distance where your squad is heading, whoever gave the order
+  (your whole-squad orders, the command wheel, a Game Master or another mod's AI commander). Only the
+  next waypoint; it fades within about 15 m and while aiming down sights, and
+  hides with the map, a hidden HUD or a camera that isn't your own view.
+  **More > Aim & order markers** turns it off or sets it faint, light or clear.
 - No selected members means **whole squad**. On Select members, **1–7** toggle
   soldiers, **8** cycles pages, **9** opens Teams and **0** returns to orders.
 - Selection lasts for about **eight seconds with the menu closed**. Reopen it
@@ -97,7 +103,7 @@ from the map, a trace from above identifies the object under the cursor.
 | 5 | R.O.E. | Fire at will; Return fire only; Hold fire; Engage at will; Disengage |
 | 6 | Stance & speed | Stand; Crouch; Prone; Auto; Copy my stance; Speed (Walk, Run, Sprint, Auto); Behaviour (Safe, Aware, Combat, Stealth); Lights (Lights off, Own choice; 0.3.5) |
 | 7 | Supplies | Heal up!; Rearm; Rearm from that; Take that weapon; Treat that soldier; Treat me; Give me ammo; Give me bandages; Explosives & mines |
-| 8 | More | Squad bar on/off; Admin (when allowed); Fire mission (mortar); Routes; Become leader; Step down as leader; Aim marker (0.3.4); Mouse control on/off (0.3.4); Recruit / dismiss (0.3.5) |
+| 8 | More | Squad bar on/off; Admin (when allowed); Fire mission (mortar); Routes; Become leader; Step down as leader; Aim & order markers (0.3.4, order marker 0.3.5); Mouse control on/off (0.3.4); Recruit / dismiss (0.3.5) |
 | 9 | HALT | Stop the current movement assignment |
 | 0 | Select members | Select individuals or colour teams |
 

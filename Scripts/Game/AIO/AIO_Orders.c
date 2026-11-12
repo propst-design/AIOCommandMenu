@@ -127,7 +127,9 @@ enum AIO_EOrder
 	DESTROY_MAN,
 	DESTROY_SQUAD,
 	LIGHTS_OFF,
-	LIGHTS_FREE
+	LIGHTS_FREE,
+	ORDER_MARKER, // ORDER_MARKER*: client only, never sent
+	ORDER_MARKER_OPACITY
 }
 
 // What an order needs from the player's side.
@@ -337,12 +339,15 @@ class AIO_MenuTree
 
 		more.Order("Become leader", AIO_EOrder.BECOME_LEADER);
 		more.Order("Step down as leader", AIO_EOrder.STEP_DOWN_LEADER);
-		AIO_MenuItem aim = more.Page("Aim marker");
+		AIO_MenuItem aim = more.Page("Aim & order markers");
 		aim.Order("Crosshair", AIO_EOrder.AIM_CROSSHAIR);
 		aim.Order("Ring on the surface", AIO_EOrder.AIM_RING);
 		aim.Order("Off", AIO_EOrder.AIM_OFF);
 		aim.Order("Distance on/off", AIO_EOrder.AIM_DISTANCE);
 		aim.Order("Size: small / medium / large", AIO_EOrder.AIM_SIZE);
+		// The faint marker at the squad's current order (AIO_OrderMarker.c).
+		aim.Order("Order marker on/off", AIO_EOrder.ORDER_MARKER);
+		aim.Order("Order marker: faint / light / clear", AIO_EOrder.ORDER_MARKER_OPACITY);
 		more.Order("Mouse control on/off (wheel, left click, right click)", AIO_EOrder.MOUSE_CONTROL);
 		// Take AI soldiers or squads of your side in, let men go as their own squad, remove soldiers (AIO_Recruit.c).
 		AIO_MenuItem recruit = more.Page("Recruit / dismiss");
