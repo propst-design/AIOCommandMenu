@@ -79,8 +79,13 @@ modded class SCR_PlayerController
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void AIO_RpcOrder(int order, array<RplId> members, vector point, RplId target)
 	{
-		if (!AIO_Allow() || (members && members.Count() > 64))
+		if (!AIO_Allow())
 			return;
+		if (members && members.Count() > 64)
+		{
+			AIO_Notify("Too many men selected (64 at most)"); // an admin can recruit past the squad limit
+			return;
+		}
 		string feedback = AIO_Server.Execute(this, order, members, point, target);
 		if (!feedback.IsEmpty())
 			Rpc(AIO_RpcFeedback, feedback);
