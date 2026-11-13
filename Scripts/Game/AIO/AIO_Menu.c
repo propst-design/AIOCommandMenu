@@ -369,8 +369,7 @@ class AIO_Menu
 		m_aStack.Insert(m_Root);
 		m_iSelectPage = 0;
 		m_iSelectionClearAt = 0;
-		m_iNextRosterAsk = 0;
-		pc.AIO_AskRoster();
+		m_iNextRosterAsk = 0; // asked on the next frame (Update): asking here too spent two of the 3-per-second asks
 		Render();
 	}
 
