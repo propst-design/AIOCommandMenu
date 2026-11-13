@@ -195,11 +195,24 @@ class AIO_Server
 
 	// ---------------------------------------------------------------- orders
 
+	// Finite and within 1000 km of the origin on every axis (NaN fails every comparison).
+	static bool SanePoint(vector point)
+	{
+		for (int i = 0; i < 3; i++)
+		{
+			if (!(Math.AbsFloat(point[i]) <= 1000000.0))
+				return false;
+		}
+		return true;
+	}
+
 	static string Execute(SCR_PlayerController pc, int order, array<RplId> members, vector point, RplId target)
 	{
 		int playerId = pc.GetPlayerId();
-		// The point is the client's look ray or map cursor: a NaN one would reach every order (as Routes checks).
-		if (point[0] != point[0] || point[1] != point[1] || point[2] != point[2])
+		// The point is the client's look ray or map cursor: a NaN, infinite or absurdly far one
+		// (modified client) would reach every order, waypoint spawns and fire missions included.
+		// A real one is at most the 1.5 km look ray past the map edge, so 1000 km is only garbage.
+		if (!AIO_Server.SanePoint(point))
 			return "Invalid position";
 		if ((order >= AIO_EOrder.ADMIN_HEAL_ME && order <= AIO_EOrder.ADMIN_KILL_TARGET)
 			|| order == AIO_EOrder.ADMIN_TELEPORT_MAP
