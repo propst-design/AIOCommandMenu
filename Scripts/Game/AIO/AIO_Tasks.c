@@ -301,10 +301,12 @@ class AIO_Tasks
 			utility.AddAction(new SCR_AIMoveInFormationBehavior(utility, null));
 	}
 
+	// Possessed men too: a whole-squad release (Halt, Follow, Move here, the command wheel) must not
+	// leave a possessed man a post that calls him back once the AI has him again (#16).
 	static void ReleaseGroup(SCR_AIGroup group)
 	{
 		array<IEntity> members = {};
-		AIO_Server.Members(group, members);
+		AIO_Server.Members(group, members, true);
 		foreach (IEntity body : members)
 			Release(body);
 	}

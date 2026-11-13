@@ -47,7 +47,9 @@ class AIO_Server
 	// The living men of the group under AI control. A body a player possesses (the possessing
 	// leader himself, or another player who took one of the men) is that player's, not the squad's:
 	// the roster, the order resolution and every whole-squad order start here (#16).
-	static void Members(SCR_AIGroup slave, notnull array<IEntity> members)
+	// possessedToo: possessed men as well, for releases only (ending what AiO gave them is not an
+	// order to them; a post kept for a possessed man would call him back when the AI has him again).
+	static void Members(SCR_AIGroup slave, notnull array<IEntity> members, bool possessedToo = false)
 	{
 		if (!slave)
 			return;
@@ -58,7 +60,7 @@ class AIO_Server
 			if (!agent)
 				continue;
 			IEntity body = agent.GetControlledEntity();
-			if (body && IsAlive(body) && !IsPlayerControlled(body))
+			if (body && IsAlive(body) && (possessedToo || !IsPlayerControlled(body)))
 				members.Insert(body);
 		}
 	}
@@ -340,7 +342,7 @@ class AIO_Server
 		if (order == AIO_EOrder.HOLD_FIRE || order == AIO_EOrder.FIRE_AT_WILL || order == AIO_EOrder.RETURN_FIRE)
 		{
 			array<IEntity> everyone = {};
-			Members(slave, everyone);
+			Members(slave, everyone, true); // possessed men's overrides end too (they keep them once the AI has them again)
 			foreach (IEntity soldier : everyone)
 			{
 				AIO_Maneuvers.StopLead(AIO_Tasks.AgentOf(soldier));
@@ -794,7 +796,7 @@ class AIO_Server
 		if (SCR_SetCombatModeGroupCommand.Cast(command))
 		{
 			array<IEntity> everyone = {};
-			Members(slave, everyone);
+			Members(slave, everyone, true); // possessed men's overrides end too (they keep them once the AI has them again)
 			foreach (IEntity soldier : everyone)
 			{
 				AIO_Maneuvers.StopLead(AIO_Tasks.AgentOf(soldier));
