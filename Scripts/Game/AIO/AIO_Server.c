@@ -690,6 +690,11 @@ class AIO_Server
 			AIAgent agent = AIO_Tasks.AgentOf(body);
 			AIO_Tasks.StopCopying(agent);
 			AIO_Tasks.SetStance(agent, stance);
+			// His stance is now this order's, not Take cover's: releasing the cover post later
+			// must not undo it (Release resets the stance of a crouched hold).
+			AIO_HoldBehavior cover = AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(agent));
+			if (cover)
+				cover.m_bCrouched = false;
 		}
 		return string.Format("%1 men %2", bodies.Count(), what);
 	}
