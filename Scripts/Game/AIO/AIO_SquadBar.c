@@ -131,6 +131,10 @@ class AIO_SquadBar
 	{
 		TextWidget mark = m_aMarks[index];
 		mark.SetVisible(false);
+		// The menu works with the map open; the head numbers would float over it at 3D positions.
+		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
+		if (mapEntity && mapEntity.IsOpen())
+			return;
 		IEntity body = BodyOf(member.m_Id);
 		if (!body)
 		{
