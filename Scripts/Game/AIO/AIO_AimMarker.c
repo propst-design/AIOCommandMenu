@@ -96,6 +96,9 @@ class AIO_AimMarker
 		type = AIO_EAimType.MOVE;
 		need = AIO_EAimNeed.POINT;
 		bool aimed = onRoot;
+		// The page needs a building or a vehicle only when all its aimed orders do: on Defense,
+		// Fortify here and Watch that direction work on open ground beside Garrison.
+		int points, buildings, vehicles;
 		foreach (AIO_MenuItem item : page.m_aChildren)
 		{
 			if (item.m_eOrder == AIO_EOrder.AIM_CROSSHAIR)
@@ -103,14 +106,20 @@ class AIO_AimMarker
 			if (item.m_eTarget != AIO_ETarget.POINT)
 				continue;
 			aimed = true;
+			points++;
 			AIO_EOrder order = item.m_eOrder;
-			if (order == AIO_EOrder.DEF_GARRISON)
-				need = AIO_EAimNeed.BUILDING;
-			else if (order == AIO_EOrder.VEH_GET_IN_ANY || order == AIO_EOrder.VEH_UNFLIP)
-				need = AIO_EAimNeed.VEHICLE;
+			AIO_EAimNeed orderNeed = OrderNeed(order); // the same rule the mouse focus uses
+			if (orderNeed == AIO_EAimNeed.BUILDING)
+				buildings++;
+			else if (orderNeed == AIO_EAimNeed.VEHICLE)
+				vehicles++;
 			if (type == AIO_EAimType.MOVE)
 				type = OrderType(order);
 		}
+		if (points > 0 && buildings == points)
+			need = AIO_EAimNeed.BUILDING;
+		else if (points > 0 && vehicles == points)
+			need = AIO_EAimNeed.VEHICLE;
 		return aimed;
 	}
 
