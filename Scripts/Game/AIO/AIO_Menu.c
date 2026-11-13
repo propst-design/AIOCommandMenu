@@ -58,6 +58,7 @@ class AIO_Menu
 	protected string m_sRouteTarget;
 	protected int m_iNextRosterAsk;
 	protected int m_iSwallowUntil; // tick count until which closed-menu key releases are swallowed
+	protected bool m_bClickHeld;   // the mouse button that closed the menu is still down
 
 	// Mouse control (old Arma style, More > Mouse control): wheel moves a highlight over the lines,
 	// left click gives it, right click goes back. Not with the map open (the map needs the mouse).
@@ -178,8 +179,11 @@ class AIO_Menu
 			// Just closed: the key that closed the menu is still being released. Keep our
 			// context on so that release can't reach the weapon/quick-slot keys.
 			// A click that gave an order must not reach the weapon while the button is still down.
-			if (MouseActive() && input.GetActionValue("AIO_MouseHeld") > 0)
+			// Only that click: a fire button pressed after closing must not hold the swallow open.
+			if (m_bClickHeld && MouseActive() && input.GetActionValue("AIO_MouseHeld") > 0)
 				m_iSwallowUntil = Math.Max(m_iSwallowUntil, now + 100);
+			else
+				m_bClickHeld = false;
 			if (now < m_iSwallowUntil)
 			{
 				ActivateMenuContext(input);
@@ -377,6 +381,8 @@ class AIO_Menu
 	{
 		m_bOpen = false;
 		m_iSwallowUntil = System.GetTickCount() + SWALLOW_MS;
+		InputManager input = GetGame().GetInputManager();
+		m_bClickHeld = MouseActive() && input && input.GetActionValue("AIO_MouseHeld") > 0;
 		SetVisible(false);
 		AIO_AimMarker.Get().Hide();
 		if (!m_aSelected.IsEmpty() && m_iSelectionClearAt == 0)
