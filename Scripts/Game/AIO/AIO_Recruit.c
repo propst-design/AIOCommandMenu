@@ -387,7 +387,7 @@ class AIO_Recruit
 	}
 
 	// Ends everything AiO has a man of ours doing or set on him (tasks, per-man fire rules, behaviour
-	// mode, stance, pace and Lights off), so he leaves the squad or the game with nothing of ours left behind.
+	// mode, stance, pace, colour team, Lights off and a driver's lights order), so he leaves the squad or the game with nothing of ours left behind.
 	static void Clean(IEntity man)
 	{
 		AIAgent agent = AIO_Tasks.AgentOf(man);
@@ -402,6 +402,10 @@ class AIO_Recruit
 		AIO_Tasks.SetStance(agent, -1);
 		AIO_Tasks.SetSpeed(agent, -1);
 		AIO_Lights.Release(agent);
+		// A Vehicles > lights order isn't in AIO_Lights' list: its setting would stay on him for good.
+		AIO_Vehicles.LeaveLightsAlone(man, false);
+		// His colour team is ours too: the next leader's roster, bounds and peels would read it.
+		AIO_Maneuvers.SetTeam(man, 0);
 	}
 
 	// ---------------------------------------------------------------- destroy
