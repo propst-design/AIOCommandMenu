@@ -413,6 +413,7 @@ class AIO_Recruit
 		if (!agent)
 			return;
 		AIO_Tasks.Release(man);
+		AIO_Vehicles.CancelBoarding(man); // Release leaves a boarding on: he'd climb into our vehicle
 		AIO_Maneuvers.StopLead(agent);
 		AIO_Maneuvers.SetROE(man, -1);
 		AIO_Maneuvers.SetEngage(man, -1);

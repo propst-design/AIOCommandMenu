@@ -342,6 +342,25 @@ class AIO_Vehicles
 		return s_iReservation;
 	}
 
+	// He leaves the squad or the game (AIO_Recruit.Clean): a boarding we sent him on ends and the
+	// seat held for him is free again (Release leaves boarding alone; Board fails it itself).
+	static void CancelBoarding(IEntity body)
+	{
+		SCR_AIUtilityComponent utility = AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(body));
+		if (utility && !VehicleOf(body))
+			utility.SetStateAllActionsOfType(SCR_AIGetInVehicle, EAIActionState.FAILED);
+		for (int i = s_aReservedSeats.Count() - 1; i >= 0; i--)
+		{
+			BaseCompartmentSlot seat = s_aReservedSeats[i];
+			if (seat && !seat.IsReservedBy(body))
+				continue;
+			s_aReservedSeats.Remove(i);
+			s_aReservedStamps.Remove(i);
+			if (seat)
+				seat.SetReserved(null);
+		}
+	}
+
 	protected static void Unreserve(BaseCompartmentSlot seat, IEntity body, int stamp)
 	{
 		int at = s_aReservedSeats.Find(seat);
