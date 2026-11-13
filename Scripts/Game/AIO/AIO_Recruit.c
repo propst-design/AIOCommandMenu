@@ -335,6 +335,9 @@ class AIO_Recruit
 		SCR_AIGroup old = SCR_AIGroup.Cast(agent.GetParentGroup());
 		if (old == squad)
 			return true;
+		// Whatever AiO left on him for his old commander (fire rules, stance, colour team, Lights
+		// off) is not the new leader's: he joins clean, as a dismissed man leaves clean.
+		Clean(man);
 		if (old)
 			Leave(old, man);
 		if (!squad.IsAIActivated())
