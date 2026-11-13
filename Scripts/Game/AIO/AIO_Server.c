@@ -195,6 +195,18 @@ class AIO_Server
 
 	// ---------------------------------------------------------------- orders
 
+	// The caller has a living, conscious body to command from (orders, routes, teams).
+	static bool CanCommand(SCR_PlayerController pc)
+	{
+		if (!pc)
+			return false;
+		ChimeraCharacter caller = ChimeraCharacter.Cast(pc.GetControlledEntity());
+		if (!caller)
+			return false;
+		CharacterControllerComponent controller = caller.GetCharacterController();
+		return !controller || (!controller.IsDead() && !controller.IsUnconscious());
+	}
+
 	// Finite and within 1000 km of the origin on every axis (NaN fails every comparison).
 	static bool SanePoint(vector point)
 	{
@@ -226,8 +238,9 @@ class AIO_Server
 			return AIO_Leadership.Execute(pc, order == AIO_EOrder.BECOME_LEADER);
 		// The menu closes for a dead or unconscious leader (AIO_Menu.CanUse); an order sent
 		// anyway (late packet, modified client) is refused like the game's own commanding.
-		ChimeraCharacter caller = ChimeraCharacter.Cast(pc.GetControlledEntity());
-		if (caller && caller.GetCharacterController() && (caller.GetCharacterController().IsDead() || caller.GetCharacterController().IsUnconscious()))
+		// No body at all (respawn screen, Game Master camera) is refused too: the squad lookup
+		// only needs leadership, so a body-less leader could otherwise still order his men.
+		if (!CanCommand(pc))
 			return "You can't give orders now";
 		if (AIO_Recruit.IsOrder(order))
 			return AIO_Recruit.Order(pc, order, members, point, target);

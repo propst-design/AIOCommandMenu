@@ -101,6 +101,11 @@ modded class SCR_PlayerController
 	{
 		if (!AIO_Allow())
 			return;
+		if (!AIO_Server.CanCommand(this))
+		{
+			AIO_Notify("You can't give orders now");
+			return;
+		}
 		SCR_AIGroup group = AIO_Server.Slave(GetPlayerId());
 		array<IEntity> men = {};
 		if (group && ids && ids.Count() <= 64)
@@ -117,7 +122,7 @@ modded class SCR_PlayerController
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void AIO_RpcTeam(array<RplId> ids, int team)
 	{
-		if (!AIO_Allow())
+		if (!AIO_Allow() || !AIO_Server.CanCommand(this))
 			return;
 		SCR_AIGroup slave = AIO_Server.Slave(GetPlayerId());
 		if (!slave || !ids || ids.Count() > 64) // a squad, not an unbounded list (as AIO_RpcRoute)
