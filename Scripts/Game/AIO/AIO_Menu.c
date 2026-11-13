@@ -68,6 +68,7 @@ class AIO_Menu
 	protected int m_iWheelDirection; // last frame's scroll sign
 	protected int m_iWheelLogs;
 	protected float m_fHeldSpeed = -1; // movement speed when the menu opened; the wheel also sets it
+	protected IEntity m_HeldSpeedBody;  // the body m_fHeldSpeed was read from
 	protected ImageWidget m_wHighlight;
 
 	// Input self-check, logged once ~5 s after the player controller starts updating.
@@ -279,8 +280,12 @@ class AIO_Menu
 		CharacterControllerComponent controller = character.GetCharacterController();
 		if (!controller)
 			return;
-		if (m_fHeldSpeed < 0)
+		// A new body (possession, respawn) keeps his own speed: the held one was the old body's.
+		if (m_fHeldSpeed < 0 || m_HeldSpeedBody != character)
+		{
+			m_HeldSpeedBody = character;
 			m_fHeldSpeed = controller.GetDynamicSpeed();
+		}
 		else if (controller.GetDynamicSpeed() != m_fHeldSpeed)
 			controller.SetDynamicSpeed(m_fHeldSpeed);
 	}
