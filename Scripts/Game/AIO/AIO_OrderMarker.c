@@ -95,8 +95,14 @@ class AIO_OrderMarkers
 	// else the AI ("slave") group linked to the player's group, else the player's group itself.
 	static SCR_AIGroup OrderGroup(SCR_AIGroup playerGroup, SCR_AIGroup possessed)
 	{
-		if (possessed && possessed.GetCurrentWaypoint())
-			return possessed;
+		// Possessing, his squad is the possessed one: without a waypoint it has no order to show,
+		// and his own group's waypoint (a squad he isn't with) would be the wrong one.
+		if (possessed)
+		{
+			if (possessed.GetCurrentWaypoint())
+				return possessed;
+			return null;
+		}
 		if (!playerGroup)
 			return null;
 		SCR_AIGroup slave = playerGroup.GetSlave();
