@@ -83,9 +83,25 @@ class AIO_Recruit
 				return "That's your own squad: select the men and use Destroy selected men";
 			SquadOf(man, men);
 		}
+		// A squad order checks every man as it checked the one aimed at (range, side): squadmates far
+		// away or of another faction (mixed Game Master groups) are left where they are.
+		int refused;
+		for (int i = men.Count() - 1; i >= 0; i--)
+		{
+			if (men[i] != man && !Refusal(men[i], squad, leader, admin, recruit).IsEmpty())
+			{
+				men.Remove(i);
+				refused++;
+			}
+		}
+		string reply;
 		if (recruit)
-			return Recruit(squad, leader, admin, men);
-		return Destroy(men);
+			reply = Recruit(squad, leader, admin, men);
+		else
+			reply = Destroy(men);
+		if (refused > 0)
+			reply += string.Format("; %1 of his squad out of reach", refused);
+		return reply;
 	}
 
 	// ---------------------------------------------------------------- who may be taken
