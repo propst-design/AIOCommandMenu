@@ -128,11 +128,16 @@ class AIO_Maneuvers
 		AIAgent agent = AIO_Tasks.AgentOf(body);
 		if (!agent)
 			return;
-		int at = s_aTeamAgents.Find(agent);
-		if (at >= 0)
+		// Men killed or deleted while in a team leave their entry behind: drop those here, so the
+		// list doesn't grow for the whole mission and a deleted agent's null entry can't match.
+		for (int i = s_aTeamAgents.Count() - 1; i >= 0; i--)
 		{
-			s_aTeamAgents.RemoveOrdered(at);
-			s_aTeamValues.RemoveOrdered(at);
+			AIAgent listed = s_aTeamAgents[i];
+			if (listed == agent || !listed || !AIO_Server.IsAlive(listed.GetControlledEntity()))
+			{
+				s_aTeamAgents.RemoveOrdered(i);
+				s_aTeamValues.RemoveOrdered(i);
+			}
 		}
 		if (team > 0)
 		{
@@ -143,7 +148,10 @@ class AIO_Maneuvers
 
 	static int TeamOf(IEntity body)
 	{
-		int at = s_aTeamAgents.Find(AIO_Tasks.AgentOf(body));
+		AIAgent agent = AIO_Tasks.AgentOf(body);
+		if (!agent)
+			return 0; // Find(null) would match a deleted man's entry
+		int at = s_aTeamAgents.Find(agent);
 		if (at < 0)
 			return 0;
 		return s_aTeamValues[at];
