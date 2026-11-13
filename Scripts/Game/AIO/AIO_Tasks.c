@@ -308,7 +308,12 @@ class AIO_Tasks
 		array<IEntity> members = {};
 		AIO_Server.Members(group, members, true);
 		foreach (IEntity body : members)
+		{
 			Release(body);
+			// Engage at will, and the free hand Assault and Clear give, end with it (hard rule 2):
+			// Release alone left them chasing contacts out of formation after Halt or a wheel Move.
+			AIO_Maneuvers.SetEngage(body, -1);
+		}
 	}
 
 	// Walk to the spot and stay there.
