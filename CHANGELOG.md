@@ -10,6 +10,20 @@
 - Fixed: Get in, Unflip and Repair now check on the server that the vehicle is where you aimed, so a modified game can't reserve the seats of a vehicle you never looked at.
 - Lighter on servers: with the menu closed and nothing to report, your game asks the server for the squad roster every few seconds instead of every second, and opening the menu asks for it once, not twice.
 - Smaller download: the automated tests are no longer part of the Workshop package.
+- Fixed: men possessed (by a Game Master, say) when your orders ended or a wheel order came in got your post, fire rules and Fire on my lead back with the AI afterwards. They are released like the rest.
+- Fixed: Halt, a whole-squad Move and a command wheel order left Engage at will (and Assault or Clear's free hand) on, so men kept chasing out of formation.
+- Fixed: Take cover, then a stance (Prone, say), then Move here stood him back up.
+- Fixed: Recruit or Destroy on a whole squad checked range and side on the man you aimed at only, so a far-off squad, or other-faction men in a mixed Game Master group, came too. Every man is checked now.
+- Fixed: recruits kept their old commander's fire rules, stance, colour team and Lights off.
+- Fixed: a dismissed or destroyed man kept boarding your vehicle, maybe as its driver, and held the seat for up to two minutes.
+- Fixed: with mouse control, holding any mouse button kept fire blocked after a keyboard order.
+- Fixed: a held speed carried over to a new body.
+- Fixed: possessing a man whose squad had no waypoint showed your own group's waypoint on the order marker.
+- Fixed: the squad bar's head numbers were drawn over the open map.
+- Fixed: the Defense page greyed out open ground ("No building here") for keyboard users.
+- Fixed: a leader without a body (on the respawn screen or in the Game Master camera) could still give orders, routes and teams.
+- Fixed: an order to more than 64 men was dropped silently.
+- The server refuses impossible order positions from a modified game, and colour teams no longer keep deleted men.
 
 ## 0.3.4 — released
 

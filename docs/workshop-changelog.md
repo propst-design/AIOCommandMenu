@@ -13,3 +13,7 @@ FIXED
 - Your orders end a few seconds after nobody commands the squad (a Game Master lets go, a leader steps down or leaves), so the game, the Game Master or another mod can order the men again.
 - The colour teams in the menu match the teams your men use after a reconnect or a takeover.
 - Lighter on servers (opening the menu asks for the roster once), and a smaller download: the automated tests are no longer in the package.
+- Halt, a whole-squad Move and the command wheel end Engage at will, so men stop chasing out of formation; men possessed when your orders ended are released too.
+- Recruit and Destroy on a whole squad check every man's range and side, recruits start clean, and a dismissed man no longer keeps boarding your vehicle.
+- With mouse control, holding a mouse button no longer keeps fire blocked after a keyboard order; a stance given after Take cover lasts through Move here.
+- Smaller fixes: held speed on a new body, the order marker while possessing, head numbers over the map, the Defense page for keyboard users, orders from a leader without a body.
