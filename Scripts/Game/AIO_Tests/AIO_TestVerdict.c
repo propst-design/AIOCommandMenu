@@ -15,7 +15,7 @@ class AIO_TestVerdict
 		if (System.IsCLIParam("aioMoveTest")) return 5;
 		if (System.IsCLIParam("aioInfantryTest")) return 7;
 		if (System.IsCLIParam("aioSupplyTest")) return 5;
-		if (System.IsCLIParam("aioAttackTest")) return 8;
+		if (System.IsCLIParam("aioAttackTest")) return 9;
 		if (System.IsCLIParam("aioDefenseTest")) return 8;
 		if (System.IsCLIParam("aioTowerTest")) return 10;
 		if (System.IsCLIParam("aioGarrisonTest")) return 9;
