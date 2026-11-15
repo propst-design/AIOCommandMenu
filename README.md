@@ -18,8 +18,9 @@ vehicles and manage supplies through the keyboard.
 AiO is standalone: it requires only Arma Reforger (checked on 1.9, the current
 stable version), with no other mod dependencies. It uses the game's player-led AI
 squad setup, so it works in Conflict, Game Master and scenarios such as
-Arma Commander: Actual. In Game Master, take control of a soldier to command the
-other AI in that soldier's group. It does not create a squad or command
+Arma Commander: Actual. In Game Master, take control of an AI group's leader to
+command the other AI in that group; take control of a rifleman and the AI leader
+keeps leading (More > Become leader takes over). It does not create a squad or command
 arbitrary groups from the Game Master camera; from 0.4.0 it can take AI soldiers
 of your own side into your squad (More > Recruit / dismiss).
 
@@ -38,7 +39,7 @@ joining clients; it is not a client-only menu. Server hosts: see
 
 ## Quick start
 
-1. Lead a squad with linked AI, or take control of a soldier in a Game Master AI group.
+1. Lead a squad with linked AI, or take control of the leader of a Game Master AI group.
 2. Press **T**, then choose an order with the number keys. No selected members means the whole squad.
 3. For destination orders, aim at the location or put the map cursor there before choosing the order.
 4. Use **Move > Follow me / Return to formation** to regroup.
@@ -116,8 +117,13 @@ from the AI leader when you possess a soldier in an independent AI group. It can
 replace another player. **Step down as leader** passes player-squad leadership to
 another member (or leaves it vacant when you are alone); in a possessed AI group,
 it hands the lead to a living AI squadmate. These actions use your own group and
-ignore member selection. Game Master possession still permits AiO commands after
-stepping down. Native leadership changes can reset custom squad names/descriptions.
+ignore member selection. Only the squad leader commands the squad: after stepping
+down in a possessed AI group, or while you control one of its riflemen, the AI
+leader leads and you go with the squad (the order marker still shows its order).
+Taking control of another group's leader makes that group your squad instead of
+your own, and your first order there replaces its commander's objective (fire
+rules, stance and pace don't). Native leadership changes can reset custom squad
+names/descriptions.
 
 *0.4.0:* **More > Recruit / dismiss** changes who is in your squad:
 - **Recruit that soldier / Recruit his whole squad**: aim at an AI soldier of your own
@@ -414,7 +420,7 @@ A second option decides who may destroy AI soldiers outside their own squad
 ## Compatibility and current limits
 
 AiO works with player-led AI squads in compatible scenarios: Conflict, Game
-Master (by possessing a soldier) and Arma Commander: Actual among them.
+Master (by possessing an AI group's leader) and Arma Commander: Actual among them.
 
 - The game's own command wheel overrides AiO: a wheel order to move, follow, stop
   or get in releases men you told to hold, and a wheel fire order ends per-man
