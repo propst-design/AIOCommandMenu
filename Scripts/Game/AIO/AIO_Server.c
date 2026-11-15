@@ -891,8 +891,9 @@ class AIO_Server
 		switch (order)
 		{
 			case AIO_EOrder.HOLD_FIRE: case AIO_EOrder.RETURN_FIRE: case AIO_EOrder.FIRE_AT_WILL:
-			case AIO_EOrder.ENGAGE_AT_WILL: case AIO_EOrder.DISENGAGE:
+			case AIO_EOrder.ENGAGE_AT_WILL: case AIO_EOrder.DISENGAGE: case AIO_EOrder.FIRE_ON_MY_LEAD:
 			case AIO_EOrder.STANCE_UP: case AIO_EOrder.STANCE_CROUCH: case AIO_EOrder.STANCE_PRONE: case AIO_EOrder.STANCE_AUTO:
+			case AIO_EOrder.COPY_STANCE:
 			case AIO_EOrder.SPEED_WALK: case AIO_EOrder.SPEED_NORMAL: case AIO_EOrder.SPEED_FAST: case AIO_EOrder.SPEED_AUTO:
 				return true;
 		}
