@@ -1836,7 +1836,32 @@ class AIO_Test
 		}
 		Check("follow-moving-leader", farthest < 30 && clean == men.Count(), string.Format("farthest %1 m, %2 of %3 without AIO movement overrides", farthest, clean, men.Count()));
 		Check("formation-spread", spread > 8, string.Format("native formation span %1 m", spread));
+		PossessedObjective();
 		Finish();
+	}
+
+	// Possessed squad and its commander's waypoint (Jacob, 14/15 Nov): a refused order and an order
+	// that keeps the objective (Heal up) leave it; an order that takes (Halt) replaces it.
+	protected static void PossessedObjective()
+	{
+		AIO_Server.ClearWaypoints(s_Group);
+		AIO_Server.AddWaypoint(s_Group, AIO_Server.WP_MOVE, FindSpot(Leader().GetOrigin(), 60));
+		string refused = AIO_Server.ExecutePossessed(s_Group, AIO_EOrder.DEF_GARRISON, Leader().GetOrigin(), Leader(), RplId.Invalid(), 0);
+		int afterRefused = WaypointCount();
+		string healed = AIO_Server.ExecutePossessed(s_Group, AIO_EOrder.HEAL_UP, vector.Zero, Leader(), RplId.Invalid(), 0);
+		int afterHeal = WaypointCount();
+		string halted = AIO_Server.ExecutePossessed(s_Group, AIO_EOrder.HALT, vector.Zero, Leader(), RplId.Invalid(), 0);
+		int afterHalt = WaypointCount();
+		Check("possessed-refused-keeps-waypoint", afterRefused == 1, string.Format("'%1', %2 waypoints", refused, afterRefused));
+		Check("possessed-heal-keeps-waypoint", afterHeal == 1, string.Format("'%1', %2 waypoints", healed, afterHeal));
+		Check("possessed-order-replaces-waypoint", afterHalt == 0, string.Format("'%1', %2 waypoints", halted, afterHalt));
+	}
+
+	protected static int WaypointCount()
+	{
+		array<AIWaypoint> waypoints = {};
+		s_Group.GetWaypoints(waypoints);
+		return waypoints.Count();
 	}
 
 	// ---------------------------------------------------------------- Move menu test
