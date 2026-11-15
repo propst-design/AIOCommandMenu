@@ -345,8 +345,11 @@ class AIO_Server
 			everyone.RemoveItem(pc.GetControlledEntity());
 			if (everyone.IsEmpty())
 				return "No soldiers under your command";
-			if (order == AIO_EOrder.FOLLOW || order == AIO_EOrder.DEF_GARRISON || order == AIO_EOrder.DEF_CLEAR)
-				ClearWaypoints(slave); // a GM waypoint must not keep reissuing the previous move
+			// His first order to the squad replaces the commander's (Jacob, 14 Nov: squad leader
+			// primacy); a waypoint left in place would keep reissuing the old objective once the
+			// men's tasks end. Fire rules, stance and pace only change how they go about it.
+			if (!KeepsObjective(order))
+				ClearWaypoints(slave);
 			return ExecuteBodies(slave, order, everyone, point, pc.GetControlledEntity(), target, playerId);
 		}
 		// Whole-squad movement orders take over from any single-man tasks.
@@ -879,6 +882,21 @@ class AIO_Server
 		s_bIssuingVanilla = false;
 		Print(string.Format("[AIO] player %1: %2 at %3", playerId, command, point));
 		return true;
+	}
+
+	// Whole-squad orders that change how the squad fights or moves, not where it goes: a possessed
+	// squad keeps its commander's waypoint for these.
+	static bool KeepsObjective(int order)
+	{
+		switch (order)
+		{
+			case AIO_EOrder.HOLD_FIRE: case AIO_EOrder.RETURN_FIRE: case AIO_EOrder.FIRE_AT_WILL:
+			case AIO_EOrder.ENGAGE_AT_WILL: case AIO_EOrder.DISENGAGE:
+			case AIO_EOrder.STANCE_UP: case AIO_EOrder.STANCE_CROUCH: case AIO_EOrder.STANCE_PRONE: case AIO_EOrder.STANCE_AUTO:
+			case AIO_EOrder.SPEED_WALK: case AIO_EOrder.SPEED_NORMAL: case AIO_EOrder.SPEED_FAST: case AIO_EOrder.SPEED_AUTO:
+				return true;
+		}
+		return false;
 	}
 
 	static void ClearWaypoints(SCR_AIGroup group)
