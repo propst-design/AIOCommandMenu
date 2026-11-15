@@ -11,7 +11,7 @@ class AIO_Leadership
 			return "You must be alive to change leadership";
 
 		// GM possession: change the real AI formation leader within this soldier's group.
-		SCR_AIGroup possessed = AIO_Server.PossessedGroup(pc.GetPlayerId());
+		SCR_AIGroup possessed = AIO_Server.PossessedAnyGroup(pc.GetPlayerId());
 		if (possessed)
 			return ChangeAILeader(possessed, body, become);
 

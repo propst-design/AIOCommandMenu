@@ -24,9 +24,24 @@ class AIO_Server
 		return PossessedGroup(playerId);
 	}
 
-	// Game Master "take control" of an AI soldier (usually the leader): his own AI group is the squad.
+	// Game Master "take control" of an AI soldier: his AI group is the squad only while he is its
+	// leader. Only the squad leader commands the squad (Jacob, 14 Nov: squad leader primacy); a player
+	// who takes a subordinate rolls with the squad and its AI leader keeps leading it.
 	// Never a playable group (that one holds players, not soldiers to command).
 	static SCR_AIGroup PossessedGroup(int playerId)
+	{
+		SCR_AIGroup group = PossessedAnyGroup(playerId);
+		if (!group)
+			return null;
+		AIAgent agent = AIO_Tasks.AgentOf(GetGame().GetPlayerManager().GetPlayerControlledEntity(playerId));
+		if (group.GetLeaderAgent() != agent)
+			return null;
+		return group;
+	}
+
+	// The independent AI group of the soldier the player possesses, leader or not: Become / Step down
+	// as leader act on it, and its order marker is the squad's order he rolls with.
+	static SCR_AIGroup PossessedAnyGroup(int playerId)
 	{
 		IEntity body = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerId);
 		AIAgent agent = AIO_Tasks.AgentOf(body);

@@ -85,7 +85,7 @@ class AIO_OrderMarkers
 			SCR_AIGroup playerGroup;
 			if (groups)
 				playerGroup = groups.GetPlayerGroup(id);
-			Update(id, OrderGroup(playerGroup, AIO_Server.PossessedGroup(id)));
+			Update(id, OrderGroup(playerGroup, AIO_Server.PossessedAnyGroup(id)));
 		}
 		if (s_TestPlayable || s_TestPossessed)
 			Update(TEST_ID, OrderGroup(s_TestPlayable, s_TestPossessed));
