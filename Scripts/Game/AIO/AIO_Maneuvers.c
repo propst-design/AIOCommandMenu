@@ -209,27 +209,91 @@ class AIO_Maneuvers
 		return weapons.GetCurrentWeapon().GetCurrentMuzzle().GetAmmoCount();
 	}
 
+	// The fire rules each waiting man had when the order came (-1 = the group's), given back once he
+	// has engaged (Jacob, 14 Nov: no permanent per-man fire at will).
+	protected static ref array<int> s_aLeadPrior;
+	// Men released by the player's shot: firing at will until the engagement is over, then back to
+	// their earlier fire rules (parallel arrays; s_aFreeUntil = world time the override ends).
+	protected static ref array<AIAgent> s_aFreeAgents;
+	protected static ref array<int> s_aFreePrior;
+	protected static ref array<float> s_aFreeUntil;
+	static const float LEAD_FIRST_MS = 60000; // no target at all after the shot: back after this
+	static const float LEAD_QUIET_MS = 10000; // back this long after his last target
+
 	static void FireOnMyLead(IEntity body, IEntity player)
 	{
 		AIAgent agent = AIO_Tasks.AgentOf(body);
 		if (!agent || !player)
 			return;
+		// Given again while waiting or still engaging: the rules from before the first one stay.
+		int prior = ROEOf(body);
+		int waiting = s_aLeadAgents.Find(agent);
+		int freed = s_aFreeAgents.Find(agent);
+		if (waiting >= 0)
+			prior = s_aLeadPrior[waiting];
+		else if (freed >= 0)
+			prior = s_aFreePrior[freed];
 		StopLead(agent);
 		SetROE(body, EAIGroupCombatMode.HOLD_FIRE);
 		s_aLeadAgents.Insert(agent);
 		s_aLeadPlayers.Insert(player);
 		s_aLeadAmmo.Insert(PlayerAmmo(player));
+		s_aLeadPrior.Insert(prior);
 		AIO_Tasks.Watch();
 	}
 
+	// Ends Fire on my lead for him, waiting or engaging (the caller sets his fire rules).
 	static void StopLead(AIAgent agent)
 	{
 		int at = s_aLeadAgents.Find(agent);
-		if (at < 0)
-			return;
-		s_aLeadAgents.RemoveOrdered(at);
-		s_aLeadPlayers.RemoveOrdered(at);
-		s_aLeadAmmo.RemoveOrdered(at);
+		if (at >= 0)
+			DropLeadAt(at);
+		int freed = s_aFreeAgents.Find(agent);
+		if (freed >= 0)
+			DropFreeAt(freed);
+	}
+
+	protected static void DropLeadAt(int i)
+	{
+		s_aLeadAgents.RemoveOrdered(i);
+		s_aLeadPlayers.RemoveOrdered(i);
+		s_aLeadAmmo.RemoveOrdered(i);
+		s_aLeadPrior.RemoveOrdered(i);
+	}
+
+	protected static void DropFreeAt(int i)
+	{
+		s_aFreeAgents.RemoveOrdered(i);
+		s_aFreePrior.RemoveOrdered(i);
+		s_aFreeUntil.RemoveOrdered(i);
+	}
+
+	// Released men fire at will while they have targets; LEAD_QUIET_MS after the last one (or
+	// LEAD_FIRST_MS after the shot if none ever showed) their earlier fire rules come back.
+	protected static void TickFree()
+	{
+		float now = GetGame().GetWorld().GetWorldTime();
+		for (int i = s_aFreeAgents.Count() - 1; i >= 0; i--)
+		{
+			AIAgent agent = s_aFreeAgents[i];
+			IEntity body = null;
+			if (agent)
+				body = agent.GetControlledEntity();
+			if (!body || !AIO_Server.IsAlive(body))
+			{
+				DropFreeAt(i);
+				continue;
+			}
+			SCR_AIUtilityComponent utility = AIO_Tasks.UtilityOf(agent);
+			if (utility && utility.m_CombatComponent && utility.m_CombatComponent.GetCurrentTarget())
+				s_aFreeUntil[i] = Math.Max(s_aFreeUntil[i], now + LEAD_QUIET_MS);
+			if (now < s_aFreeUntil[i])
+				continue;
+			int prior = s_aFreePrior[i];
+			DropFreeAt(i);
+			SetROE(body, prior);
+			Print(string.Format("[AIO] fire on my lead: %1 back to %2 after engaging", AIO_Server.NameOf(body), prior));
+		}
 	}
 
 	static bool IsWaitingForLead(AIAgent agent)
@@ -251,9 +315,7 @@ class AIO_Maneuvers
 			{
 				if (body)
 					SetROE(body, -1);
-				s_aLeadAgents.RemoveOrdered(i);
-				s_aLeadPlayers.RemoveOrdered(i);
-				s_aLeadAmmo.RemoveOrdered(i);
+				DropLeadAt(i);
 				continue;
 			}
 			int ammo = PlayerAmmo(player);
@@ -270,16 +332,22 @@ class AIO_Maneuvers
 	static void Fired(IEntity player)
 	{
 		int released;
+		float until = GetGame().GetWorld().GetWorldTime() + LEAD_FIRST_MS;
 		for (int i = s_aLeadAgents.Count() - 1; i >= 0; i--)
 		{
 			if (s_aLeadPlayers[i] != player)
 				continue;
 			AIAgent agent = s_aLeadAgents[i];
+			int prior = s_aLeadPrior[i];
+			DropLeadAt(i);
 			if (agent && agent.GetControlledEntity())
+			{
 				SetROE(agent.GetControlledEntity(), EAIGroupCombatMode.FIRE_AT_WILL);
-			s_aLeadAgents.RemoveOrdered(i);
-			s_aLeadPlayers.RemoveOrdered(i);
-			s_aLeadAmmo.RemoveOrdered(i);
+				// Open fire now, the earlier fire rules again once he has engaged (TickFree).
+				s_aFreeAgents.Insert(agent);
+				s_aFreePrior.Insert(prior);
+				s_aFreeUntil.Insert(until);
+			}
 			released++;
 		}
 		Print(string.Format("[AIO] fire on my lead: %1 men open fire", released));
@@ -509,6 +577,7 @@ class AIO_Maneuvers
 	static void Tick()
 	{
 		TickLead();
+		TickFree();
 		TickApproaches();
 		AIO_Bounding.Tick();
 	}
@@ -734,6 +803,10 @@ class AIO_Maneuvers
 		s_aLeadAgents = {};
 		s_aLeadPlayers = {};
 		s_aLeadAmmo = {};
+		s_aLeadPrior = {};
+		s_aFreeAgents = {};
+		s_aFreePrior = {};
+		s_aFreeUntil = {};
 		s_aApproaches = {};
 		s_aMemories = {};
 	}
@@ -746,6 +819,10 @@ class AIO_Maneuvers
 		s_aLeadAgents.Clear();
 		s_aLeadPlayers.Clear();
 		s_aLeadAmmo.Clear();
+		s_aLeadPrior.Clear();
+		s_aFreeAgents.Clear();
+		s_aFreePrior.Clear();
+		s_aFreeUntil.Clear();
 		s_aApproaches.Clear();
 		s_aMemories.Clear();
 		s_bTilesLoading = false;
