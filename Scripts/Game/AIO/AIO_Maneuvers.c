@@ -301,6 +301,12 @@ class AIO_Maneuvers
 		return s_aLeadAgents.Contains(agent);
 	}
 
+	// Released by the player's shot and firing at will until the fight is over (TickFree).
+	static bool IsEngagingOnLead(AIAgent agent)
+	{
+		return agent && s_aFreeAgents.Contains(agent);
+	}
+
 	// The player's first shot (his loaded rounds drop) releases everyone waiting on him.
 	protected static void TickLead()
 	{

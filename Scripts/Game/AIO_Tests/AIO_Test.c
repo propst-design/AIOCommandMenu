@@ -2093,6 +2093,21 @@ class AIO_Test
 		bool opened = !AIO_Maneuvers.IsWaitingForLead(AIO_Tasks.AgentOf(a)) && utility.m_CombatComponent.GetCombatMode() == EAIGroupCombatMode.FIRE_AT_WILL;
 		AIO_Maneuvers.SetROE(a, -1);
 		Check("fire-on-my-lead", waiting && opened, string.Format("waiting %1, opened fire %2", waiting, opened));
+		// A new order gives a waiting man the fire rules he had before; a man the shot released keeps
+		// firing at will until the fight is over, then gets them back (it used to stay on for good).
+		AIAgent leadAgent = AIO_Tasks.AgentOf(a);
+		AIO_Maneuvers.StopLead(leadAgent);
+		AIO_Maneuvers.SetROE(a, EAIGroupCombatMode.RETURN_FIRE);
+		AIO_Maneuvers.FireOnMyLead(a, Leader());
+		AIO_Tasks.Release(a);
+		bool priorBack = !AIO_Maneuvers.IsWaitingForLead(leadAgent) && utility.m_CombatComponent.GetCombatMode() == EAIGroupCombatMode.RETURN_FIRE;
+		AIO_Maneuvers.FireOnMyLead(a, Leader());
+		AIO_Maneuvers.Fired(Leader());
+		AIO_Tasks.Release(a);
+		bool restorePending = AIO_Maneuvers.IsEngagingOnLead(leadAgent) && utility.m_CombatComponent.GetCombatMode() == EAIGroupCombatMode.FIRE_AT_WILL;
+		AIO_Maneuvers.StopLead(leadAgent);
+		AIO_Maneuvers.SetROE(a, -1);
+		Check("fire-on-my-lead-new-order", priorBack && restorePending, string.Format("waiting man back to return fire %1, released man still due his rules back %2", priorBack, restorePending));
 
 		// Bound forward 70 m further on.
 		s_vPoint = AIO_Maneuvers.Ground(center + Vector(70, 0, 0));
