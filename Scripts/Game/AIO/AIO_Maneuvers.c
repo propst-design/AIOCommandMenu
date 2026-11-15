@@ -313,9 +313,10 @@ class AIO_Maneuvers
 				body = agent.GetControlledEntity();
 			if (!body || !player || !AIO_Server.IsAlive(body) || !AIO_Server.IsAlive(player) || !AIO_Server.StillCommands(player, body))
 			{
-				if (body)
-					SetROE(body, -1);
+				int prior = s_aLeadPrior[i];
 				DropLeadAt(i);
+				if (body)
+					SetROE(body, prior); // the fire rules he had before Fire on my lead
 				continue;
 			}
 			int ammo = PlayerAmmo(player);
@@ -556,10 +557,17 @@ class AIO_Maneuvers
 	{
 		if (AIO_Bounding.IsIssuing() || !agent)
 			return;
-		// Fire on my lead set a per-man hold fire: hand his fire back, or he never shoots again
-		if (IsWaitingForLead(agent) && agent.GetControlledEntity())
-			SetROE(agent.GetControlledEntity(), -1);
-		StopLead(agent);
+		// Fire on my lead set a per-man hold fire: give him the fire rules he had before it, or he never
+		// shoots again. A man already released by the shot stays on TickFree's list: his earlier
+		// rules come back when the fight is over (dropping him here left fire at will on for good).
+		int waiting = s_aLeadAgents.Find(agent);
+		if (waiting >= 0)
+		{
+			int prior = s_aLeadPrior[waiting];
+			DropLeadAt(waiting);
+			if (agent.GetControlledEntity())
+				SetROE(agent.GetControlledEntity(), prior);
+		}
 		for (int i = s_aApproaches.Count() - 1; i >= 0; i--)
 		{
 			s_aApproaches[i].m_aMen.RemoveItem(agent);
