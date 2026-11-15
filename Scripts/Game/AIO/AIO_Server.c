@@ -885,11 +885,16 @@ class AIO_Server
 	}
 
 	// Whole-squad orders that change how the squad fights or moves, not where it goes: a possessed
-	// squad keeps its commander's waypoint for these.
+	// squad keeps its commander's waypoint for these. Fire rules, stance, pace, and (Jacob, 15 Nov)
+	// vehicle engine and lights, Heal up, Rearm, Give me ammo / bandages and Take that weapon.
 	static bool KeepsObjective(int order)
 	{
 		switch (order)
 		{
+			case AIO_EOrder.VEH_ENGINE_ON: case AIO_EOrder.VEH_ENGINE_OFF:
+			case AIO_EOrder.VEH_LIGHTS_ON: case AIO_EOrder.VEH_LIGHTS_OFF: case AIO_EOrder.VEH_LIGHTS_AUTO:
+			case AIO_EOrder.HEAL_UP: case AIO_EOrder.REARM: case AIO_EOrder.REARM_FROM: case AIO_EOrder.TAKE_WEAPON:
+			case AIO_EOrder.GIVE_AMMO: case AIO_EOrder.GIVE_BANDAGES:
 			case AIO_EOrder.HOLD_FIRE: case AIO_EOrder.RETURN_FIRE: case AIO_EOrder.FIRE_AT_WILL:
 			case AIO_EOrder.ENGAGE_AT_WILL: case AIO_EOrder.DISENGAGE: case AIO_EOrder.FIRE_ON_MY_LEAD:
 			case AIO_EOrder.STANCE_UP: case AIO_EOrder.STANCE_CROUCH: case AIO_EOrder.STANCE_PRONE: case AIO_EOrder.STANCE_AUTO:
