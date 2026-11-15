@@ -24,6 +24,10 @@
 - Fixed: a leader without a body (on the respawn screen or in the Game Master camera) could still give orders, routes and teams.
 - Fixed: an order to more than 64 men was dropped silently.
 - The server refuses impossible order positions from a modified game, and colour teams no longer keep deleted men.
+- Changed: only the squad leader commands his squad. Taking control of a rifleman no longer gives you the whole squad; the AI leader keeps leading.
+- Changed: taking control of another squad's leader makes that squad yours (roster, orders, marker) instead of your old one.
+- Changed: your first order to a squad you took over replaces its commander's objective (fire rules, stance and pace keep it).
+- Changed: Fire on my lead: after the engagement the men go back to the fire rules they had, instead of firing at will for good.
 
 ## 0.3.4 — released
 

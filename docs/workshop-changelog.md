@@ -8,6 +8,12 @@ NEW
 - Recruit / dismiss (More): recruit the AI soldier you aim at, his whole squad, or every free soldier of your side within 30 m. Dismissed men wait as their own AI squad for another player to recruit, so you can trade men; they leave without their colour team or a Lights off order. Destroy removes your own selected men; destroying soldiers outside your squad is for admins unless the host starts the server with -aioDestroy all. Squads a player leads or belongs to are never touched, and the server's limit on AI per player squad still applies.
 - Lights (Stance & speed): Lights off keeps the squad's flashlights and vehicle lights off, day and night, until you choose Lights: own choice. The squad bar shows Lights off.
 
+CHANGED
+
+- Only the squad leader commands his squad: taking control of a rifleman no longer gives you the whole squad, and the AI leader keeps leading.
+- Taking control of another squad's leader makes that squad yours (roster, orders, marker), and your first order replaces its commander's objective.
+- Fire on my lead: after the engagement the men go back to the fire rules they had.
+
 FIXED
 
 - Your orders end a few seconds after nobody commands the squad (a Game Master lets go, a leader steps down or leaves), so the game, the Game Master or another mod can order the men again.
