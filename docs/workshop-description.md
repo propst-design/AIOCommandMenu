@@ -25,7 +25,7 @@ While the menu is open, the aim marker shows where an aimed order will land and 
 
 GET STARTED
 
-1. Enable AiO and lead a player squad with linked AI. In Game Master, take control of an AI group's leader to command the other AI in that group (take control of a rifleman and his AI leader keeps leading; Become leader takes over).
+1. Enable AiO and lead a player squad with linked AI. In Game Master, take control of an AI group's leader to command the rest of the group (from a rifleman, use Become leader first).
 2. Press T. Use 1-9 to choose a line; 0 opens Select members. Backspace goes back, or clears selection on Select members.
 3. Choose an order. No selection means the whole squad.
 4. Aim at a destination, or open the map and put the cursor there. Choosing the order uses that spot at once.
