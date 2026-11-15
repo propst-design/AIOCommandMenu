@@ -339,19 +339,7 @@ class AIO_Server
 			return ExecuteMen(slave, order, members, point, pc.GetControlledEntity(), target, playerId);
 		// A possessed AI group isn't set up for the game's commanding: every man gets the order himself.
 		if (IsPossessed(slave))
-		{
-			array<IEntity> everyone = {};
-			Members(slave, everyone);
-			everyone.RemoveItem(pc.GetControlledEntity());
-			if (everyone.IsEmpty())
-				return "No soldiers under your command";
-			// His first order to the squad replaces the commander's (Jacob, 14 Nov: squad leader
-			// primacy); a waypoint left in place would keep reissuing the old objective once the
-			// men's tasks end. Fire rules, stance and pace only change how they go about it.
-			if (!KeepsObjective(order))
-				ClearWaypoints(slave);
-			return ExecuteBodies(slave, order, everyone, point, pc.GetControlledEntity(), target, playerId);
-		}
+			return ExecutePossessed(slave, order, point, pc.GetControlledEntity(), target, playerId);
 		// Whole-squad movement orders take over from any single-man tasks.
 		if (order == AIO_EOrder.DEF_GARRISON || order == AIO_EOrder.DEF_CLEAR)
 			ClearWaypoints(slave);
@@ -751,6 +739,27 @@ class AIO_Server
 		return ExecuteBodies(slave, order, bodies, point, player, target, playerId);
 	}
 
+	// Whole-squad order to a possessed squad. His first order replaces the commander's (Jacob, 14 Nov:
+	// squad leader primacy): a waypoint left in place would keep reissuing the old objective once the
+	// men's tasks end. Orders that only change how the squad goes about it keep it (KeepsObjective),
+	// and so does a refused order (Jacob, 15 Nov): only the waypoints there before the order go, and
+	// only once one of the men took it, so a waypoint an order spawns itself stays.
+	static string ExecutePossessed(SCR_AIGroup slave, int order, vector point, IEntity player, RplId target, int playerId)
+	{
+		array<IEntity> everyone = {};
+		Members(slave, everyone);
+		everyone.RemoveItem(player);
+		if (everyone.IsEmpty())
+			return "No soldiers under your command";
+		array<AIWaypoint> objective = {};
+		slave.GetWaypoints(objective);
+		int taken = AIO_Tasks.s_iOrdersTaken;
+		string reply = ExecuteBodies(slave, order, everyone, point, player, target, playerId);
+		if (!KeepsObjective(order) && AIO_Tasks.s_iOrdersTaken != taken)
+			DropWaypoints(slave, objective);
+		return reply;
+	}
+
 	static string ExecuteBodies(SCR_AIGroup slave, int order, array<IEntity> bodies, vector point, IEntity player, RplId target, int playerId)
 	{
 		bodies.RemoveItem(player);
@@ -909,11 +918,17 @@ class AIO_Server
 	{
 		array<AIWaypoint> waypoints = {};
 		group.GetWaypoints(waypoints);
+		DropWaypoints(group, waypoints);
+	}
+
+	static void DropWaypoints(SCR_AIGroup group, array<AIWaypoint> waypoints)
+	{
 		foreach (AIWaypoint waypoint : waypoints)
 		{
+			if (!waypoint)
+				continue;
 			group.RemoveWaypoint(waypoint);
-			if (waypoint)
-				SCR_EntityHelper.DeleteEntityAndChildren(waypoint);
+			SCR_EntityHelper.DeleteEntityAndChildren(waypoint);
 		}
 	}
 

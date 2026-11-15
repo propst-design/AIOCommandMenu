@@ -240,6 +240,7 @@ class AIO_Tasks
 		SCR_AIUtilityComponent utility = UtilityOf(agent);
 		if (!utility)
 			return;
+		s_iOrdersTaken++;
 		utility.AIO_SetOrderHold(null);
 		AIO_Supplies.Cancel(agent); // any new order ends an errand
 		AIO_Explosives.Cancel(agent);
@@ -817,10 +818,16 @@ class AIO_Tasks
 	protected static ref array<AIAgent> s_aOrdered;
 	protected static ref array<int> s_aUncommanded; // watchdog ticks in a row without a commander
 	static const int UNCOMMANDED_TICKS = 3; // a squad handed between players can blink for a tick
+	// Goes up whenever one of our orders lands on a man (Release, Ordered, a suppress burst), so the
+	// server can tell an order that took from one refused before anyone was touched (AIO_Server.ExecutePossessed).
+	static int s_iOrdersTaken;
 
 	static void Ordered(AIAgent agent)
 	{
-		if (!agent || s_aOrdered.Contains(agent))
+		if (!agent)
+			return;
+		s_iOrdersTaken++;
+		if (s_aOrdered.Contains(agent))
 			return;
 		s_aOrdered.Insert(agent);
 		s_aUncommanded.Insert(0);

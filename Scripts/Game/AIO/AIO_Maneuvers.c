@@ -538,6 +538,7 @@ class AIO_Maneuvers
 			return false;
 		SCR_AISuppressionVolumeSphere volume = new SCR_AISuppressionVolumeSphere(point + Vector(0, 1, 0), 4);
 		utility.AddAction(new SCR_AISuppressBehavior(utility, null, volume, seconds, 1));
+		AIO_Tasks.s_iOrdersTaken++;
 		return true;
 	}
 
