@@ -11,9 +11,15 @@ class AIO_Server
 
 	// ---------------------------------------------------------------- squad
 
-	// The AI group the player leads (the game's "slave" group), or null.
+	// The AI group the player leads (the game's "slave" group), or null. Possessing the leader of
+	// another AI group, that group is his squad, not the one his own player group is linked to
+	// (Jacob, 14 Nov): roster, orders, Become leader and the order marker all follow the possessed
+	// group. His old squad is then commanded by nobody, so its AiO orders end (ReleaseUncommanded).
 	static SCR_AIGroup Slave(int playerId)
 	{
+		// Possessing a subordinate there: no squad at all (he rolls with that one; his old one is far away).
+		if (PossessedAnyGroup(playerId))
+			return PossessedGroup(playerId);
 		SCR_GroupsManagerComponent groups = SCR_GroupsManagerComponent.GetInstance();
 		if (groups)
 		{
@@ -21,7 +27,7 @@ class AIO_Server
 			if (group && group.IsPlayerLeader(playerId) && group.GetSlave())
 				return group.GetSlave();
 		}
-		return PossessedGroup(playerId);
+		return null;
 	}
 
 	// Game Master "take control" of an AI soldier: his AI group is the squad only while he is its
