@@ -30,7 +30,7 @@ GET STARTED
 3. Choose an order. No selection means the whole squad.
 4. Aim at a destination, or open the map and put the cursor there. Choosing the order uses that spot at once.
 
-Rebind T under Settings > Controls > All-in-One Command Menu. Selection expires about eight seconds after the menu closes; check the recipients in the heading. Colour teams last for the mission.
+Rebind T under Settings > Controls > All-in-One Command Menu. Selection expires about eight seconds after the menu closes. Colour teams last for the mission.
 
 The squad bar shows names, teams, health, magazines and tasks while the menu is open (More > Squad bar on/off). A compact status stays on screen with the menu closed for recipients, routes, paused bounds and treatment.
 
@@ -42,7 +42,7 @@ Requires only Arma Reforger (checked on 1.9). Load AiO on the server and joining
 
 AiO commands your own squad. It does not create squads or command arbitrary groups from the GM camera. The game's own command wheel overrides AiO orders, and a soldier a player or Game Master takes over is left to them.
 
-Buildings, doors and vehicle routes depend on Reforger's navigation: Clear building does not guarantee every room is cleared, and Fortify here finds cover rather than building it. Specialist orders need the right carried kit, ammunition and a reachable target.
+Buildings, doors and vehicle routes depend on Reforger's navigation: Clear building does not guarantee every room is cleared, and Fortify here finds cover rather than building it. Specialist orders need the right kit, ammunition and a reachable target.
 
 Better Battle Buddies is optional; compatible builds lower weapons on quiet travel. Combining AiO with another squad-command menu mod, including Enhanced AI Squad Commands, is unsupported.
 
