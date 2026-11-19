@@ -2155,6 +2155,22 @@ class AIO_Test
 		AIO_Maneuvers.StopLead(leadAgent);
 		AIO_Maneuvers.SetROE(a, -1);
 		Check("fire-on-my-lead-new-order", priorBack && restorePending, string.Format("waiting man back to return fire %1, released man still due his rules back %2", priorBack, restorePending));
+		// A route walking on to its next waypoint is no new order: he keeps waiting (bug pass 5).
+		array<vector> legs = {AIO_Maneuvers.Ground(a.GetOrigin() + Vector(3, 0, 0)), AIO_Maneuvers.Ground(a.GetOrigin() + Vector(25, 0, 0))};
+		AIO_Route walk;
+		AIO_Routes.Start(s_Group, Leader(), one, legs, false, 0, walk);
+		AIO_Maneuvers.FireOnMyLead(a, Leader());
+		vector at[4];
+		a.GetWorldTransform(at);
+		at[3] = legs[0];
+		BaseGameEntity.Cast(a).Teleport(at);
+		AIO_Routes.Tick();
+		bool walkedOn = walk && walk.m_iWaypoint == 1;
+		bool stillWaiting = AIO_Maneuvers.IsWaitingForLead(leadAgent) && utility.m_CombatComponent.GetCombatMode() == EAIGroupCombatMode.HOLD_FIRE;
+		AIO_Tasks.Release(a);
+		AIO_Maneuvers.StopLead(leadAgent);
+		AIO_Maneuvers.SetROE(a, -1);
+		Check("fire-on-my-lead-route-goes-on", walkedOn && stillWaiting, string.Format("route on to waypoint 2 %1, still holding fire for the lead %2", walkedOn, stillWaiting));
 
 		// Bound forward 70 m further on.
 		s_vPoint = AIO_Maneuvers.Ground(center + Vector(70, 0, 0));
