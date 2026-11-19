@@ -7,6 +7,7 @@
 - In a squad you took over, an order to selected men that covers every living man counts as a whole-squad order and replaces the commander's objective; an order to only some of them keeps it.
 - Eject: a man the game won't let bail out keeps his orders, and the reply no longer claims nobody was in a vehicle while dropping your squad's objective.
 - Fire on my lead on men walking a route or patrol: they keep holding fire past each waypoint instead of opening up on their own when they reach the next one.
+- A squad you took over also keeps its commander's objective when you move men to another seat of their vehicle or send them to unflip one.
 
 ## 0.4.0 — released
 
