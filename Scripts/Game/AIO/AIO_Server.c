@@ -736,6 +736,17 @@ class AIO_Server
 			Print(string.Format("[AIO] order %1: none of %2 ids matched the %3 men of %4 (possessed %5)", typename.EnumToString(AIO_EOrder, order), ids.Count(), members.Count(), slave, IsPossessed(slave)));
 			return "Those men are no longer in your squad";
 		}
+		// Every living man of a possessed squad selected is a whole-squad order (Jacob, 18 Nov), as a
+		// route for all men is (AIO_Routes.Start): it replaces the commander's waypoint once it takes.
+		if (IsPossessed(slave))
+		{
+			array<IEntity> everyone = {};
+			Members(slave, everyone);
+			everyone.RemoveItem(player);
+			bodies.RemoveItem(player);
+			if (!bodies.IsEmpty() && bodies.Count() >= everyone.Count())
+				return ExecutePossessed(slave, order, point, player, target, playerId);
+		}
 		return ExecuteBodies(slave, order, bodies, point, player, target, playerId);
 	}
 
