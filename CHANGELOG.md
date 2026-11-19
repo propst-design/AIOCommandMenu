@@ -2,6 +2,11 @@
 
 ## 0.4.1 — unreleased
 
+- Fire on my lead: a man given a new order mid-fight (Move here, Halt, Follow) goes back to his earlier fire rules afterwards, instead of firing at will for good. Leaving Stealth while the squad waits on your lead no longer leaves return fire on for good either.
+- A squad you took over keeps its commander's objective through fire-rule, stance, vehicle engine and lights, Heal up, Rearm, Give me ammo or bandages and Take weapon orders, and through an order nobody could carry out. The objective is replaced only once a man actually carries out your order, so a Take cover that finds no cover or a Garrison with no post for anyone leaves it in place.
+- In a squad you took over, an order to selected men that covers every living man counts as a whole-squad order and replaces the commander's objective; an order to only some of them keeps it.
+- Eject: a man the game won't let bail out keeps his orders, and the reply no longer claims nobody was in a vehicle while dropping your squad's objective.
+
 ## 0.4.0 — released
 
 - New: an order marker, in the spirit of older Arma games. A faint chevron with a short tag and the distance ("Move  230 m", "Defend  80 m") marks where your squad is heading, whoever gave the order: your whole-squad orders, the game's command wheel, a Game Master or another mod's AI commander. It shows only the next waypoint, follows a new order, and disappears when the order is done or cancelled. It fades out as you get within about 15 m and while you aim down sights, and hides with the map, a hidden HUD or any camera that isn't your own view (intros, cinematics, spectating). It works for the squad leader and for the other players in the squad. More > Aim & order markers turns it off or sets it faint, light or clear; the choice is remembered.
