@@ -200,13 +200,36 @@ class AIO_Maneuvers
 	protected static ref array<AIAgent> s_aLeadAgents;
 	protected static ref array<IEntity> s_aLeadPlayers;
 	protected static ref array<int> s_aLeadAmmo;
+	// The muzzle that count was read from: a drop only counts as his shot on the same muzzle (a switch
+	// from a full rifle to a pistol or the grenade launcher is no shot).
+	protected static ref array<BaseMuzzleComponent> s_aLeadMuzzle;
 
 	static int PlayerAmmo(IEntity player)
 	{
-		BaseWeaponManagerComponent weapons = BaseWeaponManagerComponent.Cast(player.FindComponent(BaseWeaponManagerComponent));
-		if (!weapons || !weapons.GetCurrentWeapon() || !weapons.GetCurrentWeapon().GetCurrentMuzzle())
+		BaseMuzzleComponent muzzle = PlayerMuzzle(player);
+		if (!muzzle)
 			return -1;
-		return weapons.GetCurrentWeapon().GetCurrentMuzzle().GetAmmoCount();
+		return muzzle.GetAmmoCount();
+	}
+
+	static BaseMuzzleComponent PlayerMuzzle(IEntity player)
+	{
+		if (!player)
+			return null;
+		BaseWeaponManagerComponent weapons = BaseWeaponManagerComponent.Cast(player.FindComponent(BaseWeaponManagerComponent));
+		if (!weapons || !weapons.GetCurrentWeapon())
+			return null;
+		return weapons.GetCurrentWeapon().GetCurrentMuzzle();
+	}
+
+	// Reloading or changing weapons: the loaded count drops without a shot.
+	protected static bool HandlingWeapon(IEntity player)
+	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(player);
+		if (!character || !character.GetCharacterController())
+			return false;
+		CharacterControllerComponent controller = character.GetCharacterController();
+		return controller.IsReloading() || controller.IsChangingItem();
 	}
 
 	// The fire rules each waiting man had when the order came (-1 = the group's), given back once he
@@ -238,6 +261,7 @@ class AIO_Maneuvers
 		s_aLeadAgents.Insert(agent);
 		s_aLeadPlayers.Insert(player);
 		s_aLeadAmmo.Insert(PlayerAmmo(player));
+		s_aLeadMuzzle.Insert(PlayerMuzzle(player));
 		s_aLeadPrior.Insert(prior);
 		AIO_Tasks.Watch();
 	}
@@ -258,6 +282,7 @@ class AIO_Maneuvers
 		s_aLeadAgents.RemoveOrdered(i);
 		s_aLeadPlayers.RemoveOrdered(i);
 		s_aLeadAmmo.RemoveOrdered(i);
+		s_aLeadMuzzle.RemoveOrdered(i);
 		s_aLeadPrior.RemoveOrdered(i);
 	}
 
@@ -347,14 +372,18 @@ class AIO_Maneuvers
 					SetROE(body, prior); // the fire rules he had before Fire on my lead
 				continue;
 			}
+			BaseMuzzleComponent muzzle = PlayerMuzzle(player);
 			int ammo = PlayerAmmo(player);
+			if (HandlingWeapon(player))
+				ammo = -1; // mid-reload or mid-switch: count again once it's done
 			int before = s_aLeadAmmo[i];
-			if (ammo >= 0 && before >= 0 && ammo < before)
+			if (ammo >= 0 && before >= 0 && ammo < before && muzzle == s_aLeadMuzzle[i])
 			{
 				Fired(player);
 				return; // lists changed
 			}
 			s_aLeadAmmo[i] = ammo; // reloads and weapon switches just reset the count
+			s_aLeadMuzzle[i] = muzzle;
 		}
 	}
 
@@ -844,6 +873,7 @@ class AIO_Maneuvers
 		s_aLeadAgents = {};
 		s_aLeadPlayers = {};
 		s_aLeadAmmo = {};
+		s_aLeadMuzzle = {};
 		s_aLeadPrior = {};
 		s_aFreeAgents = {};
 		s_aFreePrior = {};
@@ -860,6 +890,7 @@ class AIO_Maneuvers
 		s_aLeadAgents.Clear();
 		s_aLeadPlayers.Clear();
 		s_aLeadAmmo.Clear();
+		s_aLeadMuzzle.Clear();
 		s_aLeadPrior.Clear();
 		s_aFreeAgents.Clear();
 		s_aFreePrior.Clear();
