@@ -301,6 +301,28 @@ class AIO_Maneuvers
 		return s_aLeadAgents.Contains(agent);
 	}
 
+	// The fire rules he goes back to after Fire on my lead become 'prior' (leaving Stealth while
+	// waiting or engaging). False when he isn't on Fire on my lead: the caller sets his rules itself.
+	static bool ReplaceLeadPrior(AIAgent agent, int prior)
+	{
+		if (!agent)
+			return false;
+		bool found;
+		int waiting = s_aLeadAgents.Find(agent);
+		if (waiting >= 0)
+		{
+			s_aLeadPrior[waiting] = prior;
+			found = true;
+		}
+		int freed = s_aFreeAgents.Find(agent);
+		if (freed >= 0)
+		{
+			s_aFreePrior[freed] = prior;
+			found = true;
+		}
+		return found;
+	}
+
 	// Released by the player's shot and firing at will until the fight is over (TickFree).
 	static bool IsEngagingOnLead(AIAgent agent)
 	{

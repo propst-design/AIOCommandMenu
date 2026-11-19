@@ -125,7 +125,9 @@ class AIO_Behaviour
 			s_aModes.RemoveOrdered(at);
 			s_aOwnROE.RemoveOrdered(at);
 		}
-		if (ownROE && mode != AIO_EBehaviour.STEALTH)
+		// Leaving Stealth gives back the group's fire rules. A man on Fire on my lead keeps holding
+		// (or firing) for now; the group's rules, not Stealth's return fire, come back after it.
+		if (ownROE && mode != AIO_EBehaviour.STEALTH && !AIO_Maneuvers.ReplaceLeadPrior(agent, -1))
 			AIO_Maneuvers.SetROE(character, -1);
 
 		// Each mode starts from the man's own stance and pace.
