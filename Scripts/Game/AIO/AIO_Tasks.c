@@ -930,6 +930,9 @@ class AIO_Tasks
 		SCR_AIUtilityComponent utility = UtilityOf(agent);
 		if (!utility)
 			return false;
+		// No cover found: he only crouches where he is, which is not the order taking (Jacob, 18 Nov:
+		// a possessed squad's waypoint goes only when a man carries the order out).
+		int taken = s_iOrdersTaken;
 		Release(body);
 		ChimeraCoverManagerComponent covers = Covers();
 		AIPathfindingComponent pathfinding = AIPathfindingComponent.Cast(body.FindComponent(AIPathfindingComponent));
@@ -973,6 +976,8 @@ class AIO_Tasks
 		utility.AddAction(hold);
 		SetStance(agent, ECharacterStance.CROUCH);
 		Watch();
+		if (!found)
+			s_iOrdersTaken = taken;
 		return found;
 	}
 

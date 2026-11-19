@@ -754,7 +754,9 @@ class AIO_Server
 	// squad leader primacy): a waypoint left in place would keep reissuing the old objective once the
 	// men's tasks end. Orders that only change how the squad goes about it keep it (KeepsObjective),
 	// and so does a refused order (Jacob, 15 Nov): only the waypoints there before the order go, and
-	// only once one of the men took it, so a waypoint an order spawns itself stays.
+	// only once one of the men took it, so a waypoint an order spawns itself stays. A man whose order
+	// fell back to doing nothing (Take cover with no cover found: he only crouches; Garrison with no
+	// post for anyone) didn't take it (Jacob, 18 Nov): those orders put AIO_Tasks.s_iOrdersTaken back.
 	static string ExecutePossessed(SCR_AIGroup slave, int order, vector point, IEntity player, RplId target, int playerId)
 	{
 		array<IEntity> everyone = {};

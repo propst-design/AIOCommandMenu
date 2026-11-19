@@ -726,6 +726,7 @@ class AIO_Maneuvers
 			job.m_iOrder = order;
 			job.m_iPlayerId = playerId;
 			job.m_bPosted = true;
+			int taken = AIO_Tasks.s_iOrdersTaken; // nobody posted: they only rejoin, the order didn't take
 			for (int g = 0; g < bodies.Count(); g++)
 			{
 				if (assigned[g] < 0)
@@ -747,6 +748,8 @@ class AIO_Maneuvers
 				s_aApproaches.Insert(job);
 				AIO_Tasks.Watch();
 			}
+			else
+				AIO_Tasks.s_iOrdersTaken = taken;
 			return string.Format("%1 men garrisoning, %2 at windows (%3 remain in formation)", posts.Count(), atWindows, bodies.Count() - posts.Count());
 		}
 		// Clear: the rooms are shared out, each man walks his own nearest-first and holds inside
