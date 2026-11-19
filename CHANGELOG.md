@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.4.1 — unreleased
+## 0.4.2 — unreleased
+
+## 0.4.1 — released
 
 - Fire on my lead: a man given a new order mid-fight (Move here, Halt, Follow) goes back to his earlier fire rules afterwards, instead of firing at will for good. Leaving Stealth while the squad waits on your lead no longer leaves return fire on for good either.
 - A squad you took over keeps its commander's objective through fire-rule, stance, vehicle engine and lights, Heal up, Rearm, Give me ammo or bandages and Take weapon orders, and through an order nobody could carry out. The objective is replaced only once a man actually carries out your order, so a Take cover that finds no cover or a Garrison with no post for anyone leaves it in place.
