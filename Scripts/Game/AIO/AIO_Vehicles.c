@@ -431,8 +431,8 @@ class AIO_Vehicles
 			SCR_AIUtilityComponent utility = AIO_Tasks.UtilityOf(agent);
 			if (!utility)
 				continue;
-			AIO_Tasks.Release(body);
-			utility.SetStateAllActionsOfType(SCR_AIGetInVehicle, EAIActionState.FAILED);
+			// A man the game won't let bail out keeps his orders: he isn't leaving (and on a possessed
+			// squad a refused Eject must not count as an order that took: AIO_Server.ExecutePossessed).
 			if (eject)
 			{
 				ChimeraCharacter character = ChimeraCharacter.Cast(body);
@@ -440,7 +440,9 @@ class AIO_Vehicles
 				if (!access || !access.GetOutVehicle(EGetOutType.TELEPORT, -1, ECloseDoorAfterActions.LEAVE_OPEN, false))
 					continue;
 			}
-			else
+			AIO_Tasks.Release(body);
+			utility.SetStateAllActionsOfType(SCR_AIGetInVehicle, EAIActionState.FAILED);
+			if (!eject)
 				utility.AddAction(new SCR_AIGetOutVehicle(utility, null, vehicle, priority: SCR_AIActionBase.PRIORITY_BEHAVIOR_GET_OUT_VEHICLE_HIGH_PRIORITY));
 			leaving++;
 			if (!vehicles.Contains(vehicle))
