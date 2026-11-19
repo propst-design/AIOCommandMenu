@@ -8,6 +8,7 @@
 - Eject: a man the game won't let bail out keeps his orders, and the reply no longer claims nobody was in a vehicle while dropping your squad's objective.
 - Fire on my lead on men walking a route or patrol: they keep holding fire past each waypoint instead of opening up on their own when they reach the next one.
 - A squad you took over also keeps its commander's objective when you move men to another seat of their vehicle or send them to unflip one.
+- Stealth, then Hold fire (or another fire rule) for selected men or a squad you took over, then Aware, Safe or Combat: the men keep the fire rule you gave them instead of going back to the squad's.
 
 ## 0.4.0 — released
 

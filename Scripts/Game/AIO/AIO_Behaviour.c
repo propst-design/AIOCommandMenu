@@ -75,6 +75,15 @@ class AIO_Behaviour
 		return string.Format("%1 men %2", count, what);
 	}
 
+	// The player gave him fire rules of his own (Hold fire, Return fire, Fire at will to selected
+	// men): they are no longer Stealth's, so leaving Stealth must not hand him the group's.
+	static void FireRulesOrdered(AIAgent agent)
+	{
+		int at = s_aAgents.Find(agent);
+		if (agent && at >= 0)
+			s_aOwnROE[at] = false;
+	}
+
 	static int ModeOf(AIAgent agent)
 	{
 		int at = s_aAgents.Find(agent);

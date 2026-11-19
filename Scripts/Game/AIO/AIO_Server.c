@@ -852,6 +852,7 @@ class AIO_Server
 			{
 				AIO_Maneuvers.StopLead(AIO_Tasks.AgentOf(rifleman));
 				AIO_Maneuvers.SetROE(rifleman, mode);
+				AIO_Behaviour.FireRulesOrdered(AIO_Tasks.AgentOf(rifleman)); // Aware / Safe / Combat later keep them
 			}
 			return string.Format("%1 men %2", bodies.Count(), what);
 		}
