@@ -30,6 +30,12 @@ class AIO_Routes
 {
 	static const int MAX_POINTS = 16;
 	protected static ref array<ref AIO_Route> s_aRoutes;
+	protected static bool s_bContinuing; // inside Dispatch for a route going on (no new order)
+
+	static bool IsContinuing()
+	{
+		return s_bContinuing;
+	}
 	// Called by AIO_StaticInit at game start (static initializer budget: tools/check_static_init.py).
 	static void AIO_InitStatics()
 	{
@@ -153,8 +159,11 @@ class AIO_Routes
 		return string.Format("%1: %2 started, %3 waypoints", route.m_sElement, mode, points.Count());
 	}
 
-	protected static void Dispatch(AIO_Route route)
+	// continuing: the route goes on to its next waypoint (or resumes after a pause). That is no new
+	// order: a man waiting on Fire on my lead keeps waiting (AIO_Maneuvers.Leave).
+	protected static void Dispatch(AIO_Route route, bool continuing = false)
 	{
+		s_bContinuing = continuing;
 		route.m_aHolds.Clear();
 		route.m_fTravelBudget = 300000;
 		for (int i = 0; i < route.m_aMen.Count(); i++)
@@ -164,6 +173,7 @@ class AIO_Routes
 			AIO_Tasks.MoveTo(man, AIO_Tasks.SpreadSpot(route.m_aPoints[route.m_iWaypoint], i), true);
 			route.m_aHolds.Insert(AIO_Tasks.ActiveHold(AIO_Tasks.UtilityOf(AIO_Tasks.AgentOf(man))));
 		}
+		s_bContinuing = false;
 		route.m_fProgressAt = GetGame().GetWorld().GetWorldTime();
 		route.m_fStarted = route.m_fProgressAt;
 		route.m_fBestDistance = 1e10;
@@ -257,7 +267,7 @@ class AIO_Routes
 			route.m_bBlocked = false;
 			route.m_sBlockedMen = "";
 			route.m_aBlockedMen.Clear();
-			Dispatch(route);
+			Dispatch(route, true);
 			Report(route, string.Format("Resuming waypoint %1/%2", route.m_iWaypoint + 1, route.m_aPoints.Count()));
 		}
 		if (count == 0) return "No paused routes for those soldiers";
@@ -349,7 +359,7 @@ class AIO_Routes
 					}
 					route.m_iWaypoint = 0;
 				}
-				Dispatch(route);
+				Dispatch(route, true);
 				continue;
 			}
 			if (distance < route.m_fBestDistance - 1 || combat)

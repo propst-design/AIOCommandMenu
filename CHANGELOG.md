@@ -6,6 +6,7 @@
 - A squad you took over keeps its commander's objective through fire-rule, stance, vehicle engine and lights, Heal up, Rearm, Give me ammo or bandages and Take weapon orders, and through an order nobody could carry out. The objective is replaced only once a man actually carries out your order, so a Take cover that finds no cover or a Garrison with no post for anyone leaves it in place.
 - In a squad you took over, an order to selected men that covers every living man counts as a whole-squad order and replaces the commander's objective; an order to only some of them keeps it.
 - Eject: a man the game won't let bail out keeps his orders, and the reply no longer claims nobody was in a vehicle while dropping your squad's objective.
+- Fire on my lead on men walking a route or patrol: they keep holding fire past each waypoint instead of opening up on their own when they reach the next one.
 
 ## 0.4.0 — released
 

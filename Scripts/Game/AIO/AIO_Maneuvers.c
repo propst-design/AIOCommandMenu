@@ -589,8 +589,9 @@ class AIO_Maneuvers
 		// Fire on my lead set a per-man hold fire: give him the fire rules he had before it, or he never
 		// shoots again. A man already released by the shot stays on TickFree's list: his earlier
 		// rules come back when the fight is over (dropping him here left fire at will on for good).
+		// A route walking on to its next waypoint is no new order: he keeps waiting.
 		int waiting = s_aLeadAgents.Find(agent);
-		if (waiting >= 0)
+		if (waiting >= 0 && !AIO_Routes.IsContinuing())
 		{
 			int prior = s_aLeadPrior[waiting];
 			DropLeadAt(waiting);
