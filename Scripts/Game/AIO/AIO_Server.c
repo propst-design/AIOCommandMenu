@@ -911,7 +911,8 @@ class AIO_Server
 	// squad keeps its commander's waypoint for these. Fire rules, stance, pace, and (Jacob, 15 Nov)
 	// vehicle engine and lights, Heal up, Rearm, Give me ammo / bandages and Take that weapon.
 	// A seat change inside the vehicle and Unflip (an errand like Repair, which never reaches the
-	// possessed branch) don't move the squad either.
+	// possessed branch) don't move the squad either, nor does Suppress (Jacob, 19 Nov): each man fires
+	// from where he is for a while (no waypoint of its own on this path), then the objective goes on.
 	static bool KeepsObjective(int order)
 	{
 		switch (order)
@@ -922,7 +923,7 @@ class AIO_Server
 			case AIO_EOrder.HEAL_UP: case AIO_EOrder.REARM: case AIO_EOrder.REARM_FROM: case AIO_EOrder.TAKE_WEAPON:
 			case AIO_EOrder.GIVE_AMMO: case AIO_EOrder.GIVE_BANDAGES:
 			case AIO_EOrder.HOLD_FIRE: case AIO_EOrder.RETURN_FIRE: case AIO_EOrder.FIRE_AT_WILL:
-			case AIO_EOrder.ENGAGE_AT_WILL: case AIO_EOrder.DISENGAGE: case AIO_EOrder.FIRE_ON_MY_LEAD:
+			case AIO_EOrder.ENGAGE_AT_WILL: case AIO_EOrder.DISENGAGE: case AIO_EOrder.FIRE_ON_MY_LEAD: case AIO_EOrder.SUPPRESS:
 			case AIO_EOrder.STANCE_UP: case AIO_EOrder.STANCE_CROUCH: case AIO_EOrder.STANCE_PRONE: case AIO_EOrder.STANCE_AUTO:
 			case AIO_EOrder.COPY_STANCE:
 			case AIO_EOrder.SPEED_WALK: case AIO_EOrder.SPEED_NORMAL: case AIO_EOrder.SPEED_FAST: case AIO_EOrder.SPEED_AUTO:

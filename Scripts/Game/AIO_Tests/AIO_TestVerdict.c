@@ -20,7 +20,7 @@ class AIO_TestVerdict
 		if (System.IsCLIParam("aioTowerTest")) return 10;
 		if (System.IsCLIParam("aioGarrisonTest")) return 9;
 		if (System.IsCLIParam("aioVehicleTest")) return 19;
-		if (System.IsCLIParam("aioRecoveryTest")) return 11;
+		if (System.IsCLIParam("aioRecoveryTest")) return 12;
 		if (System.IsCLIParam("aioFormationTest")) return 10;
 		if (System.IsCLIParam("aioSupportTest")) return 29;
 		if (System.IsCLIParam("aioRadiusTest")) return 8;

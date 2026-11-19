@@ -1850,10 +1850,14 @@ class AIO_Test
 		int afterRefused = WaypointCount();
 		string healed = AIO_Server.ExecutePossessed(s_Group, AIO_EOrder.HEAL_UP, vector.Zero, Leader(), RplId.Invalid(), 0);
 		int afterHeal = WaypointCount();
+		// Suppress: the men stay put and fire, then go on with the objective (Jacob, 19 Nov).
+		string suppressed = AIO_Server.ExecutePossessed(s_Group, AIO_EOrder.SUPPRESS, FindSpot(Leader().GetOrigin(), 40), Leader(), RplId.Invalid(), 0);
+		int afterSuppress = WaypointCount();
 		string halted = AIO_Server.ExecutePossessed(s_Group, AIO_EOrder.HALT, vector.Zero, Leader(), RplId.Invalid(), 0);
 		int afterHalt = WaypointCount();
 		Check("possessed-refused-keeps-waypoint", afterRefused == 1, string.Format("'%1', %2 waypoints", refused, afterRefused));
 		Check("possessed-heal-keeps-waypoint", afterHeal == 1, string.Format("'%1', %2 waypoints", healed, afterHeal));
+		Check("possessed-suppress-keeps-waypoint", afterSuppress == 1 && suppressed.Contains("suppressing"), string.Format("'%1', %2 waypoints", suppressed, afterSuppress));
 		Check("possessed-order-replaces-waypoint", afterHalt == 0, string.Format("'%1', %2 waypoints", halted, afterHalt));
 
 		// Jacob, 18 Nov: some men selected keep the waypoint; every living man selected is a whole-squad
