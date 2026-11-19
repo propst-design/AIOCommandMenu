@@ -1855,6 +1855,28 @@ class AIO_Test
 		Check("possessed-refused-keeps-waypoint", afterRefused == 1, string.Format("'%1', %2 waypoints", refused, afterRefused));
 		Check("possessed-heal-keeps-waypoint", afterHeal == 1, string.Format("'%1', %2 waypoints", healed, afterHeal));
 		Check("possessed-order-replaces-waypoint", afterHalt == 0, string.Format("'%1', %2 waypoints", halted, afterHalt));
+
+		// Jacob, 18 Nov: some men selected keep the waypoint; every living man selected is a whole-squad
+		// order and replaces it. A man who found no cover (only crouched) didn't take Take cover.
+		array<IEntity> men = {};
+		AIO_Server.Members(s_Group, men);
+		men.RemoveItem(Leader());
+		array<RplId> all = {};
+		foreach (IEntity man : men)
+			all.Insert(Replication.FindItemId(man));
+		array<RplId> some = {all[0]};
+		AIO_Server.AddWaypoint(s_Group, AIO_Server.WP_MOVE, FindSpot(Leader().GetOrigin(), 60));
+		string someReply = AIO_Server.ExecuteMen(s_Group, AIO_EOrder.HALT, some, vector.Zero, Leader(), RplId.Invalid(), 0);
+		int afterSome = WaypointCount();
+		string allReply = AIO_Server.ExecuteMen(s_Group, AIO_EOrder.HALT, all, vector.Zero, Leader(), RplId.Invalid(), 0);
+		int afterAll = WaypointCount();
+		Check("possessed-some-selected-keeps-waypoint", afterSome == 1, string.Format("'%1', %2 waypoints", someReply, afterSome));
+		Check("possessed-all-selected-replaces-waypoint", afterAll == 0, string.Format("'%1', %2 waypoints", allReply, afterAll));
+		int before = AIO_Tasks.s_iOrdersTaken;
+		bool found = AIO_Tasks.TakeCover(men[0], Leader().GetOrigin() + "0 0 150");
+		bool counted = AIO_Tasks.s_iOrdersTaken != before;
+		Check("take-cover-takes-only-with-cover", found == counted, string.Format("cover found %1, counted as taken %2", found, counted));
+		AIO_Tasks.Release(men[0]);
 	}
 
 	protected static int WaypointCount()
